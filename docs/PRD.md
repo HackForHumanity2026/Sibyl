@@ -1,16 +1,12 @@
 # Sibyl -- Product Requirements Document
 
-**Tagline:** *The AI Oracle for Sustainability Truth*
-
-Named after the prophetic oracles of ancient Greece, Sibyl illuminates the truth behind corporate sustainability claims.
-
 | Field | Value |
 |---|---|
 | **Project** | Sibyl |
 | **Hackathon** | Hack for Humanity 2026 |
 | **Deadline** | February 28, 2026 |
 | **Judging Criteria** | Impact, Innovation/Creativity, Design, Presentation |
-| **Version** | 0.1 -- Initial Draft |
+| **Version** | 0.3 -- Agent Dashboard Specifications |
 
 ---
 
@@ -39,7 +35,7 @@ Corporate sustainability reports are dense documents -- often 100 to 200 pages -
 
 ### Solution
 
-Sibyl is a multi-agent AI orchestration system that ingests sustainability report PDFs, extracts verifiable claims, dispatches specialized investigation agents to gather evidence from diverse real-world sources, and produces a paragraph-level IFRS S1/S2 compliance mapping. The entire investigative process is exposed to the user through a live "detective dashboard" -- a network graph visualization showing each agent's reasoning, the evidence flowing between agents, and how claims are being investigated in real time. The final output is a comprehensive, interactive "Source of Truth" report that maps every extracted claim to its relevant IFRS paragraphs, the evidence supporting or contradicting it, and a clear compliance verdict.
+Sibyl is a multi-agent AI orchestration system that ingests sustainability report PDFs, extracts verifiable claims, dispatches specialized investigation agents to gather evidence from diverse real-world sources, and produces a paragraph-level IFRS S1/S2 compliance mapping. Crucially, Sibyl does not only verify the claims a report *does* make -- it also identifies what the report *fails to disclose* by comparing the document's coverage against the full IFRS S1/S2 disclosure requirements and surfacing material omissions as a dedicated "Disclosure Gaps" section in the final output. The entire investigative process is exposed to the user through a live "detective dashboard" -- a network graph visualization showing each agent's reasoning, the evidence flowing between agents, and how claims are being investigated in real time. The final output is a comprehensive, interactive "Source of Truth" report that maps every extracted claim to its relevant IFRS paragraphs, the evidence supporting or contradicting it, a clear compliance verdict, and a disclosure gap analysis highlighting IFRS requirements the report does not address at all.
 
 ### Unique Value
 
@@ -53,16 +49,14 @@ Unlike static checklists or keyword matchers, Sibyl deploys investigative AI age
 
 A dedicated Judge agent evaluates the sufficiency of gathered evidence and can send weak or contradictory findings back to specialist agents for deeper re-investigation, creating a cyclic validation loop. This loop continues until findings are robust or are explicitly marked as having insufficient evidence -- preventing premature or unfounded verdicts.
 
+Beyond claim verification, Sibyl addresses the *selective disclosure* dimension of greenwashing by performing a disclosure gap analysis: the system compares the report's content coverage against the complete set of IFRS S1/S2 disclosure requirements and flags any paragraphs or topics that the report fails to address entirely. This means Sibyl detects both what a company says that is wrong *and* what a company conspicuously chose not to say.
+
 ### Hackathon Alignment
 
 - **Impact:** Directly addresses environmental accountability by making greenwashing detectable and sustainability reporting independently verifiable. Supports the global shift toward trustworthy ESG data.
 - **Innovation and Creativity:** Multi-agent architecture with cyclic validation, real-time detective dashboard exposing AI reasoning, and paragraph-level IFRS compliance mapping represent a novel approach to sustainability verification.
 - **Design:** Interactive compliance report, embedded PDF viewer with claim highlights, animated network-graph dashboard, and contextual chatbot prioritize user experience and information clarity.
-- **Presentation:** A full working demo -- from PDF upload through all eight agents to a comprehensive interactive report, chatbot, and community board -- supports a clear and compelling demonstration.
-
-### Expected Outcomes
-
-A working full-demo product: users upload a sustainability report PDF; the system runs the full multi-agent pipeline (Claims Agent extracts claims, Orchestrator routes them to specialist agents, specialists investigate in parallel with inter-agent communication, Judge validates evidence with cyclic re-investigation where needed); users watch the detective dashboard animate the entire process in real time; they receive a comprehensive interactive Source of Truth report organized by IFRS pillars; they can ask clarifying questions via a RAG-powered chatbot; and they can publish and browse reports on a community board.
+- **Presentation:** A full working demo -- from PDF upload through all eight agents to a comprehensive interactive report and chatbot -- supports a clear and compelling demonstration.
 
 ---
 
@@ -72,7 +66,7 @@ A working full-demo product: users upload a sustainability report PDF; the syste
 
 Misleading or unsubstantiated sustainability claims are pervasive. EU investigations have found that 56% of green claims examined were completely unsubstantiated and 59% were vague, misleading, or unfounded. ESG risk incidents tied to misleading communication on climate, GHG emissions, and pollution affect major sectors: Oil and Gas (72%), Banking and Financial Services (53%), and Travel and Airlines (40%). KPMG's 2024 analysis found that 69% of CEOs have adapted climate-related language to meet stakeholder expectations, while 66% admit they are not prepared to withstand shareholder scrutiny on those claims.
 
-Academic research on firm-level greenwashing identifies two primary manifestations: *selective disclosure* (emphasizing favorable information while omitting unfavorable data) and *decoupling* (a measurable gap between what companies communicate and what they actually do). Most existing greenwashing measures are hypothetical or score-based rather than evidence-based -- researchers construct indices that suggest possible incidents rather than detecting actual greenwashing through verification against real-world evidence.
+Academic research on firm-level greenwashing identifies two primary manifestations: *selective disclosure* (emphasizing favorable information while omitting unfavorable data) and *decoupling* (a measurable gap between what companies communicate and what they actually do). Most existing greenwashing measures are hypothetical or score-based rather than evidence-based -- researchers construct indices that suggest possible incidents rather than detecting actual greenwashing through verification against real-world evidence. Critically, selective disclosure is not just about making misleading claims -- it is equally about what a report *does not say*. A sustainability report that omits Scope 3 emissions entirely, ignores physical risk exposure, or fails to disclose a transition plan is engaging in selective disclosure just as much as one that exaggerates a renewable energy commitment. Any system that only verifies the claims a company chooses to make, without flagging what is conspicuously absent, addresses only half of the greenwashing problem.
 
 The demand side is equally clear: 70% of consumers want to reduce their environmental impact and rely on corporate sustainability claims to guide decisions, yet without independent verification these reports remain instruments of trust rather than proof.
 
@@ -153,9 +147,9 @@ Sustainability or ESG leads within companies who want to pre-audit their organiz
 
 ### Tertiary: Researcher / Journalist / Concerned Citizen
 
-Users who investigate specific companies or industry sectors and want to understand whether sustainability claims hold up to scrutiny. They may discover reports through the community board, explore analyses run by others, or upload reports themselves. They need an approachable UI and the chatbot to ask questions in plain language without requiring deep IFRS or ESG expertise.
+Users who investigate specific companies or industry sectors and want to understand whether sustainability claims hold up to scrutiny. They upload reports themselves and need an approachable UI and the chatbot to ask questions in plain language without requiring deep IFRS or ESG expertise.
 
-**Key needs:** Accessible, interpretable results; plain-language chatbot for Q&A; community board for discovering and sharing analyses; ability to drill into evidence without technical knowledge.
+**Key needs:** Accessible, interpretable results; plain-language chatbot for Q&A; ability to drill into evidence without technical knowledge.
 
 **Success metric:** Ability to quickly understand whether key claims are supported; access to the underlying evidence and agent reasoning for deeper investigation.
 
@@ -200,11 +194,11 @@ The Orchestrator Agent is the supervisory node in the LangGraph pipeline. It rec
 
 **Execution management.** The Orchestrator manages execution priorities, handles agent failures and timeouts (allowing the pipeline to continue even if one agent encounters an error), and tracks overall pipeline state and progress. It maintains a registry of which claims have been assigned to which agents and their current investigation status.
 
-**Inter-agent coordination.** When specialist agents need information from each other (for example, the Legal Agent needs geographic context from the Geography Agent to assess a facility-related governance claim), they post information requests to the shared state. The Orchestrator routes these requests to the appropriate agent, enabling cross-domain collaboration without direct agent-to-agent coupling.
+**Inter-agent coordination.** Any specialist agent can request information from any other specialist agent at any time during its investigation. Specialist agents never communicate directly -- all cross-domain requests flow through the Orchestrator. When a specialist agent determines that evidence or context from another domain would strengthen its investigation, it posts a general-purpose `InfoRequest` to the shared LangGraph state. The Orchestrator detects pending requests on its next pass and routes them to the appropriate agent(s), which respond via `InfoResponse` objects in the shared state. This is a fully dynamic, general-purpose mechanism -- there are no hardcoded agent-to-agent channels. The Orchestrator decides routing based on the content of the request, not on predefined pairings.
 
 **Re-investigation handling.** When the Judge Agent sends claims back for re-investigation with refined queries, the Orchestrator receives these requests and re-routes them to the appropriate specialist agent(s) with the Judge's specific guidance on what additional evidence is needed.
 
-**Model:** Claude Sonnet 4 (strong reasoning for complex routing decisions and coordination logic).
+**Model:** Claude Sonnet 4.5 (strong reasoning for complex routing decisions and coordination logic; improved agentic capabilities over Sonnet 4).
 
 ### 4.4 Geography Agent (Satellite Verification)
 
@@ -223,7 +217,7 @@ The Geography Agent investigates geographic and environmental claims by analyzin
 
 **Evidence output.** The agent returns its findings with satellite image references, analysis results, temporal comparisons, and a plain-language summary of whether the geographic evidence supports or contradicts the claim.
 
-**Inter-agent communication.** The Geography Agent can receive requests from and share findings with other specialist agents via the shared state -- for example, providing location context to the Legal Agent for facility-related governance assessments, or receiving refined search parameters from the News/Media Agent about specific incident locations.
+**Inter-agent communication.** Like all specialist agents, the Geography Agent participates in the general inter-agent communication protocol (see Section 5.4). It can receive information requests from any other specialist agent via the Orchestrator and post its own requests when it needs cross-domain context -- for example, requesting clarification on a claimed facility's operational status or the regulatory context of a geographic assertion. All such communication flows through the shared state and is mediated by the Orchestrator.
 
 **Model:** Gemini 2.5 Pro (best available multimodal/vision capabilities for analyzing satellite imagery; strong spatial reasoning).
 
@@ -248,9 +242,14 @@ The Legal Agent investigates legal, regulatory, and governance-related claims ag
 
 **Paragraph-level mapping.** The Legal Agent produces precise paragraph-level mappings -- for example, identifying that a transition plan disclosure maps to S2.14(a)(iv) and checking whether it meets the specific requirements of that paragraph (key assumptions, dependencies, timeline).
 
-**Inter-agent communication.** The Legal Agent can request geographic context from the Geography Agent, request quantitative validation from the Data/Metrics Agent, and share compliance findings with the Academic/Industry Research Agent for cross-referencing against industry standards.
+**Disclosure gap detection (omission analysis).** In addition to evaluating claims that are present, the Legal Agent performs a systematic coverage analysis by comparing the full set of IFRS S1/S2 disclosure requirements (at the paragraph level) against the claims and content extracted from the report. Any IFRS paragraph that has no corresponding content in the report is flagged as a disclosure gap. This directly addresses the *selective disclosure* form of greenwashing -- detecting what a report chose not to say. For example, if a report discusses Scope 1 and Scope 2 GHG emissions but makes no mention of Scope 3 emissions at all, the Legal Agent flags the S2.29(a)(iii) requirement as an unaddressed disclosure gap. The output distinguishes between:
 
-**Model:** Claude Sonnet 4 (excellent legal and compliance reasoning; strong at interpreting regulatory language and assessing nuanced governance structures).
+- **Fully unaddressed:** The IFRS paragraph has zero corresponding content in the report
+- **Partially addressed:** The report touches on the topic but does not meet the paragraph's specific sub-requirements (e.g., a transition plan is mentioned but lacks the key assumptions and dependencies required by S2.14(a)(iv))
+
+**Inter-agent communication.** Like all specialist agents, the Legal Agent participates in the general inter-agent communication protocol (see Section 5.4). It can post information requests to any other specialist agent via the Orchestrator when it needs cross-domain context to complete its assessment -- for example, requesting geographic verification of a facility claim, quantitative validation of reported metrics, or corroborating news coverage for a governance assertion. All such communication flows through the shared state and is mediated by the Orchestrator.
+
+**Model:** Claude Sonnet 4.5 (excellent legal and compliance reasoning; strong at interpreting regulatory language and assessing nuanced governance structures).
 
 ### 4.6 News/Media Agent (Public Source Verification)
 
@@ -273,9 +272,9 @@ The News/Media Agent scours public news sources, press releases, and investigati
 
 **Evidence output.** Each piece of evidence includes the source URL, publication date, source credibility tier, relevance to the specific claim, and a plain-language summary of what the source says. The agent flags cases where public reporting directly contradicts claims made in the sustainability report.
 
-**Inter-agent communication.** The News/Media Agent can share relevant findings with the Geography Agent (e.g., news about environmental incidents at specific locations), the Legal Agent (e.g., regulatory enforcement actions), and the Academic/Industry Research Agent (e.g., industry-wide concerns about specific practices).
+**Inter-agent communication.** Like all specialist agents, the News/Media Agent participates in the general inter-agent communication protocol (see Section 5.4). It can post information requests to any other specialist agent via the Orchestrator when cross-domain context would strengthen its investigation -- for example, requesting geographic confirmation of an incident location or regulatory context for a reported enforcement action. All such communication flows through the shared state and is mediated by the Orchestrator.
 
-**Model:** Claude Sonnet 4 (strong at source analysis, credibility assessment, and nuanced reasoning about corroboration versus contradiction).
+**Model:** Claude Sonnet 4.5 (strong at source analysis, credibility assessment, and nuanced reasoning about corroboration versus contradiction).
 
 ### 4.7 Academic/Industry Research Agent (Technical Verification)
 
@@ -300,7 +299,7 @@ The Academic/Industry Research Agent validates technical and scientific claims a
 
 **Evidence output.** The agent returns findings with academic references, benchmark comparisons, methodology assessments, and a plain-language summary of whether the technical evidence supports the claim.
 
-**Inter-agent communication.** The Academic/Industry Research Agent can share industry benchmarks with the Data/Metrics Agent for quantitative validation, provide technical context to the Legal Agent for methodology compliance assessments, and receive specific research requests from other agents.
+**Inter-agent communication.** Like all specialist agents, the Academic/Industry Research Agent participates in the general inter-agent communication protocol (see Section 5.4). It can post information requests to any other specialist agent via the Orchestrator and receive requests from any agent that needs technical context, benchmark data, or methodology validation. All such communication flows through the shared state and is mediated by the Orchestrator.
 
 **Model:** DeepSeek V3.2 (fast and cost-effective for research synthesis and benchmark comparison; strong at processing academic and technical content).
 
@@ -320,9 +319,9 @@ The Data/Metrics Agent validates all numerical and quantitative claims for mathe
 
 **Evidence output.** The agent returns mathematical verification results, benchmark comparisons, identified inconsistencies, and specific references to which S2 paragraph requirements are met or unmet by the reported metrics.
 
-**Inter-agent communication.** The Data/Metrics Agent can receive industry benchmark data from the Academic/Industry Research Agent, request geographic context from the Geography Agent for location-specific emissions data, and share quantitative findings with the Legal Agent for compliance assessment.
+**Inter-agent communication.** Like all specialist agents, the Data/Metrics Agent participates in the general inter-agent communication protocol (see Section 5.4). It can post information requests to any other specialist agent via the Orchestrator when cross-domain context would aid its analysis -- for example, requesting industry benchmarks for plausibility checks or geographic data for location-specific emissions validation. All such communication flows through the shared state and is mediated by the Orchestrator.
 
-**Model:** Claude Sonnet 4 (strong numerical reasoning, consistency checking, and ability to work with complex financial and emissions data).
+**Model:** Claude Sonnet 4.5 (strong numerical reasoning, consistency checking, and ability to work with complex financial and emissions data).
 
 ### 4.9 Judge Agent (Cyclic Validation)
 
@@ -372,12 +371,19 @@ The detective dashboard is the hero visual of Sibyl -- a real-time, interactive 
 - Summary of findings so far
 - Number of claims being investigated
 
+Beyond these shared elements, select agents display domain-specific content that would lose meaning if reduced to text-only reasoning:
+
+- **Geography Agent:** Renders the satellite image tile currently being analyzed (retrieved from Microsoft Planetary Computer) with a caption showing the location name, coordinates, and imagery date. For temporal claims, shows a before/after image pair.
+- **Legal Agent:** Shows a compact IFRS coverage progress bar per pillar (Governance, Strategy, Risk Management, Metrics & Targets) that fills in as paragraphs are evaluated -- green for covered, orange for partial, grey for gaps.
+- **Data/Metrics Agent:** Displays a running list of consistency checks (e.g., "Scope 1 + 2 + 3 = Total") with pass/fail indicators, so users can see quantitative validation results at a glance.
+- **Judge Agent:** Shows verdict cards as they are issued -- each card displays the claim, the color-coded verdict badge (Verified/Unverified/Contradicted/Insufficient Evidence), and the cycle count if re-investigation was requested.
+
 **Visual indicators:**
 
 - Agent status: Pulsing animation when active, solid when idle, checkmark when complete, warning icon on error
 - Claim flow: Animated particles along edges showing data movement direction and volume
 - Cyclic validation: Re-investigation loops are visually highlighted with a distinct animation when the Judge sends claims back to the Orchestrator
-- Inter-agent communication: Cross-connections between specialist agents are shown when they exchange information
+- Inter-agent communication: Information requests and responses routed through the Orchestrator are shown as edges flowing through the Orchestrator node
 
 **Edge interaction.** Users can click on any edge to see the message or data being passed between agents -- the specific claim being routed, the evidence being shared, or the re-investigation request being sent.
 
@@ -405,9 +411,18 @@ The Source of Truth is the primary output of Sibyl -- a comprehensive, interacti
 
 **S1/S2 cross-mapping.** The report shows how each S2 climate disclosure fulfills its corresponding S1 general requirement, making the interconnection between the two standards explicit and traceable.
 
-**Filtering and search.** Users can filter and search by IFRS pillar, claim type, compliance status (verdict), agent, and specific IFRS paragraph number.
+**Disclosure Gaps section ("What the report does NOT disclose").** A dedicated section of the Source of Truth report surfaces IFRS S1/S2 requirements that the report fails to address. This section is organized by IFRS pillar and lists every paragraph-level requirement that has no corresponding content in the uploaded report (fully unaddressed) or that is only partially covered (the topic is mentioned but specific sub-requirements are missing). Each gap entry includes:
 
-**Comprehensiveness.** The Source of Truth report is comprehensive and does not degrade the complexity of the underlying document. Every verifiable claim identified by the Claims Agent is present, fully mapped, and fully investigated. The report serves as a complete compliance analysis, not a summary.
+- The IFRS paragraph identifier and a plain-language description of what the standard requires
+- Whether the gap is a full omission or a partial coverage gap, with specifics on which sub-requirements are missing
+- The materiality context -- why this omission matters (e.g., "Scope 3 emissions typically represent the majority of a company's total GHG footprint; omitting them understates climate exposure")
+- Color-coded severity: grey (fully unaddressed) and orange (partially addressed)
+
+This section directly addresses the *selective disclosure* form of greenwashing by making it impossible to overlook what a company chose not to report. A report that appears compliant based on its claims alone may reveal significant gaps when measured against the full IFRS requirement set.
+
+**Filtering and search.** Users can filter and search by IFRS pillar, claim type, compliance status (verdict), investigating agent, specific IFRS paragraph number, and disclosure gap status.
+
+**Comprehensiveness.** The Source of Truth report is comprehensive and does not degrade the complexity of the underlying document. Every verifiable claim identified by the Claims Agent is present, fully mapped, and fully investigated. Every IFRS S1/S2 disclosure requirement is accounted for -- either mapped to claims in the report or surfaced as a disclosure gap. The report serves as a complete compliance analysis covering both what the report says and what it does not say.
 
 ### 4.12 Chatbot (Contextual Q&A)
 
@@ -418,7 +433,7 @@ A conversational interface that allows users to ask questions about the analyzed
 - The original sustainability report content (chunked and embedded during ingestion)
 - All agent findings and evidence gathered during the investigation
 - The IFRS S1/S2 standard texts and SASB guidance
-- The Source of Truth report verdicts and reasoning
+- The Source of Truth report verdicts, reasoning, and disclosure gap analysis
 
 **Example queries:**
 
@@ -427,24 +442,14 @@ A conversational interface that allows users to ask questions about the analyzed
 - "What did the Geography Agent find about the Borneo facility?"
 - "Which claims were contradicted by news sources?"
 - "What are the main compliance gaps in the Governance pillar?"
+- "What IFRS requirements does this report not address at all?"
+- "Does the report disclose Scope 3 emissions by category as required by S2.29(a)(iii)?"
 
-**Contextual awareness.** The chatbot understands the structure of the analysis -- it can reference specific agents, specific claims, specific IFRS paragraphs, and specific evidence. It provides answers grounded in the actual analysis results, not generic information.
+**Contextual awareness.** The chatbot understands the structure of the analysis -- it can reference specific agents, specific claims, specific IFRS paragraphs, specific evidence, and disclosure gaps. It provides answers grounded in the actual analysis results, not generic information.
 
 **Accessibility.** The chatbot is accessible as a slide-out panel from any view in the application, persisting across navigation so users can ask questions while reviewing the PDF, the detective dashboard, or the Source of Truth report.
 
 **Model:** Gemini 3 Flash (cost-effective with strong context handling; good for conversational Q&A with RAG retrieval).
-
-### 4.13 Community Board
-
-A simple community feature that allows users to share completed compliance reports and explore analyses run by others.
-
-**Publishing.** After an analysis is complete, users can publish their Source of Truth report to the community board with a title, company name, industry sector, and optional summary. No authentication is required for the MVP -- publishing is anonymous.
-
-**Browsing.** Other users can browse published reports in a feed/list view with search and filtering by company name, industry sector, and analysis date. Each published report links to the full interactive Source of Truth view and the chatbot, allowing any user to explore the analysis and ask questions.
-
-**Chatbot on published reports.** The chatbot is available on every published report, allowing community users to ask questions about any analysis -- not just their own. This enables collaborative understanding and peer review of sustainability claims.
-
-**Scope for MVP.** The community board is kept intentionally simple for the hackathon: post, browse, view, and chat. Social features (upvotes, comments, user profiles) are deferred to post-hackathon iterations.
 
 ---
 
@@ -455,14 +460,14 @@ A simple community feature that allows users to share completed compliance repor
 | Layer | Technology | Purpose |
 |---|---|---|
 | **Frontend** | React (TypeScript) + Vite | Single-page application with fast HMR |
-| **UI Components** | shadcn/ui + TailwindCSS | Design system with dark-mode-first theme |
-| **Graph Visualization** | React Flow | Detective dashboard network graph |
-| **PDF Viewer** | @react-pdf-viewer/core | Embedded PDF with annotation/highlight overlays |
+| **UI Components** | shadcn/ui + TailwindCSS v4 | Design system with dark-mode-first theme |
+| **Graph Visualization** | React Flow (@xyflow/react) | Detective dashboard network graph |
+| **PDF Viewer** | @pdf-viewer/react | Embedded PDF with annotation/highlight overlays |
 | **Backend** | FastAPI | Async Python API server |
 | **Validation** | Pydantic v2 | Request/response schema validation |
-| **ORM** | SQLAlchemy 2.0 + Alembic | Database models and migrations |
-| **Database** | PostgreSQL 16 + pgvector | Unified relational store and vector store |
-| **AI Orchestration** | LangGraph | Graph-based state machine with cyclic workflow support |
+| **ORM** | SQLAlchemy 2.1 + Alembic | Database models and migrations |
+| **Database** | PostgreSQL 17 + pgvector | Unified relational store and vector store |
+| **AI Orchestration** | LangGraph (v1.0) | Graph-based state machine with cyclic workflow support |
 | **LLM Integration** | LangChain | RAG pipelines, tool definitions, prompt management |
 | **LLM Gateway** | OpenRouter API | Unified access to all models (Claude, Gemini, DeepSeek) |
 | **PDF Parsing** | PyMuPDF4LLM | Structured markdown extraction from PDFs |
@@ -475,9 +480,9 @@ A simple community feature that allows users to share completed compliance repor
 **Why these choices:**
 
 - **LangGraph over CrewAI/AutoGen:** LangGraph natively supports cyclic workflows (critical for the Judge agent's re-investigation loop), explicit graph-based state machines (matching our agent pipeline architecture), built-in streaming via callbacks (for the detective dashboard), and checkpointing (for fault tolerance). CrewAI lacks the cyclic control flow needed; AutoGen's event-driven model is more complex than needed for this use case.
-- **pgvector over separate vector DBs:** Since the backend already uses PostgreSQL via SQLAlchemy, pgvector keeps everything in one database with ACID compliance, audit trails, and the ability to join vector search results with relational data (e.g., linking embeddings to specific claims, reports, and agent findings). For the scale of a hackathon project (hundreds of documents, not millions), pgvector's performance is more than sufficient.
+- **pgvector over separate vector DBs:** Since the backend already uses PostgreSQL via SQLAlchemy, pgvector keeps everything in one database with ACID compliance, audit trails, and the ability to join vector search results with relational data (e.g., linking embeddings to specific claims, reports, and agent findings). For the scale of a hackathon project (hundreds of documents, not millions), pgvector's performance (v0.8.0 with iterative index scans) is more than sufficient.
 - **SSE over WebSockets:** Agent thought streaming is unidirectional (server to client). SSE is simpler to implement with FastAPI's StreamingResponse, auto-reconnects on network issues, and works well with React's EventSource API. WebSockets would add bidirectional complexity with no benefit for this use case.
-- **OpenRouter as unified gateway:** Allows accessing Claude, Gemini, DeepSeek, and other models through a single API with consistent authentication and billing, eliminating the need for separate API keys and SDKs per provider.
+- **OpenRouter as unified gateway:** Allows accessing Claude (Sonnet 4.5, Opus 4.5), Gemini (3 Flash, 2.5 Pro), DeepSeek (V3.2), and other models through a single API with consistent authentication and billing, eliminating the need for separate API keys and SDKs per provider.
 
 ### 5.2 Architecture Diagram
 
@@ -489,7 +494,6 @@ graph TD
         Dashboard["Detective Dashboard (React Flow)"]
         SoT["Source of Truth Report"]
         Chat["RAG Chatbot"]
-        Community["Community Board"]
     end
 
     subgraph Backend["Backend (FastAPI)"]
@@ -500,12 +504,12 @@ graph TD
 
     subgraph Agents["LangGraph Agent Pipeline"]
         ClaimsAgent["Claims Agent\nGemini 3 Flash"]
-        Orchestrator["Orchestrator Agent\nClaude Sonnet 4"]
+        Orchestrator["Orchestrator Agent\nClaude Sonnet 4.5"]
         GeoAgent["Geography Agent\nGemini 2.5 Pro"]
-        LegalAgent["Legal Agent\nClaude Sonnet 4"]
-        NewsAgent["News/Media Agent\nClaude Sonnet 4"]
+        LegalAgent["Legal Agent\nClaude Sonnet 4.5"]
+        NewsAgent["News/Media Agent\nClaude Sonnet 4.5"]
         AcademicAgent["Academic/Research Agent\nDeepSeek V3.2"]
-        DataAgent["Data/Metrics Agent\nClaude Sonnet 4"]
+        DataAgent["Data/Metrics Agent\nClaude Sonnet 4.5"]
         JudgeAgent["Judge Agent\nClaude Opus 4.5"]
     end
 
@@ -516,7 +520,7 @@ graph TD
     end
 
     subgraph Data["Data Layer"]
-        PG["PostgreSQL 16 + pgvector"]
+        PG["PostgreSQL 17 + pgvector"]
         RedisQ["Redis (Task Queue)"]
     end
 
@@ -534,12 +538,11 @@ graph TD
     Orchestrator -->|Route by type| AcademicAgent
     Orchestrator -->|Route by type| DataAgent
 
-    GeoAgent <-.->|Cross-domain requests| LegalAgent
-    GeoAgent <-.->|Cross-domain requests| NewsAgent
-    LegalAgent <-.->|Cross-domain requests| AcademicAgent
-    LegalAgent <-.->|Cross-domain requests| DataAgent
-    NewsAgent <-.->|Cross-domain requests| AcademicAgent
-    DataAgent <-.->|Cross-domain requests| AcademicAgent
+    GeoAgent <-.->|Info requests/responses| Orchestrator
+    LegalAgent <-.->|Info requests/responses| Orchestrator
+    NewsAgent <-.->|Info requests/responses| Orchestrator
+    AcademicAgent <-.->|Info requests/responses| Orchestrator
+    DataAgent <-.->|Info requests/responses| Orchestrator
 
     GeoAgent -->|Findings| JudgeAgent
     LegalAgent -->|Findings| JudgeAgent
@@ -569,7 +572,6 @@ graph TD
     API -->|Report data| SoT
     API -->|Highlights data| PDFView
     RAG -->|Retrieval| Chat
-    API -->|Published reports| Community
 ```
 
 ### 5.3 LangGraph State Machine Design
@@ -646,14 +648,16 @@ graph LR
 
 ### 5.4 Inter-Agent Communication
 
-Specialist agents do not communicate directly. All inter-agent communication flows through the shared LangGraph state, mediated by the Orchestrator:
+Specialist agents do not communicate directly. All inter-agent communication flows through the shared LangGraph state, mediated by the Orchestrator. This is a fully general, dynamic mechanism -- any specialist agent can request information from any other specialist agent. There are no hardcoded agent-to-agent channels or predefined communication pairs. The Orchestrator determines routing based on the content and context of each request.
 
-1. **Information requests:** When a specialist agent needs data from another domain (e.g., the Legal Agent needs geographic context), it posts an `InfoRequest` to the state specifying the target agent, the question, and the relevant claim context.
-2. **Orchestrator routing:** On the next orchestration pass, the Orchestrator detects pending info requests and routes them to the target agent.
-3. **Information responses:** The target agent processes the request and posts an `InfoResponse` to the state, which becomes available to the requesting agent on its next execution.
-4. **State-based visibility:** All inter-agent communication is recorded in the state and streamed to the detective dashboard, making cross-domain collaboration visible to the user.
+**Communication protocol:**
 
-This design keeps agents loosely coupled (they only interact through the state), makes all communication auditable and visible, and leverages LangGraph's built-in state management rather than requiring a custom message bus.
+1. **Information requests:** During its investigation, any specialist agent can determine that cross-domain context would strengthen its findings. It posts a general-purpose `InfoRequest` to the shared state, describing what information it needs and why. The request is not addressed to a specific agent -- the Orchestrator decides which agent(s) are best positioned to respond.
+2. **Orchestrator routing:** On its next pass, the Orchestrator detects pending `InfoRequest` objects, analyzes their content, and routes each request to the most appropriate specialist agent(s). The Orchestrator may route a single request to multiple agents if the question spans domains.
+3. **Information responses:** The target agent(s) process the request and post `InfoResponse` objects to the shared state, which become available to the requesting agent on its next execution.
+4. **State-based visibility:** All inter-agent communication -- requests, routing decisions, and responses -- is recorded in the shared state and streamed to the detective dashboard, making cross-domain collaboration fully visible and auditable.
+
+**Design rationale.** This architecture keeps agents loosely coupled (they only interact through the state and never reference each other directly), makes all communication auditable and visible in the detective dashboard, and leverages LangGraph's built-in state management rather than requiring a custom message bus. Because routing is handled dynamically by the Orchestrator, adding new specialist agents in the future requires no changes to existing agents -- they automatically become available for cross-domain communication.
 
 ### 5.5 RAG Pipeline Architecture
 
@@ -682,18 +686,18 @@ This design keeps agents loosely coupled (they only interact through the state),
 
 | Agent | Model | Rationale | Approx. Cost (per 1M tokens in/out) |
 |---|---|---|---|
-| Claims Agent | Gemini 3 Flash | 1M token context window handles full 200-page PDFs; cost-effective for large input | ~$0.10 / $0.40 |
-| Orchestrator | Claude Sonnet 4 | Strong reasoning for routing decisions and coordination logic | ~$3 / $15 |
-| Geography Agent | Gemini 2.5 Pro | Best multimodal/vision capabilities for satellite image analysis | ~$1.25 / $5 |
-| Legal Agent | Claude Sonnet 4 | Excellent legal reasoning and regulatory interpretation | ~$3 / $15 |
-| News/Media Agent | Claude Sonnet 4 | Strong source analysis and credibility assessment | ~$3 / $15 |
+| Claims Agent | Gemini 3 Flash | 1M token context window handles full 200-page PDFs; fast for large input | ~$0.50 / $3.00 |
+| Orchestrator | Claude Sonnet 4.5 | Strong reasoning for routing decisions and coordination logic; improved agentic capabilities | ~$3 / $15 |
+| Geography Agent | Gemini 2.5 Pro | Best multimodal/vision capabilities for satellite image analysis | ~$1.25 / $10 |
+| Legal Agent | Claude Sonnet 4.5 | Excellent legal reasoning and regulatory interpretation | ~$3 / $15 |
+| News/Media Agent | Claude Sonnet 4.5 | Strong source analysis and credibility assessment | ~$3 / $15 |
 | Academic/Research Agent | DeepSeek V3.2 | Fast and cost-effective for research synthesis | ~$0.25 / $0.38 |
-| Data/Metrics Agent | Claude Sonnet 4 | Strong numerical reasoning and consistency checking | ~$3 / $15 |
-| Judge Agent | Claude Opus 4.5 | Highest-quality reasoning for final judgment calls | ~$10 / $30 |
-| Chatbot | Gemini 3 Flash | Cost-effective conversational Q&A with good context handling | ~$0.10 / $0.40 |
+| Data/Metrics Agent | Claude Sonnet 4.5 | Strong numerical reasoning and consistency checking | ~$3 / $15 |
+| Judge Agent | Claude Opus 4.5 | Highest-quality reasoning for final judgment calls | ~$5 / $25 |
+| Chatbot | Gemini 3 Flash | Fast conversational Q&A with good context handling | ~$0.50 / $3.00 |
 | Embeddings | text-embedding-3-small | Cost-effective embeddings with strong retrieval quality | ~$0.02 / N/A |
 
-Quality-first strategy: Premium models (Claude Opus 4.5, Claude Sonnet 4) are used for critical reasoning tasks (judgment, legal analysis, orchestration), while cost-effective models (Gemini 3 Flash, DeepSeek V3.2) handle high-volume tasks (document parsing, research synthesis, chatbot conversations).
+Quality-first strategy: Premium models (Claude Opus 4.5, Claude Sonnet 4.5) are used for critical reasoning tasks (judgment, legal analysis, orchestration), while faster models (Gemini 3 Flash, DeepSeek V3.2) handle high-volume tasks (document parsing, research synthesis, chatbot conversations).
 
 ---
 
@@ -724,10 +728,6 @@ sibyl/
                     ChatPanel.tsx        # Slide-out chatbot panel
                     ChatMessage.tsx      # Individual message bubble
                     ChatInput.tsx        # User input with send button
-                CommunityBoard/
-                    ReportFeed.tsx       # List/grid of published reports
-                    ReportCard.tsx       # Card for each published report
-                    PublishDialog.tsx    # Dialog for publishing a report
                 Upload/
                     UploadZone.tsx       # Drag-and-drop upload component
                     UploadProgress.tsx   # Progress indicator during parsing
@@ -749,17 +749,15 @@ sibyl/
                 ifrs.ts                 # IFRS pillar, paragraph mapping types
                 report.ts               # Report, SourceOfTruth types
             pages/
-                HomePage.tsx            # Upload + community preview
+                HomePage.tsx            # Upload landing page
                 AnalysisPage.tsx        # 3-panel analysis view
                 ReportPage.tsx          # Source of Truth report view
-                CommunityPage.tsx       # Community board browse view
             App.tsx                     # Root component with routing
             main.tsx                    # Entry point
         index.html
         package.json
         tsconfig.json
         vite.config.ts
-        tailwind.config.ts
         Dockerfile
 
     backend/
@@ -771,7 +769,6 @@ sibyl/
                     stream.py           # SSE streaming endpoint
                     report.py           # Source of Truth report endpoints
                     chat.py             # Chatbot conversation endpoint
-                    community.py        # Community board CRUD
                 deps.py                 # FastAPI dependency injection
             agents/
                 state.py                # SibylState Pydantic schema
@@ -800,13 +797,11 @@ sibyl/
                 finding.py              # AgentFinding SQLAlchemy model
                 verdict.py              # ClaimVerdict SQLAlchemy model
                 embedding.py            # Embedding/chunk SQLAlchemy model
-                community.py            # PublishedReport SQLAlchemy model
             schemas/
                 upload.py               # Upload request/response schemas
                 analysis.py             # Analysis status schemas
                 report.py               # Report response schemas
                 chat.py                 # Chat request/response schemas
-                community.py            # Community board schemas
             core/
                 config.py               # Settings (env vars, OpenRouter key, DB URL)
                 database.py             # SQLAlchemy engine, session, Base
@@ -853,11 +848,10 @@ sibyl/
 
 **Home Page**
 
-A clean, modern landing page with three zones:
+A clean, modern landing page with two zones:
 
 1. **Hero section:** Project name, tagline, and a brief one-paragraph explanation of what Sibyl does
 2. **Upload zone:** Large, centered drag-and-drop area with visual feedback on hover and drop. Accepts PDF files. Shows upload progress and parsing status after file is dropped.
-3. **Community preview:** A horizontal scroll of recent community reports (card format) with a "Browse all" link to the full community board
 
 **Analysis Page (3-Panel Layout)**
 
@@ -872,9 +866,10 @@ The primary working view during and after analysis, with three resizable panels:
 A full-width interactive dashboard:
 
 - **Pillar tabs or sections:** Four major sections (Governance, Strategy, Risk Management, Metrics & Targets) with claim counts and a color-coded compliance summary per pillar
-- **Filter bar:** At the top, filters for pillar, claim type, verdict status (Verified/Unverified/Contradicted/Insufficient Evidence), investigating agent, and IFRS paragraph search
+- **Filter bar:** At the top, filters for pillar, claim type, verdict status (Verified/Unverified/Contradicted/Insufficient Evidence), investigating agent, IFRS paragraph search, and disclosure gap status
 - **Claim cards:** Scrollable list of claim cards within each pillar section. Each card shows the claim text, verdict badge (color-coded), IFRS paragraph tags, and an expand button. Expanding reveals the full evidence chain: which agents investigated, what each found, whether re-investigation was requested, and the Judge's final reasoning.
-- **S1/S2 cross-mapping sidebar:** A collapsible sidebar showing the S1-S2 paragraph relationship, highlighting which S2 climate paragraphs fulfill which S1 general requirements
+- **Disclosure Gaps panel:** Within each pillar section, below the claim cards, a collapsible "What this report does NOT disclose" panel lists IFRS paragraph requirements that have no corresponding content in the report (grey) or are only partially addressed (orange). Each gap entry shows the paragraph identifier, a plain-language description of the requirement, and why the omission matters.
+- **S1/S2 cross-mapping sidebar:** A collapsible sidebar showing the S1-S2 paragraph relationship, highlighting which S2 climate paragraphs fulfill which S1 general requirements and which are disclosure gaps
 
 **Chatbot Panel**
 
@@ -884,14 +879,6 @@ A slide-out panel anchored to the right edge of the screen, accessible from any 
 - Messages from the chatbot include inline citations linking to specific claims, agent findings, or IFRS paragraphs
 - Input area at the bottom with text field and send button
 - Persistent across page navigation -- conversation history is maintained as the user moves between views
-
-**Community Board Page**
-
-A card-grid layout:
-
-- **Search bar:** Search by company name, industry sector, or keywords
-- **Report cards:** Each card shows the company name, industry, analysis date, a brief compliance summary (pillar-level status indicators), and a "View Report" button
-- **Report detail:** Clicking a card opens the full Source of Truth view for that published report, with the chatbot available for Q&A
 
 ### 7.3 Responsive Considerations
 
@@ -986,27 +973,26 @@ The application is designed primarily for desktop use (the 3-panel analysis view
 
 | Model | Provider | Context Window | Strengths | Used By | Approx. Cost (in/out per 1M tokens) |
 |---|---|---|---|---|---|
-| Gemini 3 Flash | Google | 1M tokens | Massive context, multimodal, fast, cheap | Claims Agent, Chatbot | ~$0.10 / $0.40 |
-| Gemini 2.5 Pro | Google | 1M tokens | Best multimodal/vision, strong spatial reasoning | Geography Agent | ~$1.25 / $5.00 |
-| Claude Sonnet 4 | Anthropic | 200K tokens | Strong reasoning, legal/compliance, nuanced analysis | Orchestrator, Legal, News/Media, Data/Metrics | ~$3.00 / $15.00 |
-| Claude Opus 4.5 | Anthropic | 200K tokens | Highest reasoning quality, judgment, complex evaluation | Judge Agent | ~$10.00 / $30.00 |
-| DeepSeek V3.2 | DeepSeek | 128K tokens | Fast, cost-effective, good research synthesis | Academic/Research Agent | ~$0.25 / $0.38 |
+| Gemini 3 Flash | Google | 1M tokens | Massive context, multimodal, fast | Claims Agent, Chatbot | ~$0.50 / $3.00 |
+| Gemini 2.5 Pro | Google | 1M tokens | Best multimodal/vision, strong spatial reasoning | Geography Agent | ~$1.25 / $10.00 |
+| Claude Sonnet 4.5 | Anthropic | 200K tokens | Strong reasoning, legal/compliance, nuanced analysis, agentic workflows | Orchestrator, Legal, News/Media, Data/Metrics | ~$3.00 / $15.00 |
+| Claude Opus 4.5 | Anthropic | 200K tokens | Highest reasoning quality, judgment, complex evaluation | Judge Agent | ~$5.00 / $25.00 |
+| DeepSeek V3.2 | DeepSeek | 164K tokens | Fast, cost-effective, good research synthesis | Academic/Research Agent | ~$0.25 / $0.38 |
 | text-embedding-3-small | OpenAI | 8K tokens | Cost-effective embeddings, strong retrieval quality | RAG embeddings | ~$0.02 / N/A |
 
-### Appendix E: Agent Interaction Matrix
+### Appendix E: Agent Communication Model
 
-This matrix shows which agents can communicate with which via the shared state. All communication is mediated by the Orchestrator and visible in the detective dashboard.
+All inter-agent communication is mediated by the Orchestrator through the shared LangGraph state. There are no direct agent-to-agent channels. The communication flows are:
 
-| | Claims | Orchestrator | Geography | Legal | News/Media | Academic | Data/Metrics | Judge |
-|---|---|---|---|---|---|---|---|---|
-| **Claims** | -- | Sends claims | -- | -- | -- | -- | -- | -- |
-| **Orchestrator** | Receives claims | -- | Routes claims | Routes claims | Routes claims | Routes claims | Routes claims | Receives reinvestigation requests |
-| **Geography** | -- | Reports findings | -- | Shares location context | Shares incident locations | -- | Shares geographic data | Sends findings |
-| **Legal** | -- | Reports findings | Requests location context | -- | Shares compliance findings | Shares standards context | Requests metric validation | Sends findings |
-| **News/Media** | -- | Reports findings | Requests location verification | Shares regulatory actions | -- | Shares industry concerns | -- | Sends findings |
-| **Academic** | -- | Reports findings | -- | Shares technical standards | Receives industry data | -- | Shares benchmarks | Sends findings |
-| **Data/Metrics** | -- | Reports findings | Requests geographic emissions data | Shares metric findings | -- | Receives benchmarks | -- | Sends findings |
-| **Judge** | -- | Sends reinvestigation requests | Evaluates findings | Evaluates findings | Evaluates findings | Evaluates findings | Evaluates findings | -- |
+| Flow | From | To | Mechanism |
+|---|---|---|---|
+| **Claim submission** | Claims Agent | Orchestrator | Claims Agent writes categorized claims to shared state; Orchestrator reads them for routing |
+| **Claim routing** | Orchestrator | Any specialist agent | Orchestrator assigns claims to specialist agent(s) based on claim type and content |
+| **Cross-domain requests** | Any specialist agent | Orchestrator → Any specialist agent | Requesting agent posts `InfoRequest` to shared state; Orchestrator routes it to the best-suited agent(s); target agent(s) respond via `InfoResponse` |
+| **Findings submission** | Any specialist agent | Judge Agent | Each specialist agent writes its findings to shared state; Judge reads all findings for evaluation |
+| **Re-investigation** | Judge Agent | Orchestrator → Any specialist agent | Judge posts `ReinvestigationRequest` to shared state; Orchestrator routes refined queries back to the appropriate agent(s) |
+
+**Key principle:** Cross-domain communication is fully dynamic. Any specialist agent (Geography, Legal, News/Media, Academic/Research, Data/Metrics) can request information from any other specialist agent. The Orchestrator determines routing based on request content -- there are no predefined or hardcoded agent-to-agent pairings. This makes the system extensible: adding a new specialist agent automatically makes it available for cross-domain requests from all existing agents.
 
 ---
 
@@ -1059,7 +1045,7 @@ This matrix shows which agents can communicate with which via the shared state. 
 | OpenRouter API key with credits | Credential | Insufficient credits for premium models during demo | Pre-fund account; monitor usage; use cheaper model fallbacks |
 | Microsoft Planetary Computer | External service | API availability, data coverage gaps | Graceful degradation if MPC is unavailable; Geography Agent reports "unable to verify" |
 | News/academic web sources | External service | Search API availability, quality of results | Use multiple search strategies; agent reports when sources are insufficient |
-| PostgreSQL 16 | Infrastructure | Must support pgvector extension | Docker image includes pgvector; tested in Docker Compose setup |
+| PostgreSQL 17 | Infrastructure | Must support pgvector extension | Docker image includes pgvector; tested in Docker Compose setup |
 | Redis | Infrastructure | Required for task queue | Included in Docker Compose; lightweight with minimal configuration |
 | Docker and Docker Compose | Development tool | Must be installed on demo/development machines | Documented in README; widely available |
 | Node.js / npm | Build tool | Required for frontend build | Included in frontend Dockerfile |
@@ -1071,7 +1057,9 @@ This matrix shows which agents can communicate with which via the shared state. 
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
-| 0.1 | 2026-02-07 | Sibyl Team | Initial PRD draft: complete sections 1-12 covering executive summary, problem space, personas, all product features (13 features including 8 agents, detective dashboard, Source of Truth, chatbot, community board), technical architecture with LangGraph design and model selection, file structure, UX/UI design, non-functional requirements, and IFRS S1/S2 appendices |
+| 0.1 | 2026-02-07 | Sibyl Team | Initial PRD draft: complete sections 1-12 covering executive summary, problem space, personas, all product features (12 features including 8 agents, detective dashboard, Source of Truth, and chatbot), technical architecture with LangGraph design and model selection, file structure, UX/UI design, non-functional requirements, and IFRS S1/S2 appendices |
+| 0.2 | 2026-02-09 | Sibyl Team | Tech stack audit and updates: upgraded Claude Sonnet 4 to Sonnet 4.5 (free upgrade) across all agents; corrected model pricing (Gemini 3 Flash, Gemini 2.5 Pro, Claude Opus 4.5); updated PostgreSQL 16 to 17, SQLAlchemy 2.0 to 2.1, LangGraph to v1.0; replaced unmaintained @react-pdf-viewer/core with @pdf-viewer/react; updated React Flow to @xyflow/react; noted TailwindCSS v4 CSS-first config (removed tailwind.config.ts); corrected DeepSeek V3.2 context window to 164K |
+| 0.3 | 2026-02-09 | Sibyl Team | Added agent-specific dashboard display to Section 4.10: all agent nodes share status, reasoning stream, findings summary, and claim count; Geography, Legal, Data/Metrics, and Judge agents additionally render domain-specific visual content (satellite imagery, IFRS coverage bars, consistency checks, verdict cards) |
 
 ---
 
