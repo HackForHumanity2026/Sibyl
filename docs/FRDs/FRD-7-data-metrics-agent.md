@@ -939,7 +939,7 @@ The agent creates `AgentFinding` objects (defined in FRD 0's `state.py`):
 
 ```python
 AgentFinding(
-    finding_id=str(uuid4()),
+    finding_id=str(uuid7()),
     agent_name="data_metrics",
     claim_id=claim.claim_id,
     evidence_type="quantitative_validation",

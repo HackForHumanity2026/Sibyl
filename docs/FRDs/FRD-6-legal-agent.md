@@ -488,7 +488,7 @@ For each identified gap, the system shall create an `AgentFinding`:
 
 ```python
 gap_finding = AgentFinding(
-    finding_id=str(uuid4()),
+    finding_id=str(uuid7()),
     agent_name="legal",
     claim_id=None,  # Gap findings are not tied to a specific claim
     evidence_type="disclosure_gap",
@@ -708,7 +708,7 @@ The Legal Agent shall post `InfoRequest` objects when:
 
 ```python
 info_request = InfoRequest(
-    request_id=str(uuid4()),
+    request_id=str(uuid7()),
     requesting_agent="legal",
     description="Verify that the Singapore facility mentioned in governance claim {claim_id} exists and matches reported location coordinates.",
     context={
@@ -793,7 +793,7 @@ Each `AgentFinding` produced by the Legal Agent shall include:
 
 ```python
 finding = AgentFinding(
-    finding_id=str(uuid4()),
+    finding_id=str(uuid7()),
     agent_name="legal",
     claim_id=claim.claim_id,  # None for gap findings
     evidence_type="ifrs_compliance" | "disclosure_gap",

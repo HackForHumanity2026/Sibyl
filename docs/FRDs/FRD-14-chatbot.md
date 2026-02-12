@@ -920,7 +920,7 @@ class Conversation(Base):
     """A conversation thread for a report."""
     __tablename__ = "conversations"
     
-    conversation_id = Column(UUID, primary_key=True, default=uuid4)
+    conversation_id = Column(UUID, primary_key=True, default=uuid7)
     report_id = Column(UUID, ForeignKey("reports.report_id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -929,7 +929,7 @@ class ChatMessage(Base):
     """A single message in a conversation."""
     __tablename__ = "chat_messages"
     
-    message_id = Column(UUID, primary_key=True, default=uuid4)
+    message_id = Column(UUID, primary_key=True, default=uuid7)
     conversation_id = Column(UUID, ForeignKey("conversations.conversation_id"), nullable=False)
     role = Column(String, nullable=False)  # "user" | "assistant"
     content = Column(Text, nullable=False)
@@ -942,7 +942,7 @@ class Citation(Base):
     """A citation linking a message to a source entity."""
     __tablename__ = "chat_citations"
     
-    citation_id = Column(UUID, primary_key=True, default=uuid4)
+    citation_id = Column(UUID, primary_key=True, default=uuid7)
     message_id = Column(UUID, ForeignKey("chat_messages.message_id"), nullable=False)
     citation_number = Column(Integer, nullable=False)  # [1], [2], etc.
     source_type = Column(String, nullable=False)
@@ -1030,7 +1030,7 @@ async def save_message(
     
     if not conversation:
         conversation = Conversation(
-            conversation_id=uuid4(),
+            conversation_id=uuid7(),
             report_id=report_id
         )
         self.db.add(conversation)
@@ -1038,7 +1038,7 @@ async def save_message(
     
     # Create message
     message = ChatMessage(
-        message_id=uuid4(),
+        message_id=uuid7(),
         conversation_id=conversation.conversation_id,
         role=role,
         content=content,
@@ -1050,7 +1050,7 @@ async def save_message(
     # Create citations
     for citation_entity in citations:
         citation = Citation(
-            citation_id=uuid4(),
+            citation_id=uuid7(),
             message_id=message.message_id,
             citation_number=citation_entity.citation_number,
             source_type=citation_entity.source_type,
@@ -1810,7 +1810,7 @@ class Conversation(Base):
     """A conversation thread for a report."""
     __tablename__ = "conversations"
     
-    conversation_id = Column(UUID, primary_key=True, default=uuid4)
+    conversation_id = Column(UUID, primary_key=True, default=uuid7)
     report_id = Column(UUID, ForeignKey("reports.report_id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -1822,7 +1822,7 @@ class ChatMessage(Base):
     """A single message in a conversation."""
     __tablename__ = "chat_messages"
     
-    message_id = Column(UUID, primary_key=True, default=uuid4)
+    message_id = Column(UUID, primary_key=True, default=uuid7)
     conversation_id = Column(UUID, ForeignKey("conversations.conversation_id"), nullable=False, index=True)
     role = Column(String, nullable=False)  # "user" | "assistant"
     content = Column(Text, nullable=False)
@@ -1837,7 +1837,7 @@ class Citation(Base):
     """A citation linking a message to a source entity."""
     __tablename__ = "chat_citations"
     
-    citation_id = Column(UUID, primary_key=True, default=uuid4)
+    citation_id = Column(UUID, primary_key=True, default=uuid7)
     message_id = Column(UUID, ForeignKey("chat_messages.message_id"), nullable=False, index=True)
     citation_number = Column(Integer, nullable=False)  # [1], [2], etc.
     source_type = Column(String, nullable=False)  # "claim" | "finding" | "ifrs_paragraph" | "verdict" | "gap"

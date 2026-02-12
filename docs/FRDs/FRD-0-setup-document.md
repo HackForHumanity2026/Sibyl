@@ -278,9 +278,19 @@ The `requirements.txt` shall include the following core dependencies (pinned to 
 
 Five SQLAlchemy ORM models form the core data layer. All models inherit from `Base` and share common patterns:
 
-- `id`: UUID primary key, server-default `gen_random_uuid()`
+- `id`: UUID v7 primary key, application-generated using `uuid.uuid7()` from Python 3.12 standard library
 - `created_at`: Timestamp with timezone, server-default `now()`
 - `updated_at`: Timestamp with timezone, server-default `now()`, updated on modification
+
+**UUID v7 Strategy:**
+
+All primary keys in Sibyl use UUID v7 (RFC 9562) for time-ordered, sortable identifiers. UUID v7 provides:
+- 48-bit Unix timestamp prefix (millisecond precision) for chronological ordering
+- Better PostgreSQL B-tree index performance due to sequential nature
+- 74 random bits ensuring global uniqueness
+- Native support in Python 3.12+ via `uuid.uuid7()`
+
+UUIDs are generated at the application level (not database level) because PostgreSQL does not yet have native UUID v7 support.
 
 ### 3.2 Report Model (`app/models/report.py`)
 
@@ -288,7 +298,7 @@ Represents an uploaded sustainability report.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `gen_random_uuid()` | Unique report identifier |
+| `id` | `UUID` | PK, default `uuid7()` | Unique report identifier (UUID v7) |
 | `filename` | `String(255)` | NOT NULL | Original uploaded filename |
 | `file_size_bytes` | `BigInteger` | NOT NULL | Size of the uploaded PDF in bytes |
 | `page_count` | `Integer` | nullable | Number of pages detected during parsing |
@@ -321,7 +331,7 @@ Represents a verifiable sustainability claim extracted from a report.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `gen_random_uuid()` | Unique claim identifier |
+| `id` | `UUID` | PK, default `uuid7()` | Unique claim identifier (UUID v7) |
 | `report_id` | `UUID` | FK → `reports.id`, NOT NULL | Parent report |
 | `claim_text` | `Text` | NOT NULL | Full text of the extracted claim |
 | `claim_type` | `String(50)` | NOT NULL | Category: `geographic`, `quantitative`, `legal_governance`, `strategic`, `environmental` |
@@ -358,7 +368,7 @@ Represents evidence gathered by a specialist agent during claim investigation.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `gen_random_uuid()` | Unique finding identifier |
+| `id` | `UUID` | PK, default `uuid7()` | Unique finding identifier (UUID v7) |
 | `claim_id` | `UUID` | FK → `claims.id`, NOT NULL | Claim being investigated |
 | `agent_name` | `String(50)` | NOT NULL | Agent that produced this finding: `geography`, `legal`, `news_media`, `academic`, `data_metrics` |
 | `evidence_type` | `String(50)` | NOT NULL | Type of evidence: `satellite_imagery`, `legal_analysis`, `news_article`, `academic_paper`, `quantitative_check`, `benchmark_comparison` |
@@ -383,7 +393,7 @@ Represents the Judge Agent's final verdict on a claim.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `gen_random_uuid()` | Unique verdict identifier |
+| `id` | `UUID` | PK, default `uuid7()` | Unique verdict identifier (UUID v7) |
 | `claim_id` | `UUID` | FK → `claims.id`, UNIQUE, NOT NULL | One verdict per claim |
 | `verdict` | `String(30)` | NOT NULL | `verified`, `unverified`, `contradicted`, `insufficient_evidence` |
 | `reasoning` | `Text` | NOT NULL | Judge's full reasoning for the verdict |
@@ -413,7 +423,7 @@ Represents a text chunk with its vector embedding for RAG retrieval.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `gen_random_uuid()` | Unique embedding identifier |
+| `id` | `UUID` | PK, default `uuid7()` | Unique embedding identifier (UUID v7) |
 | `report_id` | `UUID` | FK → `reports.id`, nullable | Parent report (null for IFRS/SASB standard text) |
 | `source_type` | `String(30)` | NOT NULL | `report`, `ifrs_s1`, `ifrs_s2`, `sasb` |
 | `chunk_text` | `Text` | NOT NULL | The source text content of this chunk |
@@ -445,9 +455,10 @@ Represents a text chunk with its vector embedding for RAG retrieval.
 The initial migration shall:
 
 1. Enable the `vector` extension: `CREATE EXTENSION IF NOT EXISTS vector`
-2. Enable the `uuid-ossp` extension: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"` (for `gen_random_uuid()`)
-3. Create all five tables with the columns, constraints, and indexes defined above
-4. The migration must be idempotent (safe to run multiple times)
+2. Create all five tables with the columns, constraints, and indexes defined above
+3. The migration must be idempotent (safe to run multiple times)
+
+**Note:** The `uuid-ossp` extension is NOT required because UUIDs are generated at the application level using Python's `uuid.uuid7()`, not via PostgreSQL's `gen_random_uuid()` function.
 
 ### 3.8 Alembic Configuration
 
@@ -1064,5 +1075,5 @@ The state follows LangGraph conventions:
 | All dependencies installed in FRD 0 (including future ones like PyMuPDF4LLM, pystac-client) | Validates the full dependency tree early; prevents incompatibility surprises in later FRDs |
 | Route module stubs with empty routers | Establishes file structure and import patterns; subsequent FRDs add endpoints without restructuring |
 | `Vector(1536)` dimension for embeddings | Matches `text-embedding-3-small` output dimensions (1536) as specified in PRD Section 5.5 |
-| UUID primary keys with `gen_random_uuid()` | Database-generated UUIDs; no application-level UUID generation needed; globally unique across tables |
+| UUID v7 primary keys with application-generated `uuid.uuid7()` | Time-ordered UUIDs (RFC 9562) provide better PostgreSQL B-tree index performance and chronological sortability while remaining globally unique; Python 3.12 native support eliminates dependencies; PostgreSQL does not yet support UUID v7 natively, requiring application-level generation |
 | JSONB for flexible metadata columns | Allows agent-specific data structures (satellite image refs, source URLs, calculations) without schema changes |

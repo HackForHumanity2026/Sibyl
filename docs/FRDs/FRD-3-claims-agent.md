@@ -407,7 +407,7 @@ The `extract_claims` node shall execute the following steps:
 
 7. **Deduplicate claims:** Remove exact-text and same-page duplicates (see Section 1.3).
 
-8. **Convert to state format:** Map each `ExtractedClaim` to the `Claim` Pydantic model from `state.py` (defined in FRD 0), generating unique `claim_id` values (UUID4).
+8. **Convert to state format:** Map each `ExtractedClaim` to the `Claim` Pydantic model from `state.py` (defined in FRD 0), generating unique `claim_id` values (UUID v7 using `uuid.uuid7()`).
 
 9. **Persist claims to database:** Store each claim in the `claims` table, linking to the `report_id`.
 

@@ -15,7 +15,7 @@
 
 ## Summary
 
-FRD 1 builds the Retrieval-Augmented Generation (RAG) pipeline that underpins Sibyl's ability to ground agent reasoning in authoritative source material. The pipeline consists of three layers: an embedding service that converts text into 1536-dimensional vectors via OpenAI `text-embedding-3-small` (through OpenRouter), a set of chunking strategies tailored to each corpus type (paragraph-level for IFRS standards, topic-level for SASB standards, hierarchical for uploaded reports), and a hybrid retrieval engine that combines semantic search (pgvector cosine similarity) with keyword search (PostgreSQL full-text search) and re-ranks the merged results. FRD 1 also delivers the initial knowledge base -- the IFRS S1 and S2 standard texts and the SASB industry standards are parsed, chunked, embedded, and stored during a one-time corpus ingestion step. The entire RAG pipeline is exposed through a `RAGService` class consumed by agents (via the `rag_lookup` LangGraph tool) and the chatbot.
+FRD 1 builds the Retrieval-Augmented Generation (RAG) pipeline that underpins Sibyl's ability to ground agent reasoning in authoritative source material. The pipeline consists of three layers: an embedding service that converts text into 1536-dimensional vectors via OpenAI `text-embedding-3-small` (through OpenRouter), a set of chunking strategies tailored to each corpus type (paragraph-level for IFRS standards, topic-level for SASB standards, hierarchical for uploaded reports), and a hybrid retrieval engine that combines semantic search (pgvector cosine similarity) with keyword search (PostgreSQL full-text search) and re-ranks the merged results using Reciprocal Rank Fusion (RRF). FRD 1 also delivers the initial knowledge base -- the IFRS S1 and S2 standard texts and the SASB industry standards are parsed, chunked, embedded, and stored during a one-time corpus ingestion step. The entire RAG pipeline is exposed through a `RAGService` class consumed by agents (via the `rag_lookup` LangGraph tool) and the chatbot.
 
 ---
 
@@ -41,8 +41,8 @@ The following are assumed to be in place from FRD 0:
 | Chunk | A self-contained segment of text with associated metadata, stored as a single embedding row |
 | Corpus | A collection of documents loaded into the RAG knowledge base (IFRS S1, IFRS S2, SASB, or report content) |
 | Hybrid search | Retrieval combining semantic similarity (vector) and keyword matching (full-text) into a single ranked result set |
-| Re-ranking | The process of merging, de-duplicating, and re-scoring results from multiple retrieval methods into a final ordered list |
-| RRF | Reciprocal Rank Fusion -- a rank-based score combination method that does not require score normalization across retrieval methods |
+| Re-ranking | The process of merging, de-duplicating, and re-scoring results from multiple retrieval methods into a final ordered list. Implemented via RRF. |
+| RRF (Reciprocal Rank Fusion) | The re-ranking algorithm used in hybrid search -- a rank-based score combination method that does not require score normalization across retrieval methods |
 | Ingestion | The process of parsing a source document, chunking it, embedding the chunks, and storing them in the database |
 | Paragraph ID | An IFRS standard identifier like `S1.26`, `S2.14(a)(iv)`, or `S2.29(a)(iii)` that uniquely identifies a disclosure requirement |
 
@@ -111,11 +111,11 @@ Feature: RAG Pipeline
     Then   the system performs PostgreSQL full-text search using ts_query
     And    returns chunks containing the exact paragraph identifier
 
-  Scenario: Hybrid search
+  Scenario: Hybrid search with re-ranking
     Given  the IFRS corpus has been ingested
     When   a consumer performs a hybrid search for "Scope 3 emissions S2.29"
     Then   the system runs both semantic and keyword searches
-    And    merges results using Reciprocal Rank Fusion
+    And    re-ranks and merges results using Reciprocal Rank Fusion (RRF)
     And    de-duplicates by chunk ID
     And    returns a single ranked result list
 
@@ -431,12 +431,12 @@ The system shall provide a specialized search for IFRS paragraph identifiers:
    ```
 3. Return exact matches. This is used by the Legal Agent when it needs a specific IFRS paragraph by its identifier.
 
-### 4.5 Hybrid Search with Reciprocal Rank Fusion
+### 4.5 Hybrid Search with Re-ranking (Reciprocal Rank Fusion)
 
-When hybrid mode is selected (the default), the system shall:
+When hybrid mode is selected (the default), the system shall merge and re-rank results from both retrieval methods using **Reciprocal Rank Fusion (RRF)**, the re-ranking algorithm:
 
 1. Run semantic search and keyword search in parallel (using `asyncio.gather`).
-2. Merge the two result lists using **Reciprocal Rank Fusion (RRF)**:
+2. Re-rank and merge the two result lists using **Reciprocal Rank Fusion (RRF)**:
    ```
    RRF_score(d) = Σ 1 / (k + rank_i(d))
    ```
@@ -449,7 +449,7 @@ When hybrid mode is selected (the default), the system shall:
 4. Sort by descending RRF score.
 5. Return the top `top_k` results.
 
-**Why RRF over score normalization:** Semantic similarity scores and full-text search ranks are on incomparable scales. RRF operates on ranks rather than scores, making it robust across retrieval methods without requiring score normalization.
+**Why RRF for re-ranking:** Semantic similarity scores and full-text search ranks are on incomparable scales. RRF operates on ranks rather than scores, making it a robust re-ranking method across retrieval methods without requiring score normalization.
 
 ### 4.6 Search Result Schema
 
@@ -1006,7 +1006,7 @@ footprint...
 | 4 | S2.29(b) -- Physical risk exposure | 0.31 |
 | 5 | S2.29(c) -- Transition risk exposure | 0.28 |
 
-**Step 3 -- RRF merge (k=60):**
+**Step 3 -- Re-ranking with RRF (k=60):**
 
 | Chunk | Semantic Rank | Keyword Rank | RRF Score | Final Rank |
 |---|---|---|---|---|
@@ -1019,7 +1019,7 @@ footprint...
 | S2.33 | 5 | -- | 1/65 = 0.0154 | **7** |
 | S2.29(c) | -- | 5 | 1/65 = 0.0154 | **8** |
 
-The hybrid result correctly ranks S2.29(a)(iii) (Scope 3 emissions) at #1, boosted by appearing in both result lists. Chunks appearing in only one list still surface but with lower combined scores.
+The RRF re-ranking correctly places S2.29(a)(iii) (Scope 3 emissions) at #1, boosted by appearing in both result lists. Chunks appearing in only one list still surface but with lower re-ranked scores.
 
 ---
 
@@ -1027,7 +1027,7 @@ The hybrid result correctly ranks S2.29(a)(iii) (Scope 3 emissions) at #1, boost
 
 | Decision | Rationale |
 |---|---|
-| Reciprocal Rank Fusion (RRF) over linear score combination | Semantic scores (0-1 cosine similarity) and FTS ranks are on incomparable scales. RRF operates on ordinal ranks, making it robust without score normalization. Widely used in production IR systems. |
+| Reciprocal Rank Fusion (RRF) for re-ranking over linear score combination | Semantic scores (0-1 cosine similarity) and FTS ranks are on incomparable scales. RRF operates on ordinal ranks, making it robust without score normalization. Widely used in production IR systems for re-ranking multiple result lists. |
 | Context header prepended to every chunk | Ensures the embedding captures hierarchical context (e.g., which pillar, which section). Without this, a generic paragraph about "governance oversight" might not embed near queries about S2.5-7 specifically. Also makes retrieved chunks self-contained for LLM consumption. |
 | `text-embedding-3-small` over `text-embedding-3-large` | PRD specifies `text-embedding-3-small` for cost-effectiveness (~$0.02/M tokens). At the scale of this project (hundreds of chunks, not millions), the quality difference is negligible. |
 | Paragraph-level chunking for IFRS over fixed-size chunking | IFRS paragraphs are the atomic unit of compliance assessment. The Legal Agent and Source of Truth report need to map claims to specific paragraphs. Fixed-size chunks would split across paragraph boundaries, breaking this mapping. |
