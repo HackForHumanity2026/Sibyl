@@ -1,0 +1,5 @@
+# IFRS standard text files go here
+# Required files:
+# - s1_full.md (IFRS S1 standard text)
+# - s2_full.md (IFRS S2 standard text)
+# - s1_s2_mapping.json (S1/S2 cross-reference mapping)
