@@ -675,7 +675,7 @@ async def investigate_{agent}(state: SibylState) -> dict:
     findings = []
     for assignment in assigned_claims:
         finding = AgentFinding(
-            finding_id=str(uuid7()),
+            finding_id=str(generate_uuid7()),
             agent_name=agent_name,
             claim_id=assignment.claim_id,
             evidence_type="placeholder",

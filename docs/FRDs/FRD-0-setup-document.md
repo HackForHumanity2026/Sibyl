@@ -214,7 +214,31 @@ The system shall define shared FastAPI dependencies:
 1. `get_db` -- yields an async SQLAlchemy session (from `database.py`).
 2. `get_settings` -- returns the `Settings` singleton.
 
-### 2.6 API Router and Health Check
+### 2.6 Utility Helpers (`app/core/utils.py`)
+
+The system shall define a thin utility module providing common helpers used across the codebase:
+
+```python
+"""Thin utility helpers shared across the Sibyl backend."""
+
+from uuid import UUID
+
+import uuid_utils
+
+
+def generate_uuid7() -> UUID:
+    """Return a new UUID v7 (RFC 9562).
+
+    Wraps ``uuid_utils.uuid7()`` so the rest of the codebase imports from a
+    single location.  If the stdlib ever ships ``uuid.uuid7()`` in a future
+    Python release, only this module needs to change.
+    """
+    return uuid_utils.uuid7()
+```
+
+All modules that need a UUID v7 shall import `generate_uuid7` from `app.core.utils` rather than calling `uuid_utils` directly.
+
+### 2.7 API Router and Health Check
 
 The system shall:
 
@@ -235,7 +259,7 @@ Response 200:
 
 3. The health check shall verify database connectivity (execute a simple query) and Redis connectivity (execute a PING). If either fails, the corresponding field shows `"disconnected"` and the overall status shows `"degraded"`.
 
-### 2.7 Route Module Stubs
+### 2.8 Route Module Stubs
 
 The following route modules shall be created as empty stubs (routers with no endpoints) to establish the file structure for subsequent FRDs:
 
@@ -249,7 +273,7 @@ The following route modules shall be created as empty stubs (routers with no end
 
 Each stub creates an `APIRouter` with the appropriate prefix and tags but registers no endpoints.
 
-### 2.8 Requirements
+### 2.9 Requirements
 
 The `requirements.txt` shall include the following core dependencies (pinned to major.minor versions):
 
@@ -269,6 +293,7 @@ The `requirements.txt` shall include the following core dependencies (pinned to 
 | `langchain-core` | LangChain core abstractions |
 | `pymupdf4llm` | PDF parsing (for future FRDs) |
 | `pystac-client` | Satellite data access (for future FRDs) |
+| `uuid-utils` | UUID v7 generation (RFC 9562); wrapped in `app/core/utils.py` |
 
 ---
 
@@ -278,7 +303,7 @@ The `requirements.txt` shall include the following core dependencies (pinned to 
 
 Five SQLAlchemy ORM models form the core data layer. All models inherit from `Base` and share common patterns:
 
-- `id`: UUID v7 primary key, application-generated using `uuid.uuid7()` from Python 3.12 standard library
+- `id`: UUID v7 primary key, application-generated using `generate_uuid7()` from `app/core/utils.py` (wraps the `uuid-utils` package)
 - `created_at`: Timestamp with timezone, server-default `now()`
 - `updated_at`: Timestamp with timezone, server-default `now()`, updated on modification
 
@@ -288,7 +313,7 @@ All primary keys in Sibyl use UUID v7 (RFC 9562) for time-ordered, sortable iden
 - 48-bit Unix timestamp prefix (millisecond precision) for chronological ordering
 - Better PostgreSQL B-tree index performance due to sequential nature
 - 74 random bits ensuring global uniqueness
-- Native support in Python 3.12+ via `uuid.uuid7()`
+- Generated via the `uuid-utils` package (`uuid_utils.uuid7()`), wrapped in a thin helper at `app/core/utils.py`
 
 UUIDs are generated at the application level (not database level) because PostgreSQL does not yet have native UUID v7 support.
 
@@ -298,7 +323,7 @@ Represents an uploaded sustainability report.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `uuid7()` | Unique report identifier (UUID v7) |
+| `id` | `UUID` | PK, default `generate_uuid7()` | Unique report identifier (UUID v7) |
 | `filename` | `String(255)` | NOT NULL | Original uploaded filename |
 | `file_size_bytes` | `BigInteger` | NOT NULL | Size of the uploaded PDF in bytes |
 | `page_count` | `Integer` | nullable | Number of pages detected during parsing |
@@ -331,7 +356,7 @@ Represents a verifiable sustainability claim extracted from a report.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `uuid7()` | Unique claim identifier (UUID v7) |
+| `id` | `UUID` | PK, default `generate_uuid7()` | Unique claim identifier (UUID v7) |
 | `report_id` | `UUID` | FK → `reports.id`, NOT NULL | Parent report |
 | `claim_text` | `Text` | NOT NULL | Full text of the extracted claim |
 | `claim_type` | `String(50)` | NOT NULL | Category: `geographic`, `quantitative`, `legal_governance`, `strategic`, `environmental` |
@@ -368,7 +393,7 @@ Represents evidence gathered by a specialist agent during claim investigation.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `uuid7()` | Unique finding identifier (UUID v7) |
+| `id` | `UUID` | PK, default `generate_uuid7()` | Unique finding identifier (UUID v7) |
 | `claim_id` | `UUID` | FK → `claims.id`, NOT NULL | Claim being investigated |
 | `agent_name` | `String(50)` | NOT NULL | Agent that produced this finding: `geography`, `legal`, `news_media`, `academic`, `data_metrics` |
 | `evidence_type` | `String(50)` | NOT NULL | Type of evidence: `satellite_imagery`, `legal_analysis`, `news_article`, `academic_paper`, `quantitative_check`, `benchmark_comparison` |
@@ -393,7 +418,7 @@ Represents the Judge Agent's final verdict on a claim.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `uuid7()` | Unique verdict identifier (UUID v7) |
+| `id` | `UUID` | PK, default `generate_uuid7()` | Unique verdict identifier (UUID v7) |
 | `claim_id` | `UUID` | FK → `claims.id`, UNIQUE, NOT NULL | One verdict per claim |
 | `verdict` | `String(30)` | NOT NULL | `verified`, `unverified`, `contradicted`, `insufficient_evidence` |
 | `reasoning` | `Text` | NOT NULL | Judge's full reasoning for the verdict |
@@ -423,7 +448,7 @@ Represents a text chunk with its vector embedding for RAG retrieval.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | `UUID` | PK, default `uuid7()` | Unique embedding identifier (UUID v7) |
+| `id` | `UUID` | PK, default `generate_uuid7()` | Unique embedding identifier (UUID v7) |
 | `report_id` | `UUID` | FK → `reports.id`, nullable | Parent report (null for IFRS/SASB standard text) |
 | `source_type` | `String(30)` | NOT NULL | `report`, `ifrs_s1`, `ifrs_s2`, `sasb` |
 | `chunk_text` | `Text` | NOT NULL | The source text content of this chunk |
@@ -458,7 +483,7 @@ The initial migration shall:
 2. Create all five tables with the columns, constraints, and indexes defined above
 3. The migration must be idempotent (safe to run multiple times)
 
-**Note:** The `uuid-ossp` extension is NOT required because UUIDs are generated at the application level using Python's `uuid.uuid7()`, not via PostgreSQL's `gen_random_uuid()` function.
+**Note:** The `uuid-ossp` extension is NOT required because UUIDs are generated at the application level using `generate_uuid7()` (from `app/core/utils.py`), not via PostgreSQL's `gen_random_uuid()` function.
 
 ### 3.8 Alembic Configuration
 
@@ -942,6 +967,7 @@ sibyl/
                 config.py
                 database.py
                 dependencies.py
+                utils.py                 # Thin helpers (generate_uuid7, etc.)
         data/
             ifrs/                        # Empty dir; populated in FRD 1
             sasb/                        # Empty dir; populated in FRD 1
@@ -1075,5 +1101,5 @@ The state follows LangGraph conventions:
 | All dependencies installed in FRD 0 (including future ones like PyMuPDF4LLM, pystac-client) | Validates the full dependency tree early; prevents incompatibility surprises in later FRDs |
 | Route module stubs with empty routers | Establishes file structure and import patterns; subsequent FRDs add endpoints without restructuring |
 | `Vector(1536)` dimension for embeddings | Matches `text-embedding-3-small` output dimensions (1536) as specified in PRD Section 5.5 |
-| UUID v7 primary keys with application-generated `uuid.uuid7()` | Time-ordered UUIDs (RFC 9562) provide better PostgreSQL B-tree index performance and chronological sortability while remaining globally unique; Python 3.12 native support eliminates dependencies; PostgreSQL does not yet support UUID v7 natively, requiring application-level generation |
+| UUID v7 primary keys with application-generated `generate_uuid7()` | Time-ordered UUIDs (RFC 9562) provide better PostgreSQL B-tree index performance and chronological sortability while remaining globally unique; the `uuid-utils` package provides a compliant `uuid7()` implementation, wrapped in a thin helper at `app/core/utils.py` for a single import point; PostgreSQL does not yet support UUID v7 natively, requiring application-level generation |
 | JSONB for flexible metadata columns | Allows agent-specific data structures (satellite image refs, source URLs, calculations) without schema changes |

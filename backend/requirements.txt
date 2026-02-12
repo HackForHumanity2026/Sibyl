@@ -1,0 +1,32 @@
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Data validation
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.36
+psycopg[binary]>=3.2.0
+alembic>=1.14.0
+pgvector>=0.3.0
+
+# Redis
+redis>=5.2.0
+
+# HTTP client
+httpx>=0.28.0
+
+# AI/LangGraph
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# PDF parsing
+pymupdf4llm>=0.0.17
+
+# Satellite data
+pystac-client>=0.8.0
+
+# UUID v7 support (not yet in stdlib)
+uuid-utils>=0.10.0

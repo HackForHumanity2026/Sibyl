@@ -1244,7 +1244,7 @@ Verdicts and findings are persisted to the database by the `compile_report` node
 # In compile_report node (FRD 13)
 for verdict in state.verdicts:
     db_verdict = Verdict(
-        verdict_id=str(uuid7()),
+        verdict_id=str(generate_uuid7()),
         report_id=state.report_id,
         claim_id=verdict.claim_id,
         verdict=verdict.verdict,
