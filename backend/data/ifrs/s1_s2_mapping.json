@@ -1,0 +1,67 @@
+{
+  "mappings": [
+    {
+      "s2_paragraphs": "S2.5-7",
+      "s2_description": "Climate governance",
+      "s1_paragraphs": "S1.26-27",
+      "s1_description": "General governance",
+      "s1_pillar": "governance"
+    },
+    {
+      "s2_paragraphs": "S2.10-12",
+      "s2_description": "Climate risks/opportunities",
+      "s1_paragraphs": "S1.30",
+      "s1_description": "General risks/opportunities",
+      "s1_pillar": "strategy"
+    },
+    {
+      "s2_paragraphs": "S2.13",
+      "s2_description": "Business model effects",
+      "s1_paragraphs": "S1.32",
+      "s1_description": "General business model effects",
+      "s1_pillar": "strategy"
+    },
+    {
+      "s2_paragraphs": "S2.14",
+      "s2_description": "Strategy/decision-making",
+      "s1_paragraphs": "S1.33",
+      "s1_description": "General strategy response",
+      "s1_pillar": "strategy"
+    },
+    {
+      "s2_paragraphs": "S2.15-21",
+      "s2_description": "Financial effects",
+      "s1_paragraphs": "S1.35",
+      "s1_description": "General financial effects",
+      "s1_pillar": "strategy"
+    },
+    {
+      "s2_paragraphs": "S2.22",
+      "s2_description": "Climate resilience",
+      "s1_paragraphs": "S1.36-37",
+      "s1_description": "General resilience",
+      "s1_pillar": "strategy"
+    },
+    {
+      "s2_paragraphs": "S2.24-26",
+      "s2_description": "Climate risk management",
+      "s1_paragraphs": "S1.38-42",
+      "s1_description": "General risk management",
+      "s1_pillar": "risk_management"
+    },
+    {
+      "s2_paragraphs": "S2.27-31",
+      "s2_description": "GHG emissions metrics",
+      "s1_paragraphs": "S1.43-53",
+      "s1_description": "General metrics",
+      "s1_pillar": "metrics_targets"
+    },
+    {
+      "s2_paragraphs": "S2.33-36",
+      "s2_description": "Climate targets",
+      "s1_paragraphs": "S1.51-53",
+      "s1_description": "General targets",
+      "s1_pillar": "metrics_targets"
+    }
+  ]
+}

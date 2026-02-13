@@ -7,9 +7,8 @@ from uuid import UUID
 from sqlalchemy import BigInteger, DateTime, Index, LargeBinary, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_utils import uuid7
 
-from app.core.database import Base
+from app.core.database import Base, generate_uuid7
 
 if TYPE_CHECKING:
     from app.models.claim import Claim
@@ -33,7 +32,7 @@ class Report(Base):
 
     id: Mapped[UUID] = mapped_column(
         primary_key=True,
-        default=uuid7,
+        default=generate_uuid7,
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)

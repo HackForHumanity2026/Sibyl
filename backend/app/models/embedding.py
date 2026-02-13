@@ -8,9 +8,8 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from uuid_utils import uuid7
 
-from app.core.database import Base
+from app.core.database import Base, generate_uuid7
 
 if TYPE_CHECKING:
     from app.models.report import Report
@@ -31,7 +30,7 @@ class Embedding(Base):
 
     id: Mapped[UUID] = mapped_column(
         primary_key=True,
-        default=uuid7,
+        default=generate_uuid7,
     )
     report_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("reports.id", ondelete="CASCADE"),

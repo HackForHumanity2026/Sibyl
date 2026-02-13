@@ -2,12 +2,19 @@
 
 from collections.abc import AsyncGenerator
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from uuid_utils import uuid7
 
 from app.core.config import settings
+
+
+def generate_uuid7() -> UUID:
+    """Generate a UUID v7 and return as stdlib uuid.UUID for psycopg3 compatibility."""
+    return UUID(str(uuid7()))
 
 # Create async engine
 engine = create_async_engine(
