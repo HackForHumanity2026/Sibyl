@@ -3,7 +3,11 @@
 Implements FRD 2 (PDF Upload & Ingestion) Section 5 and FRD 3 (Claims Agent) Section 6.
 
 A lightweight Redis-based task queue that processes PDF parsing
-and claims extraction jobs asynchronously. Uses BRPOP for blocking dequeue.
+and claims extraction jobs asynchronously.
+
+Uses rpoplpush for at-least-once delivery: tasks are atomically moved from
+the main queue to a processing queue, then removed only after successful
+completion. If the worker crashes, orphaned tasks are recovered on startup.
 """
 
 import asyncio
@@ -24,9 +28,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Redis queue keys
+# Redis queue keys (main task queues)
 PARSE_PDF_QUEUE = "sibyl:tasks:parse_pdf"
 EXTRACT_CLAIMS_QUEUE = "sibyl:tasks:extract_claims"
+
+# Redis processing queues (tasks currently being worked on)
+PARSE_PDF_PROCESSING = "sibyl:processing:parse_pdf"
+EXTRACT_CLAIMS_PROCESSING = "sibyl:processing:extract_claims"
 
 # Legacy alias for backwards compatibility
 TASK_QUEUE_KEY = PARSE_PDF_QUEUE
@@ -35,7 +43,11 @@ TASK_QUEUE_KEY = PARSE_PDF_QUEUE
 class TaskWorker:
     """Background worker that processes PDF parsing and claims extraction tasks from Redis.
 
-    Polls the Redis queues using BRPOP and processes tasks sequentially.
+    Uses rpoplpush for reliable at-least-once delivery:
+    1. Tasks are atomically moved from the main queue to a processing queue
+    2. After successful processing, the task is removed from the processing queue
+    3. On startup, any orphaned tasks left in processing queues are recovered
+
     Designed to run as an asyncio.Task within the FastAPI lifespan.
     """
 
@@ -58,7 +70,11 @@ class TaskWorker:
     async def start(self) -> None:
         """Start the background worker loop."""
         self._running = True
-        logger.info(
+
+        # Recover any orphaned tasks from a previous crash before processing new ones
+        await self.recover_orphaned_tasks()
+
+        logger.warning(
             "Task worker started, listening on queues: %s, %s",
             PARSE_PDF_QUEUE,
             EXTRACT_CLAIMS_QUEUE,
@@ -66,47 +82,119 @@ class TaskWorker:
 
         while self._running:
             try:
-                # BRPOP blocks until a task is available (with 5s timeout for graceful shutdown)
-                # Listen on both queues
-                result = await self.redis.brpop(
-                    [PARSE_PDF_QUEUE, EXTRACT_CLAIMS_QUEUE], timeout=5
-                )
-
-                if result is None:
-                    # Timeout, check if we should continue
+                task = await self._dequeue_task()
+                if task is None:
+                    # No tasks available, poll again after a brief sleep
+                    await asyncio.sleep(1)
                     continue
 
-                queue_name, report_id_bytes = result
-                queue_name = (
-                    queue_name.decode("utf-8")
-                    if isinstance(queue_name, bytes)
-                    else queue_name
-                )
-                report_id = report_id_bytes.decode("utf-8")
+                queue_name, report_id = task
+                logger.warning("Dequeued task from %s for report: %s", queue_name, report_id)
 
-                logger.info("Dequeued task from %s for report: %s", queue_name, report_id)
-
-                # Route to appropriate handler
+                # Route to appropriate handler, then remove from processing queue on success
                 if queue_name == PARSE_PDF_QUEUE:
                     await self.process_parse_task(report_id)
+                    await self.redis.lrem(PARSE_PDF_PROCESSING, 1, report_id)
                 elif queue_name == EXTRACT_CLAIMS_QUEUE:
                     await self.process_extract_claims_task(report_id)
+                    await self.redis.lrem(EXTRACT_CLAIMS_PROCESSING, 1, report_id)
                 else:
                     logger.warning("Unknown queue: %s", queue_name)
 
             except asyncio.CancelledError:
-                logger.info("Task worker cancelled")
+                logger.warning("Task worker cancelled")
                 break
             except Exception:
                 logger.exception("Error in task worker loop")
                 # Brief pause before retrying to avoid tight error loops
                 await asyncio.sleep(1)
 
-        logger.info("Task worker stopped")
+        logger.warning("Task worker stopped")
+
+    async def _dequeue_task(self) -> tuple[str, str] | None:
+        """Try to dequeue a task from each queue using rpoplpush.
+
+        Atomically moves a task from the main queue to the corresponding
+        processing queue. Returns (queue_name, report_id) or None if
+        both queues are empty.
+        """
+        # Check parse queue first
+        result = await self.redis.rpoplpush(PARSE_PDF_QUEUE, PARSE_PDF_PROCESSING)
+        if result is not None:
+            report_id = result.decode("utf-8") if isinstance(result, bytes) else result
+            return (PARSE_PDF_QUEUE, report_id)
+
+        # Then check claims queue
+        result = await self.redis.rpoplpush(EXTRACT_CLAIMS_QUEUE, EXTRACT_CLAIMS_PROCESSING)
+        if result is not None:
+            report_id = result.decode("utf-8") if isinstance(result, bytes) else result
+            return (EXTRACT_CLAIMS_QUEUE, report_id)
+
+        return None
+
+    async def recover_orphaned_tasks(self) -> None:
+        """Re-enqueue any tasks left in processing queues from a previous crash.
+
+        Called on startup to ensure at-least-once delivery. Also checks the
+        database for reports stuck in intermediate states (parsing, embedding,
+        analyzing) and re-enqueues them.
+        """
+        recovered_count = 0
+
+        # 1. Recover tasks from Redis processing queues
+        for proc_queue, main_queue in [
+            (PARSE_PDF_PROCESSING, PARSE_PDF_QUEUE),
+            (EXTRACT_CLAIMS_PROCESSING, EXTRACT_CLAIMS_QUEUE),
+        ]:
+            while True:
+                task = await self.redis.rpoplpush(proc_queue, main_queue)
+                if task is None:
+                    break
+                report_id = task.decode("utf-8") if isinstance(task, bytes) else task
+                logger.warning(
+                    "Recovered orphaned task for report: %s -> %s",
+                    report_id,
+                    main_queue,
+                )
+                recovered_count += 1
+
+        # 2. Recover reports stuck in intermediate DB states
+        async with self.session_factory() as db:
+            # Reports stuck in parsing/embedding -> re-enqueue for parse
+            stuck_parse = await db.execute(
+                select(Report).where(Report.status.in_(["parsing", "embedding"]))
+            )
+            for report in stuck_parse.scalars():
+                logger.warning(
+                    "Recovering stuck report %s (status=%s), re-enqueuing parse",
+                    report.id,
+                    report.status,
+                )
+                report.status = "uploaded"
+                await db.commit()
+                await self.redis.lpush(PARSE_PDF_QUEUE, str(report.id))
+                recovered_count += 1
+
+            # Reports stuck in analyzing -> re-enqueue for claims extraction
+            stuck_analyzing = await db.execute(
+                select(Report).where(Report.status == "analyzing")
+            )
+            for report in stuck_analyzing.scalars():
+                logger.warning(
+                    "Recovering stuck report %s (status=analyzing), re-enqueuing extraction",
+                    report.id,
+                )
+                await self.redis.lpush(EXTRACT_CLAIMS_QUEUE, str(report.id))
+                recovered_count += 1
+
+        if recovered_count > 0:
+            logger.warning("Recovery complete: %d tasks re-enqueued", recovered_count)
+        else:
+            logger.warning("Recovery complete: no orphaned tasks found")
 
     async def stop(self) -> None:
         """Gracefully stop the worker."""
-        logger.info("Stopping task worker...")
+        logger.warning("Stopping task worker...")
         self._running = False
 
     async def process_parse_task(self, report_id: str) -> None:
@@ -141,7 +229,7 @@ class TaskWorker:
                 # Update status to parsing
                 report.status = "parsing"
                 await db.commit()
-                logger.info("Set report %s status to 'parsing'", report_id)
+                logger.warning("Set report %s status to 'parsing'", report_id)
 
                 # Parse the PDF
                 parser = PDFParserService()
@@ -152,7 +240,7 @@ class TaskWorker:
                 report.page_count = parse_result.page_count
                 report.content_structure = parse_result.content_structure.model_dump()
                 await db.commit()
-                logger.info(
+                logger.warning(
                     "Stored parsed content for report %s: %d pages",
                     report_id,
                     parse_result.page_count,
@@ -161,7 +249,7 @@ class TaskWorker:
                 # Update status to embedding
                 report.status = "embedding"
                 await db.commit()
-                logger.info("Set report %s status to 'embedding'", report_id)
+                logger.warning("Set report %s status to 'embedding'", report_id)
 
                 # Embed the content via RAG service
                 # Import here to avoid circular imports
@@ -186,7 +274,7 @@ class TaskWorker:
                         markdown_content=parse_result.markdown,
                         page_metadata=page_metadata,
                     )
-                    logger.info(
+                    logger.warning(
                         "Embedded %d chunks for report %s", chunk_count, report_id
                     )
                 finally:
@@ -198,14 +286,14 @@ class TaskWorker:
                     report.status = "analyzing"
                     await db.commit()
                     await self.redis.lpush(EXTRACT_CLAIMS_QUEUE, report_id)
-                    logger.info(
+                    logger.warning(
                         "Auto-started claims extraction for report %s", report_id
                     )
                 else:
                     # Update status to parsed
                     report.status = "parsed"
                     await db.commit()
-                    logger.info("Report %s parsing complete", report_id)
+                    logger.warning("Report %s parsing complete", report_id)
 
             except PDFParseError as e:
                 logger.warning("PDF parse error for report %s: %s", report_id, e)
@@ -267,21 +355,21 @@ class TaskWorker:
                     )
                     return
 
-                logger.info("Starting claims extraction for report: %s", report_id)
+                logger.warning("Starting claims extraction for report: %s", report_id)
 
                 # Run claims extraction
                 from app.agents.claims_agent import run_claims_extraction
 
                 claims = await run_claims_extraction(report_id, db)
 
-                logger.info(
+                logger.warning(
                     "Extracted %d claims for report %s", len(claims), report_id
                 )
 
                 # Update status to completed
                 report.status = "completed"
                 await db.commit()
-                logger.info("Report %s claims extraction complete", report_id)
+                logger.warning("Report %s claims extraction complete", report_id)
 
             except Exception as e:
                 logger.exception(
@@ -305,4 +393,4 @@ class TaskWorker:
         report.status = "error"
         report.error_message = error_message
         await db.commit()
-        logger.info("Set report %s status to 'error': %s", report.id, error_message)
+        logger.warning("Set report %s status to 'error': %s", report.id, error_message)
