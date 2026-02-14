@@ -5,7 +5,9 @@
 export { useUpload } from "./useUpload";
 export type { UploadState, UseUploadReturn } from "./useUpload";
 
+export { useAnalysis } from "./useAnalysis";
+export type { AnalysisState, UseAnalysisReturn } from "./useAnalysis";
+
 // TODO: Implement hooks in subsequent FRDs:
 // - useSSE (FRD 5) - SSE connection for agent streaming
-// - useAnalysis (FRD 5) - Analysis state management
 // - useChat (FRD 14) - Chatbot conversation state

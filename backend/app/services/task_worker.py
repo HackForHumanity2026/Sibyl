@@ -1,9 +1,9 @@
-"""Background task worker for PDF parsing.
+"""Background task worker for PDF parsing and claims extraction.
 
-Implements FRD 2 (PDF Upload & Ingestion) Section 5.
+Implements FRD 2 (PDF Upload & Ingestion) Section 5 and FRD 3 (Claims Agent) Section 6.
 
 A lightweight Redis-based task queue that processes PDF parsing
-jobs asynchronously. Uses BRPOP for blocking dequeue.
+and claims extraction jobs asynchronously. Uses BRPOP for blocking dequeue.
 """
 
 import asyncio
@@ -15,6 +15,7 @@ import redis.asyncio as redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.config import settings
 from app.models.report import Report
 from app.services.pdf_parser import PDFParseError, PDFParserService
 
@@ -23,14 +24,18 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Redis queue key
-TASK_QUEUE_KEY = "sibyl:tasks:parse_pdf"
+# Redis queue keys
+PARSE_PDF_QUEUE = "sibyl:tasks:parse_pdf"
+EXTRACT_CLAIMS_QUEUE = "sibyl:tasks:extract_claims"
+
+# Legacy alias for backwards compatibility
+TASK_QUEUE_KEY = PARSE_PDF_QUEUE
 
 
 class TaskWorker:
-    """Background worker that processes PDF parsing tasks from Redis.
+    """Background worker that processes PDF parsing and claims extraction tasks from Redis.
 
-    Polls the Redis queue using BRPOP and processes tasks sequentially.
+    Polls the Redis queues using BRPOP and processes tasks sequentially.
     Designed to run as an asyncio.Task within the FastAPI lifespan.
     """
 
@@ -53,22 +58,41 @@ class TaskWorker:
     async def start(self) -> None:
         """Start the background worker loop."""
         self._running = True
-        logger.info("Task worker started, listening on queue: %s", TASK_QUEUE_KEY)
+        logger.info(
+            "Task worker started, listening on queues: %s, %s",
+            PARSE_PDF_QUEUE,
+            EXTRACT_CLAIMS_QUEUE,
+        )
 
         while self._running:
             try:
                 # BRPOP blocks until a task is available (with 5s timeout for graceful shutdown)
-                result = await self.redis.brpop(TASK_QUEUE_KEY, timeout=5)
+                # Listen on both queues
+                result = await self.redis.brpop(
+                    [PARSE_PDF_QUEUE, EXTRACT_CLAIMS_QUEUE], timeout=5
+                )
 
                 if result is None:
                     # Timeout, check if we should continue
                     continue
 
-                _, report_id_bytes = result
+                queue_name, report_id_bytes = result
+                queue_name = (
+                    queue_name.decode("utf-8")
+                    if isinstance(queue_name, bytes)
+                    else queue_name
+                )
                 report_id = report_id_bytes.decode("utf-8")
 
-                logger.info("Dequeued parse task for report: %s", report_id)
-                await self.process_parse_task(report_id)
+                logger.info("Dequeued task from %s for report: %s", queue_name, report_id)
+
+                # Route to appropriate handler
+                if queue_name == PARSE_PDF_QUEUE:
+                    await self.process_parse_task(report_id)
+                elif queue_name == EXTRACT_CLAIMS_QUEUE:
+                    await self.process_extract_claims_task(report_id)
+                else:
+                    logger.warning("Unknown queue: %s", queue_name)
 
             except asyncio.CancelledError:
                 logger.info("Task worker cancelled")
@@ -94,7 +118,7 @@ class TaskWorker:
         3. Parse the PDF using PDFParserService
         4. Store parsed content and content structure
         5. Call RAGService.ingest_report() for embedding
-        6. Update status to 'parsed'
+        6. Update status to 'parsed' (or 'analyzing' if AUTO_START_ANALYSIS is True)
 
         On error: Update status to 'error' with descriptive message.
         """
@@ -134,6 +158,11 @@ class TaskWorker:
                     parse_result.page_count,
                 )
 
+                # Update status to embedding
+                report.status = "embedding"
+                await db.commit()
+                logger.info("Set report %s status to 'embedding'", report_id)
+
                 # Embed the content via RAG service
                 # Import here to avoid circular imports
                 from app.services.embedding_service import EmbeddingService
@@ -163,10 +192,20 @@ class TaskWorker:
                 finally:
                     await embedding_service.close()
 
-                # Update status to parsed
-                report.status = "parsed"
-                await db.commit()
-                logger.info("Report %s parsing complete", report_id)
+                # Check if we should auto-start analysis
+                if settings.AUTO_START_ANALYSIS:
+                    # Set status to analyzing and enqueue claims extraction
+                    report.status = "analyzing"
+                    await db.commit()
+                    await self.redis.lpush(EXTRACT_CLAIMS_QUEUE, report_id)
+                    logger.info(
+                        "Auto-started claims extraction for report %s", report_id
+                    )
+                else:
+                    # Update status to parsed
+                    report.status = "parsed"
+                    await db.commit()
+                    logger.info("Report %s parsing complete", report_id)
 
             except PDFParseError as e:
                 logger.warning("PDF parse error for report %s: %s", report_id, e)
@@ -177,7 +216,7 @@ class TaskWorker:
                 if report:
                     await self._set_error(db, report, str(e))
 
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error processing report %s", report_id)
                 # Re-fetch report
                 stmt = select(Report).where(Report.id == UUID(report_id))
@@ -189,6 +228,74 @@ class TaskWorker:
                         report,
                         "An unexpected error occurred while processing the document. "
                         "Please try again.",
+                    )
+
+    async def process_extract_claims_task(self, report_id: str) -> None:
+        """Extract claims from a parsed report.
+
+        Pipeline:
+        1. Fetch the report from the database
+        2. Verify status is 'analyzing'
+        3. Run claims extraction via the Claims Agent
+        4. Update status to 'completed'
+
+        On error: Update status to 'error' with descriptive message.
+        """
+        async with self.session_factory() as db:
+            try:
+                # Fetch the report
+                stmt = select(Report).where(Report.id == UUID(report_id))
+                result = await db.execute(stmt)
+                report = result.scalar_one_or_none()
+
+                if report is None:
+                    logger.error("Report not found: %s", report_id)
+                    return
+
+                if report.status != "analyzing":
+                    logger.warning(
+                        "Report %s is not in 'analyzing' status (current: %s), skipping",
+                        report_id,
+                        report.status,
+                    )
+                    return
+
+                if report.parsed_content is None:
+                    logger.error("Report has no parsed content: %s", report_id)
+                    await self._set_error(
+                        db, report, "Report content is missing. Please re-upload the PDF."
+                    )
+                    return
+
+                logger.info("Starting claims extraction for report: %s", report_id)
+
+                # Run claims extraction
+                from app.agents.claims_agent import run_claims_extraction
+
+                claims = await run_claims_extraction(report_id, db)
+
+                logger.info(
+                    "Extracted %d claims for report %s", len(claims), report_id
+                )
+
+                # Update status to completed
+                report.status = "completed"
+                await db.commit()
+                logger.info("Report %s claims extraction complete", report_id)
+
+            except Exception as e:
+                logger.exception(
+                    "Error during claims extraction for report %s", report_id
+                )
+                # Re-fetch report
+                stmt = select(Report).where(Report.id == UUID(report_id))
+                result = await db.execute(stmt)
+                report = result.scalar_one_or_none()
+                if report:
+                    await self._set_error(
+                        db,
+                        report,
+                        f"Claims extraction failed: {str(e)[:200]}",
                     )
 
     async def _set_error(

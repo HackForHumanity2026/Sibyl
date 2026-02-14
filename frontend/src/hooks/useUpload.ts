@@ -31,7 +31,7 @@ export interface UseUploadReturn {
 }
 
 const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_COUNT = 150; // 5 minutes at 2-second intervals
+const MAX_POLL_COUNT = 450; // 15 minutes at 2-second intervals
 
 export function useUpload(): UseUploadReturn {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
@@ -86,7 +86,7 @@ export function useUpload(): UseUploadReturn {
         setError(status.error_message || "Processing failed. Please try again.");
         setUploadState("error");
       }
-      // Otherwise, continue polling (status is "uploaded" or "parsing")
+      // Otherwise, continue polling (status is "uploaded", "parsing", or "embedding")
     } catch (err) {
       // Network errors during polling - continue polling
       // Transient network issues shouldn't abort the flow

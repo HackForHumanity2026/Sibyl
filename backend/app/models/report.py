@@ -22,7 +22,8 @@ class Report(Base):
     Status values:
     - uploaded: PDF received, not yet parsed
     - parsing: PyMuPDF4LLM extraction in progress
-    - parsed: Content extracted, ready for analysis
+    - embedding: Content parsed, embedding chunks via RAG service
+    - parsed: Content extracted and embedded, ready for analysis
     - analyzing: Agent pipeline running
     - completed: Full pipeline complete, Source of Truth available
     - error: Processing failed (see error_message)

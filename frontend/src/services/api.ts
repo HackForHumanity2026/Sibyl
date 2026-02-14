@@ -1,8 +1,17 @@
 /**
  * API client for the Sibyl backend.
+ * Implements FRD 3 Section 8.3.
  */
 
 import type { ReportStatusResponse, UploadResponse } from "@/types/report";
+import type {
+  AnalysisStatusResponse,
+  Claim,
+  ClaimsListResponse,
+  ClaimPriority,
+  ClaimType,
+  StartAnalysisResponse,
+} from "@/types/claim";
 
 const API_BASE = "http://localhost:8000/api/v1";
 
@@ -79,16 +88,60 @@ export async function retryReport(reportId: string): Promise<{ report_id: string
   });
 }
 
+// ============================================================================
+// Analysis API (FRD 3)
+// ============================================================================
+
+/**
+ * Start claims extraction analysis for a report.
+ */
+export async function startAnalysis(reportId: string): Promise<StartAnalysisResponse> {
+  return fetchAPI<StartAnalysisResponse>(`/analysis/${reportId}/start`, {
+    method: "POST",
+  });
+}
+
 /**
  * Get the analysis status for a report.
- * TODO: Implement in FRD 5
  */
-export async function getAnalysisStatus(
-  _reportId: string
-): Promise<{ status: string }> {
-  // TODO: Implement status retrieval
-  throw new Error("Not implemented - coming in FRD 5");
+export async function getAnalysisStatus(reportId: string): Promise<AnalysisStatusResponse> {
+  return fetchAPI<AnalysisStatusResponse>(`/analysis/${reportId}/status`);
 }
+
+/**
+ * Get paginated list of claims for a report.
+ */
+export async function getClaims(
+  reportId: string,
+  params?: {
+    type?: ClaimType;
+    priority?: ClaimPriority;
+    page?: number;
+    size?: number;
+  }
+): Promise<ClaimsListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.type) searchParams.set("type", params.type);
+  if (params?.priority) searchParams.set("priority", params.priority);
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.size) searchParams.set("size", String(params.size));
+
+  const queryString = searchParams.toString();
+  const endpoint = `/analysis/${reportId}/claims${queryString ? `?${queryString}` : ""}`;
+
+  return fetchAPI<ClaimsListResponse>(endpoint);
+}
+
+/**
+ * Get a single claim by ID.
+ */
+export async function getClaim(reportId: string, claimId: string): Promise<Claim> {
+  return fetchAPI<Claim>(`/analysis/${reportId}/claims/${claimId}`);
+}
+
+// ============================================================================
+// Future APIs (stubs)
+// ============================================================================
 
 /**
  * Get the Source of Truth report.
@@ -97,7 +150,6 @@ export async function getAnalysisStatus(
 export async function getReport(
   _reportId: string
 ): Promise<{ report: unknown }> {
-  // TODO: Implement report retrieval
   throw new Error("Not implemented - coming in FRD 13");
 }
 
@@ -109,6 +161,5 @@ export async function sendChatMessage(
   _reportId: string,
   _message: string
 ): Promise<{ response: string }> {
-  // TODO: Implement chat
   throw new Error("Not implemented - coming in FRD 14");
 }

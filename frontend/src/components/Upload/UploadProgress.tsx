@@ -58,6 +58,8 @@ function getActiveStep(status: ReportStatus): number {
       return 1; // Uploading complete, waiting for parsing
     case "parsing":
       return 2;
+    case "embedding":
+      return 3;
     case "parsed":
       return 4; // All complete
     case "error":

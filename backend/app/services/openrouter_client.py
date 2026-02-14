@@ -16,10 +16,14 @@ logger = logging.getLogger(__name__)
 class Models:
     """OpenRouter model identifiers."""
 
-    GEMINI_FLASH = "google/gemini-2.5-flash-preview"
-    GEMINI_PRO = "google/gemini-2.5-pro-preview"
-    CLAUDE_SONNET = "anthropic/claude-sonnet-4-5"
-    CLAUDE_OPUS = "anthropic/claude-opus-4-5"
+    # Gemini models (use the latest available versions on OpenRouter)
+    GEMINI_FLASH = "google/gemini-2.0-flash-001"
+    GEMINI_PRO = "google/gemini-1.5-pro-latest"
+    # Claude models
+    CLAUDE_SONNET = "anthropic/claude-3.5-sonnet"
+    CLAUDE_HAIKU = "anthropic/claude-3.5-haiku"  # Fast, cheap for classification tasks
+    CLAUDE_OPUS = "anthropic/claude-3-opus"
+    # Other models
     DEEPSEEK = "deepseek/deepseek-chat"
     EMBEDDING = "openai/text-embedding-3-small"
 
@@ -51,7 +55,7 @@ class OpenRouterClient:
                 "HTTP-Referer": "https://sibyl.dev",
                 "X-Title": "Sibyl",
             },
-            timeout=httpx.Timeout(60.0),
+            timeout=httpx.Timeout(180.0),  # Large reports may need 60-120s of generation
         )
 
     async def close(self) -> None:
@@ -125,15 +129,31 @@ class OpenRouterClient:
 
                 data = response.json()
                 content = data["choices"][0]["message"]["content"]
+                finish_reason = data["choices"][0].get("finish_reason", "unknown")
 
-                # Log token usage if available
-                if "usage" in data:
-                    usage = data["usage"]
-                    logger.info(
-                        "OpenRouter response: model=%s, prompt_tokens=%d, completion_tokens=%d",
-                        model,
-                        usage.get("prompt_tokens", 0),
-                        usage.get("completion_tokens", 0),
+                # Log token usage and finish reason (WARNING level to bypass default config)
+                usage = data.get("usage", {})
+                logger.warning(
+                    "OpenRouter response: model=%s, finish_reason=%s, "
+                    "prompt_tokens=%s, completion_tokens=%s, "
+                    "response_length=%d chars",
+                    model,
+                    finish_reason,
+                    usage.get("prompt_tokens", "N/A"),
+                    usage.get("completion_tokens", "N/A"),
+                    len(content) if content else 0,
+                )
+
+                # Warn on potential issues
+                if not content:
+                    logger.warning(
+                        "OpenRouter returned empty content! finish_reason=%s",
+                        finish_reason,
+                    )
+                if finish_reason == "length":
+                    logger.warning(
+                        "OpenRouter response truncated (finish_reason=length). "
+                        "Output hit max_tokens limit."
                     )
 
                 return content
@@ -150,6 +170,12 @@ class OpenRouterClient:
                     import asyncio
                     await asyncio.sleep(delay)
                     continue
+                # Log the error response body for debugging
+                try:
+                    error_body = e.response.json()
+                    logger.error("OpenRouter error response: %s", error_body)
+                except Exception:
+                    logger.error("OpenRouter error response (text): %s", e.response.text[:500])
                 logger.error("OpenRouter non-retryable error: %s", e)
                 raise
 

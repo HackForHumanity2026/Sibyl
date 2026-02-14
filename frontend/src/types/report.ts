@@ -9,6 +9,7 @@ import type { DisclosureGap, PillarSummary } from "./ifrs";
 export type ReportStatus =
   | "uploaded"
   | "parsing"
+  | "embedding"
   | "parsed"
   | "analyzing"
   | "completed"

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Application
     MAX_UPLOAD_SIZE_MB: int = 50
     MAX_JUDGE_ITERATIONS: int = 3
+    AUTO_START_ANALYSIS: bool = False  # Set True for demo mode to auto-trigger claims extraction
 
 
 # Singleton settings instance

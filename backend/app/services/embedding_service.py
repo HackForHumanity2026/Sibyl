@@ -37,10 +37,17 @@ class EmbeddingService:
     EMBEDDING_DIMENSION = 1536
 
     # Batching configuration
+    # OpenAI embeddings API accepts up to 2048 inputs per request.
+    # text-embedding-3-small supports 8191 tokens per individual input.
+    # We set a generous per-batch token budget so that the text count
+    # limit (100) is typically the binding constraint, not tokens.
     MAX_TEXTS_PER_BATCH = 100
-    MAX_TOKENS_PER_BATCH = 8000
+    MAX_TOKENS_PER_BATCH = 50_000
     CHARS_PER_TOKEN = 4  # Approximate for English text
     MAX_TEXT_CHARS = 32000  # ~8000 tokens, truncate texts exceeding this
+
+    # Concurrency configuration
+    MAX_CONCURRENT_BATCHES = 5
 
     # Retry configuration
     MAX_RETRIES = 3
@@ -230,10 +237,11 @@ class EmbeddingService:
         return embeddings[0]
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Embed multiple text strings with batching.
+        """Embed multiple text strings with batching and concurrency.
 
         Groups texts into batches respecting token limits and processes
-        them sequentially to avoid rate limit issues.
+        them concurrently (up to MAX_CONCURRENT_BATCHES at a time) to
+        minimize wall-clock time while avoiding rate-limit storms.
 
         Args:
             texts: List of text strings to embed
@@ -250,16 +258,33 @@ class EmbeddingService:
         # Create batches
         batches = self._create_batches(texts)
         logger.info(
-            "Embedding %d texts in %d batches",
+            "Embedding %d texts in %d batches (concurrency=%d)",
             len(texts),
             len(batches),
+            self.MAX_CONCURRENT_BATCHES,
         )
 
-        # Process batches sequentially
+        # Process batches concurrently with a semaphore to cap parallelism
+        semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_BATCHES)
+
+        async def _process_batch(batch_idx: int, batch: list[str]) -> list[list[float]]:
+            async with semaphore:
+                logger.debug(
+                    "Processing batch %d/%d (%d texts)",
+                    batch_idx + 1,
+                    len(batches),
+                    len(batch),
+                )
+                return await self._call_embedding_api(batch)
+
+        tasks = [
+            _process_batch(i, batch) for i, batch in enumerate(batches)
+        ]
+        batch_results = await asyncio.gather(*tasks)
+
+        # Flatten results in order
         all_embeddings: list[list[float]] = []
-        for i, batch in enumerate(batches):
-            logger.debug("Processing batch %d/%d (%d texts)", i + 1, len(batches), len(batch))
-            batch_embeddings = await self._call_embedding_api(batch)
+        for batch_embeddings in batch_results:
             all_embeddings.extend(batch_embeddings)
 
         return all_embeddings
