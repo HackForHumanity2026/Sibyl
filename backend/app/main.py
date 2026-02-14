@@ -1,16 +1,19 @@
 """FastAPI application entry point."""
 
+import asyncio
 import logging
 import subprocess
 import sys
 from contextlib import asynccontextmanager
 
+import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import api_router
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import async_session_maker, engine
+from app.services.task_worker import TaskWorker
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +44,33 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Sibyl API...")
     run_migrations()
+
+    # Create Redis client for task worker
+    redis_client = redis.from_url(settings.REDIS_URL, decode_responses=False)
+
+    # Create and start the task worker
+    worker = TaskWorker(redis_client, async_session_maker)
+    worker_task = asyncio.create_task(worker.start())
+    logger.info("Task worker started")
+
     yield
+
     # Shutdown
     logger.info("Shutting down Sibyl API...")
+
+    # Stop the task worker
+    await worker.stop()
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("Task worker stopped")
+
+    # Close Redis connection
+    await redis_client.aclose()
+
+    # Dispose database engine
     await engine.dispose()
 
 

@@ -2,6 +2,8 @@
  * API client for the Sibyl backend.
  */
 
+import type { ReportStatusResponse, UploadResponse } from "@/types/report";
+
 const API_BASE = "http://localhost:8000/api/v1";
 
 interface HealthResponse {
@@ -25,8 +27,8 @@ async function fetchAPI<T>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API error: ${response.status} - ${error}`);
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || `API error: ${response.status}`);
   }
 
   return response.json();
@@ -41,11 +43,40 @@ export async function healthCheck(): Promise<HealthResponse> {
 
 /**
  * Upload a PDF report for analysis.
- * TODO: Implement in FRD 2
  */
-export async function uploadReport(_file: File): Promise<{ reportId: string }> {
-  // TODO: Implement file upload
-  throw new Error("Not implemented - coming in FRD 2");
+export async function uploadReport(file: File): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE}/upload`, {
+    method: "POST",
+    body: formData,
+    // Note: Do NOT set Content-Type header; the browser sets it
+    // automatically with the correct multipart boundary
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || "Upload failed");
+  }
+
+  return response.json();
+}
+
+/**
+ * Get the current status of an uploaded report.
+ */
+export async function getReportStatus(reportId: string): Promise<ReportStatusResponse> {
+  return fetchAPI<ReportStatusResponse>(`/upload/${reportId}/status`);
+}
+
+/**
+ * Retry processing a failed report.
+ */
+export async function retryReport(reportId: string): Promise<{ report_id: string; status: string; message: string }> {
+  return fetchAPI(`/upload/${reportId}/retry`, {
+    method: "POST",
+  });
 }
 
 /**

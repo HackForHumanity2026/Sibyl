@@ -25,17 +25,39 @@ export interface Report {
   updatedAt: string;
 }
 
-export interface ContentStructure {
-  sections: SectionInfo[];
-  tableCount: number;
-  chartCount: number;
-}
-
 export interface SectionInfo {
   title: string;
-  pageStart: number;
-  pageEnd: number;
   level: number;
+  page_start: number;
+  page_end: number | null;
+  children: SectionInfo[];
+}
+
+export interface ContentStructure {
+  sections: SectionInfo[];
+  table_count: number;
+  page_count: number;
+  estimated_word_count: number;
+}
+
+export interface UploadResponse {
+  report_id: string;
+  filename: string;
+  file_size_bytes: number;
+  status: ReportStatus;
+  created_at: string;
+}
+
+export interface ReportStatusResponse {
+  report_id: string;
+  filename: string;
+  file_size_bytes: number;
+  status: ReportStatus;
+  page_count: number | null;
+  content_structure: ContentStructure | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SourceOfTruthReport {

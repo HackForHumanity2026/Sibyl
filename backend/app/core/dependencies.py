@@ -1,7 +1,9 @@
 """Shared FastAPI dependencies."""
 
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Annotated
 
+import redis.asyncio as redis
 from fastapi import Depends
 
 from app.core.config import Settings, settings
@@ -18,6 +20,8 @@ __all__ = [
     "SettingsDep",
     "get_rag_service",
     "RAGServiceDep",
+    "get_redis",
+    "RedisDep",
 ]
 
 
@@ -42,3 +46,18 @@ async def get_rag_service(db: DbSession) -> "RAGService":
 
 
 RAGServiceDep = Annotated["RAGService", Depends(get_rag_service)]
+
+
+async def get_redis() -> AsyncGenerator[redis.Redis, None]:
+    """Dependency that provides an async Redis client.
+
+    Creates a connection for each request and closes it afterward.
+    """
+    client = redis.from_url(settings.REDIS_URL, decode_responses=False)
+    try:
+        yield client
+    finally:
+        await client.aclose()
+
+
+RedisDep = Annotated[redis.Redis, Depends(get_redis)]
