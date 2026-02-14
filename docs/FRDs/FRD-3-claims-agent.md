@@ -15,7 +15,7 @@
 
 ## Summary
 
-FRD 3 delivers the Claims Agent -- the first investigative agent in Sibyl's multi-agent pipeline. The Claims Agent receives the full parsed document content from a successfully uploaded and parsed sustainability report (FRD 2) and systematically identifies verifiable sustainability claims: statements asserting facts, metrics, commitments, or conditions that can be checked against external evidence or internal consistency. Each extracted claim is categorized by type (Geographic, Quantitative/Metrics, Legal/Governance, Strategic/Forward-looking, Environmental), tagged with source page number and text location (for PDF highlighting in FRD 4), assigned a preliminary IFRS S1/S2 paragraph mapping (via RAG retrieval from FRD 1), and prioritized by materiality and verifiability. The agent is implemented as a LangGraph node (`extract_claims`) in `app/agents/claims_agent.py`, powered by Gemini 3 Flash (1M token context window for full-document processing). FRD 3 also delivers the backend endpoint to trigger the analysis pipeline and retrieve extracted claims, the frontend "Begin Analysis" flow connecting FRD 2's upload to claim extraction, and persistence of extracted claims in the `claims` database table (defined in FRD 0).
+FRD 3 delivers the Claims Agent -- the first investigative agent in Sibyl's multi-agent pipeline. The Claims Agent receives the full parsed document content from a successfully uploaded and parsed sustainability report (FRD 2) and systematically identifies verifiable sustainability claims: statements asserting facts, metrics, commitments, or conditions that can be checked against external evidence or internal consistency. Each extracted claim is categorized by type (Geographic, Quantitative/Metrics, Legal/Governance, Strategic/Forward-looking, Environmental), tagged with source page number and text location (for PDF highlighting in FRD 4), assigned a preliminary IFRS S1/S2 paragraph mapping (via RAG retrieval from FRD 1), and prioritized by materiality and verifiability. The agent is implemented as a LangGraph node (`extract_claims`) in `app/agents/claims_agent.py`, using a Map-Reduce architecture: the document is split into overlapping page-based chunks, each chunk is processed concurrently by Claude 3.5 Sonnet for claim extraction, and results are merged and deduplicated using an embedding similarity pre-filter with Claude 3.5 Haiku confirmation. FRD 3 also delivers the backend endpoint to trigger the analysis pipeline and retrieve extracted claims, the frontend "Begin Analysis" flow connecting FRD 2's upload to claim extraction, and persistence of extracted claims in the `claims` database table (defined in FRD 0).
 
 ---
 
@@ -34,7 +34,8 @@ The following are assumed to be in place from FRD 0, FRD 1, and FRD 2:
 | Analysis route stub (`app/api/routes/analysis.py`) | FRD 0 | Empty `APIRouter` |
 | Analysis schema stub (`app/schemas/analysis.py`) | FRD 0 | Empty file |
 | OpenRouter client wrapper with retry logic | FRD 0 | `app/services/openrouter_client.py` |
-| `Models.GEMINI_FLASH` constant | FRD 0 | `app/services/openrouter_client.py` |
+| `Models.CLAUDE_SONNET` and `Models.CLAUDE_HAIKU` constants | FRD 0 | `app/services/openrouter_client.py` |
+| Embedding service for text embeddings | FRD 1 | `app/services/embedding_service.py` |
 | `Claim` and `ClaimType` TypeScript types | FRD 0 | `src/types/claim.ts` |
 | `AnalysisPage` stub with routing at `/analysis/:reportId` | FRD 0 | `src/pages/AnalysisPage.tsx` |
 | RAG pipeline with hybrid search and `rag_lookup` tool | FRD 1 | `app/services/rag_service.py`, `app/agents/tools/rag_lookup.py` |
@@ -43,7 +44,7 @@ The following are assumed to be in place from FRD 0, FRD 1, and FRD 2:
 | Report record with `status = "parsed"`, `parsed_content` populated | FRD 2 | Database state after successful upload |
 | Page boundary markers (`<!-- PAGE N -->`) in parsed content | FRD 2 | `PDFParserService` output |
 | "Begin Analysis" button on `ContentPreview` component navigating to `/analysis/{reportId}` | FRD 2 | `src/components/Upload/ContentPreview.tsx` |
-| Redis task queue with `LPUSH`/`BRPOP` pattern | FRD 2 | `app/services/task_worker.py` |
+| Redis task queue with `LPUSH`/`rpoplpush` reliable delivery pattern | FRD 2 | `app/services/task_worker.py` |
 
 ### Terms
 
@@ -54,7 +55,9 @@ The following are assumed to be in place from FRD 0, FRD 1, and FRD 2:
 | Source location | Positional data (page number, approximate character offset, and bounding context) enabling PDF highlighting of the claim in the original document |
 | Preliminary IFRS mapping | An initial mapping of the claim to likely IFRS S1/S2 paragraph(s), produced via RAG retrieval against the IFRS corpus; refined by the Legal Agent in FRD 6 |
 | Priority | A materiality- and verifiability-based ranking (high, medium, low) that influences downstream investigation order |
-| Extract pass | A single LLM invocation over a document section to identify claims; multiple passes may be made over large documents |
+| Extract pass | A single LLM invocation over a document chunk to identify claims; multiple concurrent passes are made across overlapping chunks in the Map-Reduce architecture |
+| Map-Reduce extraction | An architecture that splits a large document into overlapping chunks, processes each chunk concurrently with an LLM, and merges/deduplicates the results |
+| LLM-assisted deduplication | A two-stage deduplication process: embedding similarity identifies candidate duplicate pairs, then Claude 3.5 Haiku confirms which are true semantic duplicates |
 | Claims Agent reasoning | The agent's explanation for why a particular statement was flagged as a verifiable claim, including the rationale for its type, priority, and IFRS mapping |
 
 ---
@@ -82,7 +85,9 @@ Feature: Claims Agent
   Scenario: Claims Agent extracts claims from the document
     Given  a claims extraction task is dequeued
     When   the Claims Agent processes the parsed document content
-    Then   it identifies verifiable sustainability claims from the text
+    Then   it splits the document into overlapping page-based chunks
+    And    it processes each chunk concurrently with Claude 3.5 Sonnet
+    And    it merges all chunk results and deduplicates using embedding similarity and Claude 3.5 Haiku
     And    each claim includes: claim text, source page number, text location
     And    each claim is categorized by type: geographic, quantitative, legal_governance, strategic, or environmental
     And    each claim is assigned a priority: high, medium, or low
@@ -145,7 +150,7 @@ Feature: Claims Agent
 8. [Analysis Schemas](#8-analysis-schemas)
 9. [Error Handling](#9-error-handling)
 10. [Exit Criteria](#10-exit-criteria)
-11. [Appendix A: Claims Extraction Prompt](#appendix-a-claims-extraction-prompt)
+11. [Appendix A: Claims Extraction Prompts](#appendix-a-claims-extraction-prompts)
 12. [Appendix B: Example Extracted Claims](#appendix-b-example-extracted-claims)
 13. [Appendix C: Claim Extraction Flow Sequence Diagram](#appendix-c-claim-extraction-flow-sequence-diagram)
 14. [Design Decisions Log](#design-decisions-log)
@@ -156,7 +161,7 @@ Feature: Claims Agent
 
 ### 1.1 Overview
 
-The Claims Agent (`app/agents/claims_agent.py`) replaces the FRD 0 stub with a functional LangGraph node that extracts verifiable sustainability claims from parsed report content. The agent uses Gemini 3 Flash via OpenRouter, leveraging its 1M token context window to process full 200-page sustainability reports in a single pass.
+The Claims Agent (`app/agents/claims_agent.py`) replaces the FRD 0 stub with a functional LangGraph node that extracts verifiable sustainability claims from parsed report content. The agent uses a Map-Reduce architecture: the document is split into overlapping page-based chunks, each chunk is processed concurrently by Claude 3.5 Sonnet via OpenRouter, and results are merged with LLM-assisted deduplication using embedding similarity and Claude 3.5 Haiku. This architecture addresses the "lost in the middle" phenomenon in LLMs, ensuring comprehensive extraction across all pages.
 
 ### 1.2 What Constitutes a Verifiable Claim
 
@@ -182,37 +187,72 @@ A verifiable claim is a statement in the sustainability report that asserts a fa
 - Acknowledgments, disclaimers, and forward-looking statement safe harbors
 - Generic industry context that is not specific to the reporting entity
 
-### 1.3 Extraction Strategy
+### 1.3 Extraction Strategy: Map-Reduce Architecture
+
+Large language models exhibit a "lost in the middle" phenomenon: when processing long documents, they disproportionately attend to content at the beginning and end, extracting fewer claims from middle sections. To address this, the Claims Agent uses a Map-Reduce architecture that splits the document into manageable overlapping chunks, processes each chunk concurrently, and merges the results with LLM-assisted deduplication.
+
+**Phase 1: Document Chunking**
 
 The system shall:
 
-1. **Full-document processing:** Pass the entire parsed markdown content to Gemini 3 Flash in a single prompt. The 1M token context window accommodates full 200-page reports (typically 50,000-80,000 tokens). This avoids the complexity of multi-chunk extraction with deduplication.
+1. **Split by page boundaries:** Use the `<!-- PAGE N -->` markers (from FRD 2) to split the document into chunks of `CHUNK_SIZE_PAGES` pages (default: 10) with `CHUNK_OVERLAP_PAGES` pages of overlap (default: 2) between adjacent chunks. For example, an 87-page document yields chunks covering pages 1-10, 9-18, 17-26, etc.
+2. **Overlap for boundary claims:** The 2-page overlap ensures claims that span page boundaries are captured by at least one chunk with sufficient surrounding context.
+3. **Chunk metadata:** Each chunk carries its page range, chunk index, total chunk count, and total document pages, which are included in the extraction prompt to give the LLM awareness of its position within the larger document.
 
-2. **Structured output:** Request claims as a structured JSON array from the LLM using a response schema (see Section 1.5). Each claim object includes all required fields (text, type, page, location, priority, reasoning).
+**Phase 2: Concurrent Extraction (Map)**
 
-3. **Page number extraction:** The parsed content includes page boundary markers (`<!-- PAGE N -->` from FRD 2). The prompt instructs the model to identify the page number for each claim based on these markers.
+The system shall:
 
-4. **Context-aware extraction:** The prompt provides the model with:
-   - The full document content
-   - Definitions and examples of each claim type
-   - Examples of verifiable vs. non-verifiable statements
-   - Instructions for priority assessment
-   - The page boundary marker format
+1. **Process chunks concurrently:** Use `asyncio.gather` with an `asyncio.Semaphore` (limit: `MAX_CONCURRENT_CHUNKS`, default: 3) to process multiple chunks in parallel. This respects OpenRouter rate limits while maximizing throughput.
+2. **Per-chunk LLM call:** Each chunk is sent to Claude 3.5 Sonnet with a chunk-specific prompt that includes the page range context. The prompt uses response prefilling (`'{ "claims": ['` as an assistant message) to force immediate JSON output.
+3. **Structured output:** Request claims as a structured JSON array from the LLM. Each claim object includes all required fields (text, type, page, location, priority, reasoning).
+4. **Context-aware extraction:** The prompt provides the model with claim type definitions, examples, priority guidelines, and the IFRS mapping reference.
 
-5. **Deduplication:** The agent shall post-process the LLM output to remove duplicate or near-duplicate claims (same text from the same page). Deduplication uses exact text match and page number match -- if two claims have identical text and the same source page, the duplicate is removed.
+**Phase 3: Merge and Deduplication (Reduce)**
+
+The system shall:
+
+1. **Merge all claims:** Concatenate claims from all chunks into a single list.
+2. **Text-based deduplication:** Remove exact-text and same-page duplicates as a fast first pass.
+3. **LLM-assisted semantic deduplication:** For claims from overlapping page regions:
+   a. Embed all claim texts using the embedding service (`text-embedding-3-small`).
+   b. Compute cosine similarity between claim pairs from nearby pages (within `CHUNK_OVERLAP_PAGES + 1`).
+   c. For pairs exceeding `SIMILARITY_THRESHOLD` (default: 0.85), send to Claude 3.5 Haiku for binary duplicate confirmation.
+   d. Haiku returns which claim to keep (the one with richer context) and a brief reason.
+   e. Build the final unique set by removing confirmed duplicates.
 
 ### 1.4 Model Configuration
 
+**Claims Extraction (per-chunk, Map phase):**
+
 | Parameter | Value | Rationale |
 |---|---|---|
-| Model | `google/gemini-2.5-flash-preview` (`Models.GEMINI_FLASH`) | 1M token context handles full documents; cost-effective ($0.50/$3.00 per 1M tokens); fast inference |
-| Temperature | `0.1` | Low temperature for consistent, deterministic extraction; slight randomness to avoid overly rigid pattern matching |
-| Max output tokens | `32768` | Sufficient for 50-200 structured claim objects; Gemini 3 Flash supports up to 65K output tokens |
-| Response format | JSON schema (structured output) | Ensures parseable output; eliminates regex/text parsing |
+| Model | `anthropic/claude-3.5-sonnet` (`Models.CLAUDE_SONNET`) | Strong reasoning and instruction-following for nuanced claim extraction; 200K token context is sufficient for 10-page chunks |
+| Temperature | `0.0` | Zero temperature for maximum determinism in extraction; each chunk processed independently so reproducibility matters |
+| Max output tokens | `16000` | Sufficient for 10-30 claims per chunk; typical chunk yields fewer claims than a full document |
+| Response format | JSON with assistant prefilling | The assistant message is prefilled with `'{ "claims": ['` to force immediate structured JSON output without preamble |
 
-### 1.5 LLM Response Schema
+**Deduplication Confirmation (Reduce phase):**
 
-The system shall request structured output from Gemini 3 Flash using the following JSON schema:
+| Parameter | Value | Rationale |
+|---|---|---|
+| Model | `anthropic/claude-3.5-haiku` (`Models.CLAUDE_HAIKU`) | Fast and cost-effective for binary classification tasks; ~10x cheaper than Sonnet while sufficient for duplicate detection |
+| Temperature | `0.0` | Deterministic duplicate/not-duplicate classification |
+| Max output tokens | `256` | Responses are short binary classifications with a brief reason |
+| Response format | JSON with structured schema | Returns `{"duplicate": true/false, "keep": 1|2, "reason": "..."}` |
+
+### 1.5 Chunking Configuration
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| `CHUNK_SIZE_PAGES` | `10` | Large enough to provide multi-page context for each claim; small enough to keep each LLM call well within context limits |
+| `CHUNK_OVERLAP_PAGES` | `2` | Sufficient overlap to capture claims at page boundaries with surrounding context; keeps redundancy manageable |
+| `MAX_CONCURRENT_CHUNKS` | `3` | Balances throughput against OpenRouter rate limits; 3 concurrent calls complete a 90-page report in ~3 rounds |
+| `SIMILARITY_THRESHOLD` | `0.85` | Cosine similarity threshold for candidate duplicate pairs; high enough to avoid false positives while catching semantically identical claims with minor wording differences |
+
+### 1.6 LLM Response Schema
+
+The system shall request structured output from Claude 3.5 Sonnet using the following JSON schema:
 
 ```python
 class ExtractedClaim(BaseModel):
@@ -232,7 +272,7 @@ class ClaimsExtractionResult(BaseModel):
     extraction_summary: str    # Brief summary of the document and claim landscape
 ```
 
-### 1.6 Claim Text Extraction Rules
+### 1.7 Claim Text Extraction Rules
 
 The system shall instruct the LLM to:
 
@@ -373,8 +413,9 @@ async def extract_claims(state: SibylState) -> dict:
     Reads: state.report_id, state.document_content, state.document_chunks
     Writes: state.claims, state.events
 
-    Uses Gemini 3 Flash via OpenRouter for full-document claim extraction.
-    Performs preliminary IFRS mapping via RAG retrieval.
+    Uses Map-Reduce architecture:
+    - Map: Split document into overlapping chunks, process each with Claude Sonnet
+    - Reduce: Merge and deduplicate using embedding similarity + Claude Haiku
 
     Returns:
         Partial state update with extracted claims and stream events.
@@ -387,33 +428,36 @@ The `extract_claims` node shall execute the following steps:
 
 1. **Emit start event:** Append a `StreamEvent` with `event_type = "agent_started"`, `agent_name = "claims"` to the state events list.
 
-2. **Construct the extraction prompt:** Build the system prompt and user prompt (see Appendix A) using:
-   - The full `state.document_content` (parsed markdown with page markers)
-   - Claim type definitions and examples
-   - Condensed IFRS S1/S2 paragraph structure
-   - Extraction rules and output format
+2. **Split document into chunks (Phase 1):** Call `_split_document_into_chunks(state.document_content)` to split the parsed markdown into overlapping `DocumentChunk` objects using `<!-- PAGE N -->` markers. Each chunk covers `CHUNK_SIZE_PAGES` pages with `CHUNK_OVERLAP_PAGES` pages of overlap. Each chunk carries metadata: page range, chunk index, total chunks, and total pages.
 
-3. **Call Gemini 3 Flash:** Send the prompt to the LLM via the OpenRouter client, requesting structured JSON output.
+3. **Emit thinking events:** Emit `StreamEvent` objects with `event_type = "agent_thinking"` to provide real-time progress updates:
+   - "Splitting document into {n} overlapping chunks..." (after chunking)
+   - "Processing chunk {i}/{n} (pages {start}-{end})..." (during Map phase)
+   - "Merging {n} claims from {m} chunks..." (after Map phase)
+   - "Deduplicating: {n} candidate pairs found..." (during Reduce phase)
 
-4. **Parse the response:** Deserialize the LLM response into `ClaimsExtractionResult`. If parsing fails, retry with a simplified prompt (see Section 9).
+4. **Concurrent chunk extraction (Phase 2 - Map):** For each chunk, construct a chunk-specific prompt (see Appendix A) that includes the chunk content and page context. Process all chunks concurrently using `asyncio.gather` with an `asyncio.Semaphore(MAX_CONCURRENT_CHUNKS)` to limit concurrency. Each chunk is sent to Claude 3.5 Sonnet via the OpenRouter client.
 
-5. **Emit thinking events:** During processing, emit `StreamEvent` objects with `event_type = "agent_thinking"` to provide real-time progress updates to the detective dashboard (FRD 12). Events include:
-   - "Analyzing document structure..." (before LLM call)
-   - "Extracting claims from {page_count} pages..." (during LLM call)
-   - "Identified {n} potential claims. Validating IFRS mappings..." (after LLM response)
-   - "Verifying IFRS mappings via RAG retrieval..." (during RAG pass)
+5. **Parse chunk responses:** For each chunk, deserialize the LLM response into a list of `ExtractedClaim` objects. If parsing fails for a chunk, log a warning and continue with the claims from successful chunks.
 
-6. **Run RAG validation pass:** For each extracted claim, perform the RAG-based IFRS mapping validation described in Section 3.2.
+6. **Merge all claims (Phase 3):** Concatenate claim lists from all successfully processed chunks into a single list.
 
-7. **Deduplicate claims:** Remove exact-text and same-page duplicates (see Section 1.3).
+7. **LLM-assisted deduplication (Phase 4 - Reduce):** Call `_deduplicate_claims_llm_assisted(all_claims)` to:
+   a. Remove exact-text duplicates.
+   b. Embed all claim texts via the embedding service.
+   c. Find candidate duplicate pairs from overlapping page regions using cosine similarity (threshold: `SIMILARITY_THRESHOLD`).
+   d. Confirm true duplicates using Claude 3.5 Haiku with a binary classification prompt.
+   e. Build the final unique set by removing confirmed duplicates.
 
-8. **Convert to state format:** Map each `ExtractedClaim` to the `Claim` Pydantic model from `state.py` (defined in FRD 0), generating unique `claim_id` values (UUID v7 using `generate_uuid7()` from `app.core.utils`).
+8. **Run RAG validation pass:** For each extracted claim, perform the RAG-based IFRS mapping validation described in Section 3.2.
 
-9. **Persist claims to database:** Store each claim in the `claims` table, linking to the `report_id`.
+9. **Convert to state format:** Map each `ExtractedClaim` to the `Claim` Pydantic model from `state.py` (defined in FRD 0), generating unique `claim_id` values (UUID v7 using `generate_uuid7()` from `app.core.utils`).
 
-10. **Emit completion event:** Append a `StreamEvent` with `event_type = "agent_completed"`, `agent_name = "claims"`, `data = {"claim_count": len(claims), "by_type": {...}, "by_priority": {...}}`.
+10. **Persist claims to database:** Store each claim in the `claims` table, linking to the `report_id`.
 
-11. **Return partial state:** Return `{"claims": claims, "events": new_events}` as the partial state update.
+11. **Emit completion event:** Append a `StreamEvent` with `event_type = "agent_completed"`, `agent_name = "claims"`, `data = {"claim_count": len(claims), "by_type": {...}, "by_priority": {...}}`.
+
+12. **Return partial state:** Return `{"claims": claims, "events": new_events}` as the partial state update.
 
 ### 4.3 Graph Integration
 
@@ -487,7 +531,7 @@ The endpoint shall:
 1. Verify the report exists and has `status = "parsed"`.
 2. If the report has `status = "analyzing"` or `status = "completed"`, return 409 Conflict.
 3. Set the report status to `"analyzing"`.
-4. Enqueue a claims extraction task in Redis (using the same `LPUSH` pattern from FRD 2, on a separate queue key: `sibyl:tasks:extract_claims`).
+4. Enqueue a claims extraction task in Redis via `LPUSH` to the `sibyl:tasks:extract_claims` queue. The task worker dequeues using the reliable `rpoplpush` pattern (FRD 2).
 5. Return the report ID and updated status.
 
 ### 5.2 Analysis Status Endpoint
@@ -616,9 +660,10 @@ All analysis endpoints shall be registered under the analysis router (`app/api/r
 
 The system shall extend the task worker (from FRD 2) to handle claims extraction tasks:
 
-1. Add a new queue key: `sibyl:tasks:extract_claims`.
-2. The worker listens on both `sibyl:tasks:parse_pdf` and `sibyl:tasks:extract_claims` using a multi-queue `BRPOP`.
+1. Add a new queue key: `sibyl:tasks:extract_claims` with a corresponding processing queue `sibyl:tasks:extract_claims:processing`.
+2. The worker polls both `sibyl:tasks:parse_pdf` and `sibyl:tasks:extract_claims` using the reliable `rpoplpush` pattern (FRD 2). Tasks are atomically moved to their processing queue during execution and removed only on successful completion.
 3. When a claims extraction task is dequeued, the worker calls `run_claims_extraction(report_id, db)`.
+4. The startup recovery sweep (FRD 2) also recovers orphaned claims extraction tasks from the processing queue and from database reports stuck in `"analyzing"` status.
 
 ### 6.2 Claims Extraction Pipeline
 
@@ -734,7 +779,7 @@ The hook shall poll `GET /api/v1/analysis/{reportId}/status` every **3 seconds**
 1. On each poll, update the claim counts displayed to the user.
 2. When status transitions to `"completed"`, fetch the full claims list via `GET /api/v1/analysis/{reportId}/claims` and stop polling.
 3. When status transitions to `"error"`, stop polling and display the error.
-4. Maximum poll count: **100** (5 minutes at 3-second intervals). Claims extraction for a 200-page report should complete in 30-90 seconds.
+4. Maximum poll count: **100** (5 minutes at 3-second intervals). Claims extraction for a 200-page report should complete in 60-120 seconds using the Map-Reduce architecture.
 
 ---
 
@@ -880,11 +925,13 @@ async function getClaims(
 
 | Error | Trigger | Handling |
 |---|---|---|
-| LLM returns non-JSON response | Gemini 3 Flash fails to produce structured output | Retry once with a simplified prompt that emphasizes JSON format; if still non-JSON, parse what is available using a lenient extractor |
+| LLM returns non-JSON response | Claude 3.5 Sonnet fails to produce structured output despite assistant prefilling | Log a warning for the failed chunk; continue with claims from successful chunks. If all chunks fail, set report status to `"error"` |
 | LLM returns malformed claims | Claims missing required fields or invalid types | Validate each claim individually; discard invalid claims with a logged warning; proceed with valid claims |
-| LLM returns empty claims list | Document contains no recognizable claims (unlikely) | Accept the empty result; set report status to `"completed"` with zero claims |
-| LLM timeout | OpenRouter API timeout (>60 seconds) | Retry up to 3 times (handled by OpenRouter client wrapper from FRD 0); on final failure, set report status to `"error"` |
-| LLM rate limit | OpenRouter returns 429 | Exponential backoff retry (handled by OpenRouter client wrapper); propagate error after 3 retries |
+| LLM returns empty claims list | A chunk contains no recognizable claims | Accept the empty result for that chunk; other chunks may still produce claims. If all chunks return empty, set report status to `"completed"` with zero claims |
+| LLM timeout | OpenRouter API timeout (>120 seconds) | Retry up to 3 times (handled by OpenRouter client wrapper from FRD 0); on final failure for a chunk, log the error and continue with other chunks |
+| LLM rate limit | OpenRouter returns 429 | Exponential backoff retry (handled by OpenRouter client wrapper); the semaphore limits concurrent calls to mitigate rate limit risk |
+| Deduplication LLM failure | Claude 3.5 Haiku fails during duplicate confirmation | Skip deduplication for that candidate pair; keep both claims (prefer over-inclusion to data loss) |
+| Chunk processing failure | Any exception during a single chunk's extraction | Log the error; `asyncio.gather` with `return_exceptions=True` captures the exception. Other chunks continue processing normally |
 
 ### 9.2 RAG Mapping Errors
 
@@ -936,16 +983,16 @@ FRD 3 is complete when ALL of the following are satisfied:
 | 17 | Error handling works | Simulate an LLM failure; verify the report transitions to `"error"` and the frontend shows an error message |
 | 18 | Retry after error works | After an error, click "Retry Analysis"; verify the extraction re-runs |
 | 19 | Claim count is reasonable for the test document | For a 100+ page sustainability report, verify the agent extracts between 30 and 200 claims |
-| 20 | Extraction completes in reasonable time | Verify the full extraction pipeline (LLM call + RAG mapping + persistence) completes in under 2 minutes for a 200-page report |
+| 20 | Extraction completes in reasonable time | Verify the full Map-Reduce extraction pipeline (chunking + concurrent LLM calls + deduplication + RAG mapping + persistence) completes in under 3 minutes for a 200-page report |
 
 ---
 
-## Appendix A: Claims Extraction Prompt
+## Appendix A: Claims Extraction Prompts
 
-### A.1 System Prompt
+### A.1 Chunk Extraction System Prompt
 
 ```
-You are the Claims Agent in Sibyl, an AI system that verifies sustainability reports against IFRS S1/S2 disclosure standards. Your task is to extract verifiable sustainability claims from a corporate sustainability report.
+You are the Claims Agent in Sibyl, an AI system that verifies sustainability reports against IFRS S1/S2 disclosure standards. Your task is to extract verifiable sustainability claims from a section of a corporate sustainability report.
 
 A "verifiable claim" is a statement that asserts a fact, metric, commitment, or condition that can be checked against external evidence (satellite imagery, news sources, academic literature, regulatory filings) or internal consistency (mathematical relationships, benchmark plausibility).
 
@@ -987,17 +1034,44 @@ Categorize each claim into exactly ONE of these types:
 4. Do NOT extract: boilerplate language, table of contents, methodology definitions (unless asserting facts), disclaimers, generic industry context.
 5. Use the <!-- PAGE N --> markers to determine each claim's source page.
 6. Provide 1-2 sentences of surrounding context in source_context for location anchoring.
-7. Target 50-200 claims for a typical 100-200 page report.
+7. Be COMPREHENSIVE -- go through EVERY page in this chunk and extract ALL verifiable claims. Do not skip any pages.
 8. Assign preliminary IFRS paragraph IDs based on the structure above.
 ```
 
-### A.2 User Prompt
+### A.2 Chunk Extraction User Prompt
 
 ```
-Analyze the following sustainability report and extract all verifiable claims. Return your response as a JSON object matching the specified schema.
+You are analyzing chunk {chunk_index + 1} of {total_chunks} from a {total_pages}-page sustainability report.
+This chunk covers pages {page_start} to {page_end}.
 
-Document content:
-{document_content}
+Extract ALL verifiable sustainability claims from this section. Be thorough -- go page by page through the entire chunk.
+
+Return your response as a JSON object with a "claims" array.
+
+Document section:
+{chunk_content}
+```
+
+The assistant message is prefilled with `{ "claims": [` to force immediate JSON output without any preamble.
+
+### A.3 Deduplication System Prompt
+
+```
+You are a deduplication classifier. Given two claims extracted from a sustainability report, determine if they are semantically the same claim (just worded differently or extracted from overlapping document sections).
+
+Respond with JSON: {"duplicate": true/false, "keep": 1 or 2, "reason": "brief explanation"}
+
+If duplicate, set "keep" to the claim number (1 or 2) that has richer context or more detail.
+If not duplicate, set "keep" to 0.
+```
+
+### A.4 Deduplication User Prompt
+
+```
+Claim 1: "{claim_a_text}"
+Claim 2: "{claim_b_text}"
+
+Are these the same claim?
 ```
 
 ---
@@ -1091,37 +1165,49 @@ User                Frontend              Backend             Redis          Wor
  │                     │                     │  Set "analyzing" │               │                 │                │                │
  │                     │                     │────────────────────────────────────────────────────►│                │                │
  │                     │                     │                  │               │                 │                │                │
- │                     │                     │  Enqueue task    │               │                 │                │                │
+ │                     │                     │  LPUSH task      │               │                 │                │                │
  │                     │                     │─────────────────►│               │                 │                │                │
  │                     │                     │                  │               │                 │                │                │
  │                     │  200 {status}       │                  │               │                 │                │                │
  │                     │◄────────────────────│                  │               │                 │                │                │
  │                     │                     │                  │               │                 │                │                │
- │  Show analyzing     │                     │                  │  BRPOP        │                 │                │                │
+ │  Show analyzing     │                     │                  │  rpoplpush    │                 │                │                │
  │◄────────────────────│                     │                  │──────────────►│                 │                │                │
  │                     │                     │                  │               │                 │                │                │
  │                     │                     │                  │               │  Load report     │                │                │
  │                     │                     │                  │               │────────────────►│                │                │
  │                     │                     │                  │               │◄────────────────│                │                │
  │                     │                     │                  │               │                 │                │                │
- │                     │                     │                  │               │  Extract claims  │                │                │
- │                     │                     │                  │               │  (full document) │                │                │
- │                     │                     │                  │               │────────────────────────────────►│                │
- │                     │                     │                  │               │                 │   Gemini Flash  │                │
- │                     │                     │                  │               │                 │   structured    │                │
- │                     │                     │                  │               │                 │   JSON output   │                │
- │                     │                     │                  │               │◄────────────────────────────────│                │
+ │                     │                     │                  │               │ ┌──────────────────── MAP PHASE ─────────────────┐
+ │                     │                     │                  │               │ │ Split doc → N overlapping chunks               │
+ │                     │                     │                  │               │ │                │                │                │
+ │                     │                     │                  │               │ │ Chunk 1 ──────────────────────►│ Claude Sonnet  │
+ │                     │                     │                  │               │ │ Chunk 2 ──────────────────────►│ (concurrent)   │
+ │                     │                     │                  │               │ │ Chunk 3 ──────────────────────►│ max 3 at once  │
+ │                     │                     │                  │               │ │ ...            │                │                │
+ │                     │                     │                  │               │ │ ◄─── claims per chunk ─────────│                │
+ │                     │                     │                  │               │ └────────────────────────────────────────────────┘
  │                     │                     │                  │               │                 │                │                │
- │                     │  GET /analysis/     │                  │               │  RAG mapping     │                │                │
- │                     │  {id}/status        │                  │               │  validation      │                │                │
- │                     │────────────────────►│                  │               │───────────────────────────────────────────────►│
- │                     │  {"analyzing",      │                  │               │                 │                │                │
- │                     │   claims_count: 0}  │                  │               │                 │                │   Hybrid IFRS  │
- │                     │◄────────────────────│                  │               │                 │                │   search       │
+ │                     │  GET /analysis/     │                  │               │ ┌──────────────── REDUCE PHASE ──────────────────┐
+ │                     │  {id}/status        │                  │               │ │ Merge all claims                               │
+ │                     │────────────────────►│                  │               │ │ Text dedup → Embed → Cosine similarity         │
+ │                     │  {"analyzing",      │                  │               │ │ Candidate pairs ──────────────►│ Claude Haiku   │
+ │                     │   claims_count: 0}  │                  │               │ │ ◄── duplicate confirmations ──│ (classifier)   │
+ │                     │◄────────────────────│                  │               │ │ Build unique set                               │
+ │                     │                     │                  │               │ └────────────────────────────────────────────────┘
+ │                     │                     │                  │               │                 │                │                │
+ │                     │                     │                  │               │  RAG mapping     │                │                │
+ │                     │                     │                  │               │  validation      │                │                │
+ │                     │                     │                  │               │───────────────────────────────────────────────►│
+ │                     │                     │                  │               │                 │                │   Hybrid IFRS  │
+ │                     │                     │                  │               │                 │                │   search       │
  │                     │                     │                  │               │◄──────────────────────────────────────────────│
  │                     │                     │                  │               │                 │                │                │
  │                     │                     │                  │               │  Persist claims  │                │                │
  │                     │                     │                  │               │────────────────►│                │                │
+ │                     │                     │                  │               │                 │                │                │
+ │                     │                     │                  │               │  lrem from       │                │                │
+ │                     │                     │                  │  ◄────────────│  processing Q    │                │                │
  │                     │                     │                  │               │                 │                │                │
  │                     │                     │                  │               │  Set "completed" │                │                │
  │                     │                     │                  │               │────────────────►│                │                │
@@ -1149,16 +1235,21 @@ User                Frontend              Backend             Redis          Wor
 
 | Decision | Rationale |
 |---|---|
-| Full-document single-pass extraction over multi-chunk extraction | Gemini 3 Flash's 1M token context window (PRD Section 4.2) accommodates full 200-page reports. Single-pass avoids the complexity of chunk-boundary deduplication, cross-chunk context loss, and reassembly logic. Trade-off: higher per-request cost, but eliminated engineering complexity outweighs cost for hackathon scope. |
-| Gemini 3 Flash over Claude Sonnet 4.5 for claims extraction | PRD explicitly specifies Gemini 3 Flash for the Claims Agent. The 1M token context window is critical for full-document processing; Claude's 200K window would require multi-chunk extraction. Gemini is also more cost-effective for this high-volume task ($0.50/$3.00 vs $3/$15 per 1M tokens). |
+| Map-Reduce chunked extraction over full-document single-pass | LLMs exhibit a "lost in the middle" phenomenon: extraction quality degrades for content in the middle of long documents. Chunking into 10-page overlapping segments ensures each section receives focused attention, producing comprehensive page-by-page extraction. The Map-Reduce overhead (concurrent LLM calls + deduplication) is offset by dramatically improved recall across all pages. |
+| Claude 3.5 Sonnet over Gemini 3 Flash for claims extraction | While Gemini Flash offers a larger context window (1M tokens), Claude 3.5 Sonnet provides stronger instruction-following and more consistent structured output for claim extraction. The Map-Reduce architecture makes the context window size less relevant since each chunk is well within Claude's 200K limit. Claude also avoids Gemini Flash's aggressive safety classifiers, which occasionally block responses on legitimate sustainability content. |
+| Claude 3.5 Haiku for deduplication over Sonnet or embedding-only | Haiku is ~10x cheaper than Sonnet while providing sufficient reasoning for binary duplicate classification. Pure embedding similarity (without LLM confirmation) produces false positives on claims that are topically similar but semantically distinct. Haiku adds semantic judgment at minimal cost. |
+| LLM-assisted deduplication over pure text-based deduplication | Overlapping chunks produce near-duplicate claims with different wording. Text-based deduplication (exact match) misses these. Embedding similarity catches paraphrases but cannot distinguish genuinely different claims about related topics. The two-stage approach (embedding pre-filter → Haiku confirmation) combines the speed of embeddings with the accuracy of LLM reasoning. |
+| 10-page chunks with 2-page overlap | 10 pages provide enough context for the LLM to understand the document section while keeping token counts manageable (~5,000-8,000 tokens per chunk). 2-page overlap captures cross-boundary claims without excessive redundancy. For a 90-page report, this produces ~10 chunks with ~20% overlap, yielding ~10 concurrent LLM calls. |
+| Semaphore-limited concurrency (3) over sequential or unlimited | Sequential processing would take ~30s per chunk × 10 chunks = 5 minutes. Unlimited concurrency risks OpenRouter rate limits. A semaphore of 3 balances throughput (~3 rounds of parallel calls) against rate limit safety, completing a 90-page report in ~90 seconds. |
+| Assistant message prefilling over JSON schema enforcement | Claude Sonnet supports response prefilling, where the assistant message starts with `{ "claims": [` to force immediate JSON output. This is more reliable than schema enforcement for complex nested structures and eliminates preamble text that would require parsing. |
 | Two-phase IFRS mapping (LLM + RAG) over RAG-only or LLM-only | LLM-only mapping is fast but may hallucinate paragraph IDs. RAG-only mapping requires accurate queries per claim (expensive and slow at scale). The two-phase approach gets good initial mappings from the LLM (which has IFRS knowledge) and validates/corrects them with RAG retrieval, balancing speed and accuracy. |
 | Batched RAG queries over per-claim queries | 200 claims × 1 RAG query each = 200 embedding API calls + 200 database queries. Grouping claims by type and constructing representative queries reduces this to ~50-100 queries while maintaining mapping quality. |
-| Structured JSON output over free-text extraction | Structured output (JSON schema) from Gemini 3 Flash eliminates the need for regex-based or heuristic text parsing. The schema enforces required fields and valid types. If structured output fails, a fallback lenient parser handles degraded responses. |
-| Separate `sibyl:tasks:extract_claims` queue over reusing parse queue | Claims extraction is a distinct task type with different error handling and status semantics. Separate queues prevent confusion between parsing and analysis tasks and allow independent monitoring. |
+| Separate `sibyl:tasks:extract_claims` queue over reusing parse queue | Claims extraction is a distinct task type with different error handling and status semantics. Separate queues prevent confusion between parsing and analysis tasks and allow independent monitoring. The queue uses the same reliable `rpoplpush` delivery pattern as the parse queue (FRD 2). |
 | `source_context` for location anchoring over bounding box coordinates | The Claims Agent operates on markdown text, not PDF layout. Computing pixel-level bounding boxes requires PDF rendering (deferred to FRD 4). Providing textual context enables FRD 4 to text-match against the rendered PDF for precise highlight positioning. |
 | Status `"completed"` for claims-only completion | In FRD 3, the Claims Agent is the only pipeline step. Using `"completed"` keeps the status model simple. FRD 5 will extend the pipeline and may introduce intermediate statuses (`"claims_extracted"`, `"investigating"`, etc.) as the full pipeline is built. |
 | Auto-trigger as opt-in (`AUTO_START_ANALYSIS = False`) | Manual trigger is the default for development (allows testing upload and analysis separately). Auto-trigger is a demo convenience that can be enabled for the hackathon presentation to show a seamless upload-to-analysis flow. |
-| 3-second polling interval (vs. 2-second for upload) | Claims extraction takes 30-90 seconds (longer than upload processing). A slightly slower polling interval reduces server load during the longer operation while still providing responsive updates. |
+| 3-second polling interval (vs. 2-second for upload) | Claims extraction takes 60-120 seconds (longer than upload processing due to Map-Reduce overhead). A slightly slower polling interval reduces server load during the longer operation while still providing responsive updates. |
 | `ClaimCard` component with type-based left border | Provides instant visual categorization of claims. Color coding by type is consistent with the PRD's agent color identity system (PRD Section 7.1) and extends naturally to the full analysis view in FRD 4+. |
 | Claims ordered by page number, then priority | Page-ordered display creates a natural reading flow that mirrors the original document structure. Priority sub-ordering surfaces the most important claims first within each page region. |
-| Temperature 0.1 over 0.0 | A slight temperature prevents the model from being overly deterministic, which can lead to missed claims when the model "locks in" to a narrow extraction pattern. 0.1 provides consistency with a small degree of creative flexibility. |
+| Temperature 0.0 over 0.1 | Zero temperature ensures maximum determinism in extraction. Since each chunk is processed independently and results are merged, reproducibility of per-chunk extraction is more important than creative variety. |
+| Graceful chunk failure handling | `asyncio.gather` with `return_exceptions=True` captures per-chunk failures without aborting the entire extraction. If a single chunk fails (e.g., LLM timeout), claims from all other chunks are still collected and processed. This provides partial results rather than total failure. |

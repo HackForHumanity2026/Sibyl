@@ -15,7 +15,7 @@
 
 ## Summary
 
-FRD 2 delivers the user-facing entry point to Sibyl: a home page with a hero section and drag-and-drop PDF upload zone, backed by a FastAPI upload endpoint, PyMuPDF4LLM-based PDF parsing, Redis background task processing, and integration with the RAG pipeline (FRD 1) for content chunking and embedding. When a user drops a sustainability report PDF onto the upload zone, the system stores the original binary, enqueues a background task that parses the PDF into structured markdown (preserving tables, headings, and page numbers), stores the parsed content in the `reports` table, generates a content structure preview (sections, page count, detected tables), and chunks and embeds the content into pgvector via the RAG pipeline. The frontend displays real-time upload progress and parsing status via polling, and renders a content structure preview once parsing completes. The user can then initiate analysis from the preview (future FRDs).
+FRD 2 delivers the user-facing entry point to Sibyl: a home page with a hero section and drag-and-drop PDF upload zone, backed by a FastAPI upload endpoint, PyMuPDF4LLM-based PDF parsing, a reliable Redis background task queue with at-least-once delivery and crash recovery, and integration with the RAG pipeline (FRD 1) for content chunking and embedding. When a user drops a sustainability report PDF onto the upload zone, the system stores the original binary, enqueues a background task that parses the PDF into structured markdown (preserving tables, headings, and page numbers), stores the parsed content in the `reports` table, generates a content structure preview (sections, page count, detected tables), and chunks and embeds the content into pgvector via the RAG pipeline. The frontend displays real-time upload progress and parsing/embedding status via polling, and renders a content structure preview once processing completes. The user can then initiate analysis from the preview (future FRDs).
 
 ---
 
@@ -52,6 +52,8 @@ The following are assumed to be in place from FRD 0 and FRD 1:
 | Content structure | A JSON summary of the parsed document's organization: detected sections, page count, table count, and section hierarchy |
 | Upload zone | A drag-and-drop area on the home page where users drop PDF files to begin analysis |
 | Background task | A unit of work enqueued in Redis and processed asynchronously by the backend, decoupling the HTTP response from long-running parsing and embedding operations |
+| Reliable queue | A Redis queue pattern using `rpoplpush` to atomically move tasks to a processing queue during execution, providing at-least-once delivery guarantees with crash recovery |
+| Processing queue | A Redis list that holds tasks currently being processed; tasks are only removed on successful completion, enabling recovery of orphaned tasks after worker crashes |
 | Polling | A frontend pattern where the client periodically requests the current status of a long-running operation until it reaches a terminal state |
 
 ---
@@ -94,11 +96,11 @@ Feature: PDF Upload & Ingestion
     Then   it validates the file type (application/pdf) and size (≤ 50MB)
     And    it creates a Report record with status "uploaded"
     And    it stores the PDF binary in the Report record
-    And    it enqueues a background parsing task in Redis
+    And    it enqueues a background parsing task in the Redis reliable queue
     And    it returns the report ID and status to the frontend immediately
 
   Scenario: Background PDF parsing
-    Given  a parsing task is dequeued from Redis
+    Given  a parsing task is dequeued from the reliable Redis queue via rpoplpush
     When   the parser processes the PDF
     Then   it sets the report status to "parsing"
     And    it uses PyMuPDF4LLM to extract structured markdown
@@ -111,17 +113,27 @@ Feature: PDF Upload & Ingestion
   Scenario: Background RAG embedding
     Given  the PDF has been parsed successfully
     When   the parser completes markdown extraction
-    Then   it calls RAGService.ingest_report() with the parsed content
+    Then   it sets the report status to "embedding"
+    And    it calls RAGService.ingest_report() with the parsed content
     And    the RAG pipeline chunks the content using hierarchical chunking
     And    the chunks are embedded and stored in pgvector
     And    the report status is set to "parsed"
+    And    the task is removed from the processing queue
 
   Scenario: Frontend displays parsing progress
     Given  a PDF has been uploaded
     When   the frontend polls GET /api/v1/upload/{reportId}/status
     Then   it receives the current report status
-    And    the progress indicator updates to reflect: uploaded → parsing → parsed
+    And    the progress indicator updates to reflect: uploaded → parsing → embedding → parsed
     And    once status is "parsed", the content structure preview is displayed
+
+  Scenario: Recover from worker crash
+    Given  the task worker crashed while processing a report
+    When   the worker restarts
+    Then   it runs a recovery sweep on startup
+    And    it re-enqueues orphaned tasks from the processing queue
+    And    it re-enqueues reports stuck in intermediate database statuses
+    And    the reports are reprocessed from the beginning
 
   Scenario: Content structure preview
     Given  parsing is complete and status is "parsed"
@@ -288,6 +300,7 @@ The system shall:
 |---|---|---|
 | `uploaded` | Step 1 (Uploading) | File received, queued for parsing |
 | `parsing` | Step 2 (Parsing) | PDF extraction in progress |
+| `embedding` | Step 3 (Embedding) | Content chunking and vector embedding in progress |
 | `parsed` | All complete | Content extracted and embedded |
 | `error` | Failed step | Display error message |
 
@@ -530,15 +543,15 @@ PDF parsing and RAG embedding are performed in a background task to keep the upl
 
 ### 5.2 Task Queue Implementation
 
-The system shall implement a lightweight Redis-based task queue:
+The system shall implement a lightweight Redis-based task queue with at-least-once delivery guarantees:
 
 1. Use the `redis` Python package (already installed from FRD 0) for direct Redis operations.
-2. Define a task queue key: `sibyl:tasks:parse_pdf`.
-3. On upload, push the `report_id` to the queue using `LPUSH`.
-4. A background worker (running as an `asyncio.Task` started during FastAPI's lifespan) polls the queue using `BRPOP` with a timeout.
-5. When a task is dequeued, the worker processes it by calling the parsing pipeline.
+2. Define a main queue key: `sibyl:tasks:parse_pdf` and a corresponding processing queue: `sibyl:tasks:parse_pdf:processing`.
+3. On upload, push the `report_id` to the main queue using `LPUSH`.
+4. A background worker (running as an `asyncio.Task` started during FastAPI's lifespan) dequeues tasks using `rpoplpush`, which atomically moves the task from the main queue to the processing queue. This ensures the task remains recoverable if the worker crashes mid-processing.
+5. When a task is successfully processed, the worker removes it from the processing queue using `lrem`. If the worker crashes before completion, the task remains in the processing queue and is recovered on the next worker startup (see Section 5.6).
 
-**Design rationale:** A full-featured task queue library (Celery, ARQ, Dramatiq) adds unnecessary complexity for MVP. The system processes one report at a time, and a simple Redis list with `BRPOP` provides reliable FIFO processing with blocking dequeue. This can be replaced with a proper task queue in production.
+**Design rationale:** A full-featured task queue library (Celery, ARQ, Dramatiq) adds unnecessary complexity for MVP. The system processes one report at a time, and Redis lists with `rpoplpush` provide reliable at-least-once delivery with crash recovery. The simple `BRPOP` pattern risks task loss if the worker dies after consuming a task but before processing it; `rpoplpush` with a processing queue eliminates this risk.
 
 ### 5.3 Worker Implementation
 
@@ -550,14 +563,30 @@ class TaskWorker:
         ...
 
     async def start(self):
-        """Start the background worker loop. Called during FastAPI lifespan."""
+        """Start the background worker loop. Called during FastAPI lifespan.
+        Runs orphan recovery sweep on startup, then enters dequeue loop."""
 
     async def stop(self):
         """Gracefully stop the worker. Called during FastAPI shutdown."""
 
+    async def _dequeue_task(self) -> tuple[str, str] | None:
+        """Atomically dequeue a task using rpoplpush.
+        Returns (queue_name, report_id) or None if no tasks available."""
+
     async def process_parse_task(self, report_id: str):
         """Parse a PDF and embed its content."""
+
+    async def recover_orphaned_tasks(self):
+        """On startup, recover tasks stuck in processing queues or
+        database records in intermediate states."""
 ```
+
+The worker's main loop:
+1. On startup, calls `recover_orphaned_tasks()` to re-enqueue any orphaned work.
+2. Enters an infinite loop calling `_dequeue_task()`, which checks each main queue using `rpoplpush`.
+3. If no task is available, sleeps for 1 second before retrying.
+4. On successful task completion, calls `lrem` to remove the task from the processing queue.
+5. On task failure, the task remains in the processing queue for recovery on the next startup.
 
 ### 5.4 Parsing Pipeline
 
@@ -570,9 +599,11 @@ When the worker dequeues a task, it executes the following pipeline:
    - `parsed_content` = the full markdown text
    - `page_count` = total pages
    - `content_structure` = the `ContentStructure` as a JSON dict
-5. **Embed the content:** Call `RAGService.ingest_report(report_id, markdown, page_metadata)`.
-6. **Update status:** Set `status = "parsed"`.
-7. **Error handling:** If any step fails, set `status = "error"` and store the error message in `error_message`.
+5. **Update status:** Set `status = "embedding"`.
+6. **Embed the content:** Call `RAGService.ingest_report(report_id, markdown, page_metadata)`.
+7. **Update status:** Set `status = "parsed"`.
+8. **Remove from processing queue:** Call `lrem` to remove the report_id from the processing queue, confirming successful completion.
+9. **Error handling:** If any step fails, set `status = "error"` and store the error message in `error_message`. The task remains in the processing queue for recovery on next startup.
 
 ### 5.5 Lifespan Integration
 
@@ -591,9 +622,22 @@ async def lifespan(app: FastAPI):
     await worker.stop()
 ```
 
-### 5.6 Concurrency
+### 5.6 Orphan Recovery
 
-For MVP, the worker processes one task at a time (sequential processing). This is sufficient for hackathon scope where reports are uploaded one at a time. The `BRPOP` call blocks until a task is available, consuming no CPU while idle.
+On startup, the worker runs a recovery sweep to re-enqueue tasks that were lost due to a previous crash:
+
+1. **Processing queue recovery:** Check each processing queue (`sibyl:tasks:parse_pdf:processing`, `sibyl:tasks:extract_claims:processing`). For each task found, move it back to the corresponding main queue using `rpoplpush`. This handles cases where the worker crashed after dequeuing a task but before completing it.
+
+2. **Database state recovery:** Query the database for reports stuck in intermediate statuses:
+   - Reports with `status = "parsing"` or `status = "embedding"`: re-enqueue for PDF parsing (the worker will re-parse from the stored PDF binary).
+   - Reports with `status = "analyzing"`: re-enqueue for claims extraction.
+   This handles cases where the worker crashed after updating the database status but before completing the full pipeline.
+
+3. **Logging:** All recovery actions are logged at `WARNING` level to ensure visibility in Docker logs for operational monitoring.
+
+### 5.7 Concurrency
+
+For MVP, the worker processes one task at a time (sequential processing). This is sufficient for hackathon scope where reports are uploaded one at a time. The worker polls queues with `rpoplpush` and sleeps for 1 second between poll cycles when no tasks are available.
 
 ---
 
@@ -615,7 +659,7 @@ The system shall pass the following to `RAGService.ingest_report()`:
 
 ### 6.3 Embedding Progress
 
-The RAG pipeline's embedding step may take 10-30 seconds for a 200-page report (depending on chunk count and OpenRouter API latency). The report status remains `"parsing"` during this step. It transitions to `"parsed"` only after embedding is complete. This simplifies the status model at the cost of a less granular progress display -- the user sees "Parsing..." during both extraction and embedding. This is acceptable for MVP.
+The RAG pipeline's embedding step may take 10-30 seconds for a 200-page report (depending on chunk count and OpenRouter API latency). The report status transitions to `"embedding"` before this step begins, providing the user with granular progress visibility. It transitions to `"parsed"` only after embedding is complete.
 
 ---
 
@@ -698,15 +742,16 @@ Response 404:
 The report status follows a linear progression with an error branch:
 
 ```
-uploaded ──► parsing ──► parsed
-                │
-                └──► error
+uploaded ──► parsing ──► embedding ──► parsed
+                │            │
+                └──► error ◄─┘
 ```
 
 | Status | Meaning | Frontend Behavior |
 |---|---|---|
 | `uploaded` | File stored, queued for parsing | Show "Processing..." with step 1 active |
-| `parsing` | PyMuPDF4LLM extraction and RAG embedding in progress | Show "Parsing..." with step 2 active |
+| `parsing` | PyMuPDF4LLM extraction in progress | Show "Parsing..." with step 2 active |
+| `embedding` | Content chunking and vector embedding in progress | Show "Embedding..." with step 3 active |
 | `parsed` | Content extracted, chunked, and embedded | Show content preview; stop polling |
 | `error` | Processing failed | Show error message with retry button; stop polling |
 
@@ -1176,14 +1221,15 @@ User                 Frontend              Backend             Redis          Wo
  │                      │                     │  Create Report   │               │                 │                │
  │                      │                     │─────────────────────────────────────────────────►│                │
  │                      │                     │                  │               │                 │                │
- │                      │                     │  Enqueue task    │               │                 │                │
+ │                      │                     │  LPUSH task      │               │                 │                │
  │                      │                     │─────────────────►│               │                 │                │
  │                      │                     │                  │               │                 │                │
  │                      │  201 {report_id}    │                  │               │                 │                │
  │                      │◄────────────────────│                  │               │                 │                │
  │                      │                     │                  │               │                 │                │
- │  Show progress       │                     │                  │  BRPOP        │                 │                │
- │◄─────────────────────│                     │                  │──────────────►│                 │                │
+ │  Show progress       │                     │                  │  rpoplpush    │                 │                │
+ │◄─────────────────────│                     │                  │─────────────►│                 │                │
+ │                      │                     │                  │ (main→proc Q) │                 │                │
  │                      │                     │                  │               │                 │                │
  │                      │                     │                  │               │  Set "parsing"   │                │
  │                      │                     │                  │               │────────────────►│                │
@@ -1195,6 +1241,9 @@ User                 Frontend              Backend             Redis          Wo
  │                      │                     │                  │               │  Store content   │                │
  │  Update progress     │                     │                  │               │────────────────►│                │
  │◄─────────────────────│                     │                  │               │                 │                │
+ │                      │                     │                  │               │  Set "embedding" │                │
+ │                      │                     │                  │               │────────────────►│                │
+ │                      │                     │                  │               │                 │                │
  │                      │                     │                  │               │  ingest_report() │                │
  │                      │                     │                  │               │───────────────────────────────►│
  │                      │                     │                  │               │                 │   Chunk +      │
@@ -1202,6 +1251,10 @@ User                 Frontend              Backend             Redis          Wo
  │                      │                     │                  │               │                 │◄───────────────│
  │                      │                     │                  │               │  Set "parsed"    │                │
  │                      │                     │                  │               │────────────────►│                │
+ │                      │                     │                  │               │                 │                │
+ │                      │                     │                  │  lrem from    │                 │                │
+ │                      │                     │                  │◄──────────────│                 │                │
+ │                      │                     │                  │  processing Q │                 │                │
  │                      │                     │                  │               │                 │                │
  │                      │  GET /status        │                  │               │                 │                │
  │                      │────────────────────►│                  │               │                 │                │
@@ -1218,14 +1271,16 @@ User                 Frontend              Backend             Redis          Wo
 
 | Decision | Rationale |
 |---|---|
-| Simple Redis `LPUSH`/`BRPOP` over Celery/ARQ | A full task queue framework adds configuration complexity (broker, backend, serializer) for a single task type. `BRPOP` provides reliable, blocking, FIFO processing with zero extra dependencies. Sufficient for MVP where reports are processed sequentially. |
+| Redis `LPUSH`/`rpoplpush` reliable queue over Celery/ARQ | A full task queue framework adds configuration complexity (broker, backend, serializer) for a single task type. Redis lists with `rpoplpush` provide reliable at-least-once delivery with crash recovery and zero extra dependencies. Sufficient for MVP where reports are processed sequentially. |
+| `rpoplpush` with processing queue over simple `BRPOP` | `BRPOP` atomically consumes the task from the queue. If the worker crashes after consumption but before processing, the task is lost permanently. `rpoplpush` atomically moves the task to a processing queue instead, and a startup recovery sweep re-enqueues any orphaned tasks. This provides at-least-once delivery semantics. |
+| Startup recovery sweep over periodic heartbeat | A heartbeat-based recovery system (monitoring worker liveness) adds complexity and timing sensitivity. A simpler approach runs recovery once on startup: it checks processing queues for orphaned tasks and queries the database for reports stuck in intermediate statuses. Since Docker restarts the worker on crash, startup recovery is triggered automatically. |
 | Frontend polling over WebSocket/SSE for upload status | Upload status checking is simple request-response (one status field changes). SSE would require a dedicated connection and event source management for a flow that lasts 10-60 seconds. Polling every 2 seconds is simpler, sufficient, and disposable. SSE is reserved for the detective dashboard (FRD 5) where real-time streaming is genuinely needed. |
 | `page_chunks=True` in PyMuPDF4LLM | Returns per-page output, enabling precise page boundary tracking. This is critical for mapping chunks to page numbers and for the PDF viewer highlighting in FRD 4. Without this, page attribution would require heuristic estimation. |
 | `write_images=False` in PyMuPDF4LLM | Image extraction adds storage complexity (where to store images, how to reference them from markdown). Charts are preserved as text descriptions by PyMuPDF4LLM. Full image extraction is deferred to post-MVP. |
 | Store PDF binary in PostgreSQL `BYTEA` over filesystem/S3 | For hackathon scope (50MB max, single-digit reports), database storage is simplest. Avoids filesystem path management, volume mounts, or S3 configuration. The `pdf_binary` column was defined in FRD 0's Report model. |
 | File read fully into memory over streaming | 50MB max file size means full memory read is feasible. Streaming adds complexity (chunked upload handling, temp file management) with no benefit at this scale. |
 | Content structure as JSONB over normalized tables | The section tree is read-only metadata used for preview display. Normalizing sections into a separate table would require recursive queries for tree rendering. JSONB stores and retrieves the full tree in one operation. |
-| Embedding during parsing step (not a separate status) | Adding an `"embedding"` status between `"parsing"` and `"parsed"` complicates the state machine for minimal user benefit. Users don't need to know the internal difference between text extraction and vector embedding. |
+| Separate `"embedding"` status between `"parsing"` and `"parsed"` | The embedding step (RAG chunking and vector embedding) can take 10-30 seconds for large documents. A separate `"embedding"` status provides the user with granular progress visibility, distinguishing between "extracting text from PDF" and "processing content for search." This also aids in crash recovery: reports stuck in `"embedding"` are re-enqueued for parsing (since embeddings may be incomplete). |
 | 2-second polling interval | Balances responsiveness (user sees updates within 2 seconds) against server load (0.5 req/sec per active upload). Parsing takes 10-60 seconds, so the user will see a few polling cycles before completion. |
 | Max poll count of 150 (5 minutes) | A 200-page PDF should parse and embed in under 2 minutes. 5 minutes provides generous headroom for slow OpenRouter API responses while preventing infinite polling from zombie uploads. |
 | Retry by re-enqueueing over re-uploading | The PDF binary is already stored in the database. Re-uploading wastes bandwidth and time. Retrying simply resets the status and re-enqueues the existing data for reprocessing. |
