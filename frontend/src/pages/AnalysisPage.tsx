@@ -1,18 +1,21 @@
 /**
- * AnalysisPage - Main page for viewing claims extraction results.
- * Implements FRD 3 Section 7.2.
+ * AnalysisPage - Main page for viewing claims extraction results with PDF viewer.
+ * Implements FRD 3 Section 7.2, enhanced in FRD 4 with three-panel layout.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAnalysis } from "@/hooks";
-import { getReportStatus } from "@/services/api";
+import { getReportStatus, getPDFUrl } from "@/services/api";
 import {
-  ClaimCard,
-  ClaimsFilter,
   AnalysisProgress,
+  AnalysisLayout,
+  ClaimsPanel,
+  DashboardPlaceholder,
 } from "@/components/Analysis";
+import { PDFViewer } from "@/components/PDFViewer";
 import type { ReportStatusResponse } from "@/types/report";
+import type { Claim } from "@/types/claim";
 
 export function AnalysisPage() {
   const { reportId } = useParams<{ reportId?: string }>();
@@ -38,6 +41,10 @@ export function AnalysisPage() {
   );
   const [initialLoading, setInitialLoading] = useState(true);
   const initializedRef = useRef(false);
+
+  // Cross-panel state
+  const [activeClaim, setActiveClaim] = useState<Claim | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch report info and start analysis on mount — runs once per reportId
   useEffect(() => {
@@ -69,11 +76,29 @@ export function AnalysisPage() {
     // startAnalysis has a stable identity so this only fires on reportId change
   }, [reportId, navigate, startAnalysis]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     if (reportId) {
       retry(reportId);
     }
-  };
+  }, [reportId, retry]);
+
+  // Handle claim click from PDF highlight or claims list
+  const handleClaimClick = useCallback((claim: Claim) => {
+    setActiveClaim(claim);
+  }, []);
+
+  // Handle page navigation from claims list
+  const handleGoToPage = useCallback((claim: Claim) => {
+    if (claim.source_page) {
+      setCurrentPage(claim.source_page);
+    }
+    setActiveClaim(claim);
+  }, []);
+
+  // Handle page change from PDF viewer
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
   if (!reportId) {
     return null;
@@ -111,8 +136,16 @@ export function AnalysisPage() {
     );
   }
 
+  const pdfUrl = getPDFUrl(reportId);
+
+  // Show progress indicator while analyzing
+  const isAnalyzing =
+    analysisState === "starting" ||
+    analysisState === "analyzing" ||
+    analysisState === "error";
+
   return (
-    <div className="analysis-page">
+    <div className="analysis-page analysis-page--three-panel">
       {/* Header */}
       <header className="analysis-page__header">
         <div className="analysis-page__header-content">
@@ -148,69 +181,44 @@ export function AnalysisPage() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="analysis-page__main">
-        {/* Show progress indicator while analyzing */}
-        {(analysisState === "starting" ||
-          analysisState === "analyzing" ||
-          analysisState === "error") && (
+      {/* Main content - Three Panel Layout */}
+      <main className="analysis-page__main analysis-page__main--layout">
+        {isAnalyzing ? (
           <AnalysisProgress
             state={analysisState}
             claimsCount={claimsCount}
             error={error}
             onRetry={handleRetry}
           />
-        )}
-
-        {/* Show claims when complete */}
-        {analysisState === "complete" && (
-          <div className="analysis-page__claims-section">
-            {/* Filters */}
-            <ClaimsFilter
-              typeFilter={typeFilter}
-              priorityFilter={priorityFilter}
-              onTypeChange={setTypeFilter}
-              onPriorityChange={setPriorityFilter}
-              claimsByType={claimsByType}
-              claimsByPriority={claimsByPriority}
-            />
-
-            {/* Claims count */}
-            <div className="analysis-page__claims-count">
-              Showing {filteredClaims.length} of {claims.length} claims
-            </div>
-
-            {/* Claims list */}
-            <div className="analysis-page__claims-list">
-              {filteredClaims.length > 0 ? (
-                filteredClaims.map((claim) => (
-                  <ClaimCard key={claim.id} claim={claim} />
-                ))
-              ) : (
-                <div className="analysis-page__no-claims">
-                  <p>No claims match the current filters.</p>
-                  <button
-                    onClick={() => {
-                      setTypeFilter(null);
-                      setPriorityFilter(null);
-                    }}
-                  >
-                    Clear Filters
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Idle state (shouldn't normally show) */}
-        {analysisState === "idle" && (
-          <div className="analysis-page__idle">
-            <p>Ready to analyze</p>
-            <button onClick={() => startAnalysis(reportId)}>
-              Start Analysis
-            </button>
-          </div>
+        ) : (
+          <AnalysisLayout
+            leftPanel={
+              <PDFViewer
+                pdfUrl={pdfUrl}
+                claims={claims}
+                activeClaim={activeClaim}
+                onClaimClick={handleClaimClick}
+                onPageChange={handlePageChange}
+                currentPage={currentPage}
+              />
+            }
+            centerPanel={<DashboardPlaceholder />}
+            rightPanel={
+              <ClaimsPanel
+                claims={filteredClaims}
+                activeClaim={activeClaim}
+                onClaimClick={handleClaimClick}
+                onGoToPage={handleGoToPage}
+                typeFilter={typeFilter}
+                priorityFilter={priorityFilter}
+                onTypeFilterChange={setTypeFilter}
+                onPriorityFilterChange={setPriorityFilter}
+                claimsByType={claimsByType}
+                claimsByPriority={claimsByPriority}
+                isLoading={analysisState !== "complete"}
+              />
+            }
+          />
         )}
       </main>
     </div>

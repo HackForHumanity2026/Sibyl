@@ -89,6 +89,18 @@ export async function retryReport(reportId: string): Promise<{ report_id: string
 }
 
 // ============================================================================
+// Reports API (FRD 4)
+// ============================================================================
+
+/**
+ * Get the URL for fetching a report's PDF binary.
+ * Used by the PDF viewer component.
+ */
+export function getPDFUrl(reportId: string): string {
+  return `${API_BASE}/reports/${reportId}/pdf`;
+}
+
+// ============================================================================
 // Analysis API (FRD 3)
 // ============================================================================
 

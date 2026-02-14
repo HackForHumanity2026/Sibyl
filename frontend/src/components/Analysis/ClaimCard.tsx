@@ -1,14 +1,18 @@
 /**
  * ClaimCard - Displays a single claim with type-colored border and collapsible reasoning.
- * Implements FRD 3 Section 7.3.
+ * Implements FRD 3 Section 7.3, enhanced in FRD 4 for cross-panel interactions.
  */
 
-import { useState } from "react";
+import { useState, forwardRef, useCallback } from "react";
 import type { Claim, ClaimType, ClaimPriority } from "@/types/claim";
 
 interface ClaimCardProps {
   claim: Claim;
   onClick?: () => void;
+  /** Callback when page link is clicked (navigates to claim in PDF) */
+  onGoToPage?: (claim: Claim) => void;
+  /** Whether this claim is currently active/selected */
+  isActive?: boolean;
 }
 
 const CLAIM_TYPE_LABELS: Record<ClaimType, string> = {
@@ -25,17 +29,37 @@ const PRIORITY_LABELS: Record<ClaimPriority, string> = {
   low: "Low",
 };
 
-export function ClaimCard({ claim, onClick }: ClaimCardProps) {
+export const ClaimCard = forwardRef<HTMLDivElement, ClaimCardProps>(
+  function ClaimCard({ claim, onClick, onGoToPage, isActive = false }, ref) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const toggleExpanded = (e: React.MouseEvent) => {
+  const toggleExpanded = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsExpanded(!isExpanded);
-  };
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  const handlePageClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (onGoToPage) {
+        onGoToPage(claim);
+      }
+    },
+    [onGoToPage, claim]
+  );
+
+  const cardClasses = [
+    "claim-card",
+    `claim-card--${claim.claim_type}`,
+    isActive ? "claim-card--active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
-      className={`claim-card claim-card--${claim.claim_type}`}
+      ref={ref}
+      className={cardClasses}
       onClick={onClick}
     >
       <div className="claim-card__header">
@@ -45,7 +69,17 @@ export function ClaimCard({ claim, onClick }: ClaimCardProps) {
         <span className={`claim-card__priority-badge claim-card__priority-badge--${claim.priority}`}>
           {PRIORITY_LABELS[claim.priority]}
         </span>
-        <span className="claim-card__page">Page {claim.source_page}</span>
+        {onGoToPage ? (
+          <button
+            className="claim-card__page claim-card__page--link"
+            onClick={handlePageClick}
+            title="Go to page in PDF viewer"
+          >
+            Page {claim.source_page} →
+          </button>
+        ) : (
+          <span className="claim-card__page">Page {claim.source_page}</span>
+        )}
       </div>
 
       <div className="claim-card__content">
@@ -83,4 +117,4 @@ export function ClaimCard({ claim, onClick }: ClaimCardProps) {
       )}
     </div>
   );
-}
+});

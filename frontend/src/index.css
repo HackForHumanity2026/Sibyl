@@ -631,3 +631,725 @@
   line-height: 1.5;
   color: var(--muted-foreground);
 }
+
+/* Claim Card Active/Flash States (FRD 4) */
+.claim-card--active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary), 0 4px 12px hsl(0 0% 0% / 0.15);
+}
+
+.claim-card--flash {
+  animation: claim-card-flash 0.6s ease-out;
+}
+
+@keyframes claim-card-flash {
+  0%, 100% {
+    background: var(--card);
+  }
+  50% {
+    background: hsl(217 33% 55% / 0.15);
+  }
+}
+
+.claim-card__page--link {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+}
+
+.claim-card__page--link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   Three-Panel Analysis Layout (FRD 4)
+   ============================================================================ */
+
+.analysis-page--three-panel {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.analysis-page--three-panel .analysis-page__main--layout {
+  flex: 1;
+  padding: 0;
+  max-width: none;
+  overflow: hidden;
+}
+
+.analysis-layout {
+  display: flex;
+  height: 100%;
+  background: var(--background);
+}
+
+.analysis-layout__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 250px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+
+.analysis-layout__panel:last-child {
+  border-right: none;
+}
+
+.analysis-layout__panel-header {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.analysis-layout__panel-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+}
+
+.analysis-layout__panel-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.analysis-layout__resize-handle {
+  flex-shrink: 0;
+  width: 6px;
+  background: var(--border);
+  cursor: col-resize;
+  transition: background 0.15s;
+}
+
+.analysis-layout__resize-handle:hover {
+  background: var(--primary);
+}
+
+/* Responsive behavior */
+@media (max-width: 1279px) {
+  .analysis-layout__panel--center {
+    display: none;
+  }
+
+  .analysis-layout__panel--left,
+  .analysis-layout__panel--right {
+    width: 50% !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .analysis-layout {
+    flex-direction: column;
+  }
+
+  .analysis-layout__panel {
+    width: 100% !important;
+    min-height: 300px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analysis-layout__resize-handle {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   PDF Viewer Styles (FRD 4) — react-pdf based
+   ============================================================================ */
+
+.pdf-viewer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--muted);
+}
+
+.pdf-viewer__scroll-container {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.pdf-viewer__page-wrapper {
+  position: relative;
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.15);
+  background: white;
+  line-height: 0; /* prevent inline spacing beneath canvas */
+}
+
+.pdf-viewer__page-highlights {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.pdf-viewer__page-highlights > * {
+  pointer-events: auto;
+}
+
+.pdf-viewer--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--card);
+}
+
+.pdf-viewer__error-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.pdf-viewer__error-icon {
+  color: var(--destructive);
+  margin-bottom: 1rem;
+}
+
+.pdf-viewer__error-message {
+  color: var(--muted-foreground);
+  margin: 0 0 1rem;
+}
+
+.pdf-viewer__retry-button {
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.pdf-viewer__retry-button:hover {
+  opacity: 0.9;
+}
+
+.pdf-viewer__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  gap: 1rem;
+  z-index: 20;
+}
+
+.pdf-viewer__loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================================
+   PDF Toolbar Styles
+   ============================================================================ */
+
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pdf-toolbar__nav,
+.pdf-toolbar__zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pdf-toolbar__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--foreground);
+  transition: background 0.15s, color 0.15s;
+}
+
+.pdf-toolbar__button:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.pdf-toolbar__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pdf-toolbar__page-info {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.pdf-toolbar__page-input {
+  width: 40px;
+  padding: 0.25rem 0.5rem;
+  text-align: center;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+.pdf-toolbar__page-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.pdf-toolbar__page-total {
+  color: var(--muted-foreground);
+}
+
+.pdf-toolbar__zoom-level {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.pdf-toolbar__separator {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 0.25rem;
+}
+
+/* ============================================================================
+   Claim Highlight Styles (FRD 4)
+   ============================================================================ */
+
+.claim-highlight {
+  background: hsl(217 33% 55% / 0.25);
+  border-left: 3px solid var(--primary);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.claim-highlight:hover {
+  background: hsl(217 33% 55% / 0.4);
+}
+
+.claim-highlight--active {
+  background: hsl(217 33% 55% / 0.4);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.claim-highlight--pulse {
+  animation: highlight-pulse 0.6s ease-out;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.7;
+  }
+}
+
+.claim-highlight--unmatched {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+/* Claim type colors */
+.claim-highlight--geographic {
+  background: hsl(142 40% 35% / 0.25);
+  border-left-color: var(--claim-geographic);
+}
+
+.claim-highlight--geographic:hover,
+.claim-highlight--geographic.claim-highlight--active {
+  background: hsl(142 40% 35% / 0.4);
+}
+
+.claim-highlight--quantitative {
+  background: hsl(16 85% 60% / 0.25);
+  border-left-color: var(--claim-quantitative);
+}
+
+.claim-highlight--quantitative:hover,
+.claim-highlight--quantitative.claim-highlight--active {
+  background: hsl(16 85% 60% / 0.4);
+}
+
+.claim-highlight--legal {
+  background: hsl(270 50% 40% / 0.25);
+  border-left-color: var(--claim-legal);
+}
+
+.claim-highlight--legal:hover,
+.claim-highlight--legal.claim-highlight--active {
+  background: hsl(270 50% 40% / 0.4);
+}
+
+.claim-highlight--strategic {
+  background: hsl(45 90% 50% / 0.25);
+  border-left-color: var(--claim-strategic);
+}
+
+.claim-highlight--strategic:hover,
+.claim-highlight--strategic.claim-highlight--active {
+  background: hsl(45 90% 50% / 0.4);
+}
+
+.claim-highlight--environmental {
+  background: hsl(175 50% 40% / 0.25);
+  border-left-color: var(--claim-environmental);
+}
+
+.claim-highlight--environmental:hover,
+.claim-highlight--environmental.claim-highlight--active {
+  background: hsl(175 50% 40% / 0.4);
+}
+
+/* ============================================================================
+   Highlight Tooltip Styles (FRD 4)
+   ============================================================================ */
+
+.highlight-tooltip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.2);
+  overflow: hidden;
+  z-index: 100;
+}
+
+.highlight-tooltip__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.highlight-tooltip__badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.highlight-tooltip__type-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.675rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: white;
+  background: var(--primary);
+}
+
+.highlight-tooltip__type-badge--geographic {
+  background: var(--claim-geographic);
+}
+
+.highlight-tooltip__type-badge--quantitative {
+  background: var(--claim-quantitative);
+}
+
+.highlight-tooltip__type-badge--legal_governance {
+  background: var(--claim-legal);
+}
+
+.highlight-tooltip__type-badge--strategic {
+  background: var(--claim-strategic);
+  color: hsl(0 0% 15%);
+}
+
+.highlight-tooltip__type-badge--environmental {
+  background: var(--claim-environmental);
+}
+
+.highlight-tooltip__priority-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.675rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.highlight-tooltip__priority-badge--high {
+  background: hsl(0 72% 51% / 0.15);
+  color: hsl(0 72% 60%);
+}
+
+.highlight-tooltip__priority-badge--medium {
+  background: hsl(45 90% 50% / 0.15);
+  color: hsl(45 90% 40%);
+}
+
+.highlight-tooltip__priority-badge--low {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.highlight-tooltip__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.highlight-tooltip__close:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.highlight-tooltip__content {
+  padding: 0.75rem 1rem;
+}
+
+.highlight-tooltip__text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.highlight-tooltip__show-more {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.highlight-tooltip__show-more:hover {
+  text-decoration: underline;
+}
+
+.highlight-tooltip__ifrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.highlight-tooltip__ifrs-tag {
+  padding: 0.125rem 0.375rem;
+  background: var(--muted);
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-family: monospace;
+  color: var(--muted-foreground);
+}
+
+.highlight-tooltip__reasoning-section {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+}
+
+.highlight-tooltip__reasoning-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.highlight-tooltip__reasoning-toggle:hover {
+  color: var(--foreground);
+}
+
+.highlight-tooltip__arrow {
+  font-size: 0.625rem;
+  transition: transform 0.15s;
+}
+
+.highlight-tooltip__arrow--up {
+  transform: rotate(180deg);
+}
+
+.highlight-tooltip__reasoning {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--muted);
+  border-radius: var(--radius-sm);
+}
+
+.highlight-tooltip__reasoning p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.highlight-tooltip__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.highlight-tooltip__page {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.highlight-tooltip__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.75rem;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.highlight-tooltip__link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   Claims Panel Styles (FRD 4)
+   ============================================================================ */
+
+.claims-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.claims-panel--loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.claims-panel__loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.claims-panel__count {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.claims-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.claims-panel__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--muted-foreground);
+}
+
+/* ============================================================================
+   Dashboard Placeholder Styles (FRD 4)
+   ============================================================================ */
+
+.dashboard-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--card);
+}
+
+.dashboard-placeholder__content {
+  text-align: center;
+  padding: 2rem;
+  max-width: 320px;
+}
+
+.dashboard-placeholder__icon {
+  color: var(--muted-foreground);
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.dashboard-placeholder__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.dashboard-placeholder__description {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+
+.dashboard-placeholder__coming-soon {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  background: var(--muted);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
