@@ -1,0 +1,132 @@
+/**
+ * ReasoningMessage styles
+ * Implements FRD 5 Section 11.5
+ */
+
+.reasoning-message {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-surface, #1a1a2e);
+  border-left: 3px solid transparent;
+  transition: background-color 0.2s ease;
+}
+
+.reasoning-message:hover {
+  background-color: var(--color-surface-hover, #1e1e3a);
+}
+
+/* Event type modifiers */
+.reasoning-message--started {
+  border-left-color: var(--color-blue, #3b82f6);
+}
+
+.reasoning-message--thinking {
+  border-left-color: var(--color-slate, #64748b);
+}
+
+.reasoning-message--completed {
+  border-left-color: var(--color-green, #22c55e);
+}
+
+.reasoning-message--routed {
+  border-left-color: var(--color-purple, #7c3aed);
+}
+
+.reasoning-message--evidence {
+  border-left-color: var(--color-teal, #14b8a6);
+}
+
+.reasoning-message--verdict {
+  border-left-color: var(--color-amber, #f59e0b);
+}
+
+.reasoning-message--reinvestigation {
+  border-left-color: var(--color-orange, #f97316);
+}
+
+.reasoning-message--complete {
+  border-left-color: var(--color-green, #22c55e);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.reasoning-message--error {
+  border-left-color: var(--color-red, #dc2626);
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+/* Header */
+.reasoning-message__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.reasoning-message__agent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.reasoning-message__agent--system {
+  color: var(--color-green, #22c55e);
+}
+
+.reasoning-message__agent-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.reasoning-message__time {
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+/* Content */
+.reasoning-message__content {
+  font-size: 0.875rem;
+  color: var(--color-text, #e2e8f0);
+  line-height: 1.5;
+}
+
+.reasoning-message__content--error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--color-red, #dc2626);
+}
+
+.reasoning-message__text {
+  word-break: break-word;
+}
+
+/* Verdict badge */
+.reasoning-message__verdict-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+}
+
+/* Icons */
+.reasoning-message__error-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.reasoning-message__complete-icon {
+  width: 1rem;
+  height: 1rem;
+}

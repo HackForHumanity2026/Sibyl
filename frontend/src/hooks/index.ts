@@ -14,6 +14,8 @@ export type { UsePDFViewerState, UsePDFViewerReturn } from "./usePDFViewer";
 export { useClaimHighlights } from "./useClaimHighlights";
 export type { UseClaimHighlightsReturn } from "./useClaimHighlights";
 
+export { useSSE } from "./useSSE";
+export type { UseSSEReturn } from "./useSSE";
+
 // TODO: Implement hooks in subsequent FRDs:
-// - useSSE (FRD 5) - SSE connection for agent streaming
 // - useChat (FRD 14) - Chatbot conversation state

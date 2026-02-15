@@ -1353,3 +1353,67 @@
   font-weight: 500;
   color: var(--muted-foreground);
 }
+
+/* ============================================================================
+   Right Panel Tabs (FRD 5)
+   ============================================================================ */
+
+.analysis-page__right-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.analysis-page__tab-bar {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-page__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.analysis-page__tab:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.analysis-page__tab--active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.analysis-page__tab--active:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.analysis-page__tab-indicator {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.analysis-page__tab-content {
+  flex: 1;
+  overflow: hidden;
+}

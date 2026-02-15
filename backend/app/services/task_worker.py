@@ -1,9 +1,9 @@
-"""Background task worker for PDF parsing and claims extraction.
+"""Background task worker for PDF parsing, claims extraction, and pipeline execution.
 
-Implements FRD 2 (PDF Upload & Ingestion) Section 5 and FRD 3 (Claims Agent) Section 6.
+Implements FRD 2 (PDF Upload & Ingestion), FRD 3 (Claims Agent), and FRD 5 (Pipeline).
 
-A lightweight Redis-based task queue that processes PDF parsing
-and claims extraction jobs asynchronously.
+A lightweight Redis-based task queue that processes PDF parsing,
+claims extraction, and full pipeline jobs asynchronously.
 
 Uses rpoplpush for at-least-once delivery: tasks are atomically moved from
 the main queue to a processing queue, then removed only after successful
@@ -31,17 +31,19 @@ logger = logging.getLogger(__name__)
 # Redis queue keys (main task queues)
 PARSE_PDF_QUEUE = "sibyl:tasks:parse_pdf"
 EXTRACT_CLAIMS_QUEUE = "sibyl:tasks:extract_claims"
+RUN_PIPELINE_QUEUE = "sibyl:tasks:run_pipeline"  # FRD 5: Full pipeline
 
 # Redis processing queues (tasks currently being worked on)
 PARSE_PDF_PROCESSING = "sibyl:processing:parse_pdf"
 EXTRACT_CLAIMS_PROCESSING = "sibyl:processing:extract_claims"
+RUN_PIPELINE_PROCESSING = "sibyl:processing:run_pipeline"  # FRD 5
 
 # Legacy alias for backwards compatibility
 TASK_QUEUE_KEY = PARSE_PDF_QUEUE
 
 
 class TaskWorker:
-    """Background worker that processes PDF parsing and claims extraction tasks from Redis.
+    """Background worker that processes PDF parsing, claims extraction, and pipeline tasks.
 
     Uses rpoplpush for reliable at-least-once delivery:
     1. Tasks are atomically moved from the main queue to a processing queue
@@ -75,9 +77,10 @@ class TaskWorker:
         await self.recover_orphaned_tasks()
 
         logger.warning(
-            "Task worker started, listening on queues: %s, %s",
+            "Task worker started, listening on queues: %s, %s, %s",
             PARSE_PDF_QUEUE,
             EXTRACT_CLAIMS_QUEUE,
+            RUN_PIPELINE_QUEUE,
         )
 
         while self._running:
@@ -88,16 +91,19 @@ class TaskWorker:
                     await asyncio.sleep(1)
                     continue
 
-                queue_name, report_id = task
-                logger.warning("Dequeued task from %s for report: %s", queue_name, report_id)
+                queue_name, task_payload = task
+                logger.warning("Dequeued task from %s: %s", queue_name, task_payload)
 
                 # Route to appropriate handler, then remove from processing queue on success
                 if queue_name == PARSE_PDF_QUEUE:
-                    await self.process_parse_task(report_id)
-                    await self.redis.lrem(PARSE_PDF_PROCESSING, 1, report_id)
+                    await self.process_parse_task(task_payload)
+                    await self.redis.lrem(PARSE_PDF_PROCESSING, 1, task_payload)
                 elif queue_name == EXTRACT_CLAIMS_QUEUE:
-                    await self.process_extract_claims_task(report_id)
-                    await self.redis.lrem(EXTRACT_CLAIMS_PROCESSING, 1, report_id)
+                    await self.process_extract_claims_task(task_payload)
+                    await self.redis.lrem(EXTRACT_CLAIMS_PROCESSING, 1, task_payload)
+                elif queue_name == RUN_PIPELINE_QUEUE:
+                    await self.process_run_pipeline_task(task_payload)
+                    await self.redis.lrem(RUN_PIPELINE_PROCESSING, 1, task_payload)
                 else:
                     logger.warning("Unknown queue: %s", queue_name)
 
@@ -115,20 +121,26 @@ class TaskWorker:
         """Try to dequeue a task from each queue using rpoplpush.
 
         Atomically moves a task from the main queue to the corresponding
-        processing queue. Returns (queue_name, report_id) or None if
-        both queues are empty.
+        processing queue. Returns (queue_name, task_payload) or None if
+        all queues are empty.
         """
         # Check parse queue first
         result = await self.redis.rpoplpush(PARSE_PDF_QUEUE, PARSE_PDF_PROCESSING)
         if result is not None:
-            report_id = result.decode("utf-8") if isinstance(result, bytes) else result
-            return (PARSE_PDF_QUEUE, report_id)
+            payload = result.decode("utf-8") if isinstance(result, bytes) else result
+            return (PARSE_PDF_QUEUE, payload)
 
-        # Then check claims queue
+        # Then check pipeline queue (FRD 5 - priority over legacy claims queue)
+        result = await self.redis.rpoplpush(RUN_PIPELINE_QUEUE, RUN_PIPELINE_PROCESSING)
+        if result is not None:
+            payload = result.decode("utf-8") if isinstance(result, bytes) else result
+            return (RUN_PIPELINE_QUEUE, payload)
+
+        # Then check claims queue (legacy, for backwards compatibility)
         result = await self.redis.rpoplpush(EXTRACT_CLAIMS_QUEUE, EXTRACT_CLAIMS_PROCESSING)
         if result is not None:
-            report_id = result.decode("utf-8") if isinstance(result, bytes) else result
-            return (EXTRACT_CLAIMS_QUEUE, report_id)
+            payload = result.decode("utf-8") if isinstance(result, bytes) else result
+            return (EXTRACT_CLAIMS_QUEUE, payload)
 
         return None
 
@@ -145,15 +157,16 @@ class TaskWorker:
         for proc_queue, main_queue in [
             (PARSE_PDF_PROCESSING, PARSE_PDF_QUEUE),
             (EXTRACT_CLAIMS_PROCESSING, EXTRACT_CLAIMS_QUEUE),
+            (RUN_PIPELINE_PROCESSING, RUN_PIPELINE_QUEUE),
         ]:
             while True:
                 task = await self.redis.rpoplpush(proc_queue, main_queue)
                 if task is None:
                     break
-                report_id = task.decode("utf-8") if isinstance(task, bytes) else task
+                payload = task.decode("utf-8") if isinstance(task, bytes) else task
                 logger.warning(
-                    "Recovered orphaned task for report: %s -> %s",
-                    report_id,
+                    "Recovered orphaned task: %s -> %s",
+                    payload,
                     main_queue,
                 )
                 recovered_count += 1
@@ -175,16 +188,17 @@ class TaskWorker:
                 await self.redis.lpush(PARSE_PDF_QUEUE, str(report.id))
                 recovered_count += 1
 
-            # Reports stuck in analyzing -> re-enqueue for claims extraction
+            # Reports stuck in analyzing -> re-enqueue for pipeline
             stuck_analyzing = await db.execute(
                 select(Report).where(Report.status == "analyzing")
             )
             for report in stuck_analyzing.scalars():
                 logger.warning(
-                    "Recovering stuck report %s (status=analyzing), re-enqueuing extraction",
+                    "Recovering stuck report %s (status=analyzing), re-enqueuing pipeline",
                     report.id,
                 )
-                await self.redis.lpush(EXTRACT_CLAIMS_QUEUE, str(report.id))
+                # FRD 5: Re-enqueue to pipeline queue instead of claims queue
+                await self.redis.lpush(RUN_PIPELINE_QUEUE, str(report.id))
                 recovered_count += 1
 
         if recovered_count > 0:
@@ -282,12 +296,13 @@ class TaskWorker:
 
                 # Check if we should auto-start analysis
                 if settings.AUTO_START_ANALYSIS:
-                    # Set status to analyzing and enqueue claims extraction
+                    # Set status to analyzing and enqueue pipeline task
                     report.status = "analyzing"
                     await db.commit()
-                    await self.redis.lpush(EXTRACT_CLAIMS_QUEUE, report_id)
+                    # FRD 5: Enqueue to pipeline queue instead of claims queue
+                    await self.redis.lpush(RUN_PIPELINE_QUEUE, report_id)
                     logger.warning(
-                        "Auto-started claims extraction for report %s", report_id
+                        "Auto-started pipeline for report %s", report_id
                     )
                 else:
                     # Update status to parsed
@@ -319,7 +334,10 @@ class TaskWorker:
                     )
 
     async def process_extract_claims_task(self, report_id: str) -> None:
-        """Extract claims from a parsed report.
+        """Extract claims from a parsed report (legacy queue handler).
+
+        This is the FRD 3 standalone claims extraction. Kept for backwards
+        compatibility. For FRD 5+, use process_run_pipeline_task instead.
 
         Pipeline:
         1. Fetch the report from the database
@@ -384,6 +402,94 @@ class TaskWorker:
                         db,
                         report,
                         f"Claims extraction failed: {str(e)[:200]}",
+                    )
+
+    async def process_run_pipeline_task(self, task_payload: str) -> None:
+        """Execute the full LangGraph analysis pipeline.
+
+        FRD 5: This is the new pipeline execution handler that runs the
+        complete analysis flow including claims extraction, orchestrator
+        routing, specialist agents, judge, and report compilation.
+
+        Task payload format:
+        - "report_id" - Run full pipeline
+        - "report_id:skip_claims" - Skip claims extraction, start from routing
+
+        Pipeline:
+        1. Parse task payload
+        2. Fetch the report from the database
+        3. Verify status is 'analyzing'
+        4. Run the full LangGraph pipeline
+        5. Status is updated by compile_report node
+
+        On error: Update status to 'error' with descriptive message.
+        """
+        # Parse task payload
+        skip_claims = False
+        if ":skip_claims" in task_payload:
+            report_id = task_payload.replace(":skip_claims", "")
+            skip_claims = True
+        else:
+            report_id = task_payload
+
+        async with self.session_factory() as db:
+            try:
+                # Fetch the report
+                stmt = select(Report).where(Report.id == UUID(report_id))
+                result = await db.execute(stmt)
+                report = result.scalar_one_or_none()
+
+                if report is None:
+                    logger.error("Report not found: %s", report_id)
+                    return
+
+                if report.status != "analyzing":
+                    logger.warning(
+                        "Report %s is not in 'analyzing' status (current: %s), skipping",
+                        report_id,
+                        report.status,
+                    )
+                    return
+
+                if report.parsed_content is None:
+                    logger.error("Report has no parsed content: %s", report_id)
+                    await self._set_error(
+                        db, report, "Report content is missing. Please re-upload the PDF."
+                    )
+                    return
+
+                logger.warning(
+                    "Starting pipeline for report: %s (skip_claims=%s)",
+                    report_id,
+                    skip_claims,
+                )
+
+                # Run the full pipeline
+                from app.agents.pipeline import run_pipeline, run_pipeline_skip_claims
+
+                if skip_claims:
+                    await run_pipeline_skip_claims(report_id, db)
+                else:
+                    await run_pipeline(report_id, db)
+
+                logger.warning("Pipeline completed for report %s", report_id)
+
+                # Note: Status is updated to "completed" by the compile_report node,
+                # so we don't need to set it here
+
+            except Exception as e:
+                logger.exception(
+                    "Error during pipeline execution for report %s", report_id
+                )
+                # Re-fetch report
+                stmt = select(Report).where(Report.id == UUID(report_id))
+                result = await db.execute(stmt)
+                report = result.scalar_one_or_none()
+                if report:
+                    await self._set_error(
+                        db,
+                        report,
+                        f"Pipeline execution failed: {str(e)[:200]}",
                     )
 
     async def _set_error(

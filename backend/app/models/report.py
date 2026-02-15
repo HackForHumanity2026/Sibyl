@@ -13,6 +13,8 @@ from app.core.database import Base, generate_uuid7
 if TYPE_CHECKING:
     from app.models.claim import Claim
     from app.models.embedding import Embedding
+    from app.models.finding import Finding
+    from app.models.verdict import Verdict
 
 
 class Report(Base):
@@ -67,6 +69,16 @@ class Report(Base):
     )
     embeddings: Mapped[list["Embedding"]] = relationship(
         "Embedding",
+        back_populates="report",
+        cascade="all, delete-orphan",
+    )
+    findings: Mapped[list["Finding"]] = relationship(
+        "Finding",
+        back_populates="report",
+        cascade="all, delete-orphan",
+    )
+    verdicts: Mapped[list["Verdict"]] = relationship(
+        "Verdict",
         back_populates="report",
         cascade="all, delete-orphan",
     )

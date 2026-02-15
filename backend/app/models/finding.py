@@ -12,6 +12,7 @@ from app.core.database import Base, generate_uuid7
 
 if TYPE_CHECKING:
     from app.models.claim import Claim
+    from app.models.report import Report
 
 
 class Finding(Base):
@@ -37,9 +38,13 @@ class Finding(Base):
         primary_key=True,
         default=generate_uuid7,
     )
-    claim_id: Mapped[UUID] = mapped_column(
-        ForeignKey("claims.id", ondelete="CASCADE"),
+    report_id: Mapped[UUID] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    claim_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("claims.id", ondelete="CASCADE"),
+        nullable=True,  # May be null for report-level findings
     )
     agent_name: Mapped[str] = mapped_column(String(50), nullable=False)
     evidence_type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -55,9 +60,11 @@ class Finding(Base):
     )
 
     # Relationships
+    report: Mapped["Report"] = relationship("Report", back_populates="findings")
     claim: Mapped["Claim"] = relationship("Claim", back_populates="findings")
 
     __table_args__ = (
+        Index("ix_findings_report_id", "report_id"),
         Index("ix_findings_claim_id", "claim_id"),
         Index("ix_findings_agent_name", "agent_name"),
         Index("ix_findings_claim_id_agent_name", "claim_id", "agent_name"),

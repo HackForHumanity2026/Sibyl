@@ -1,0 +1,190 @@
+/**
+ * AnalysisPage styles
+ * Implements FRD 3, FRD 4, and FRD 5 layout and UI
+ */
+
+.analysis-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Loading state */
+.analysis-page__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 1rem;
+  color: var(--muted-foreground);
+}
+
+.analysis-progress__spinner {
+  width: 48px;
+  height: 48px;
+  color: var(--primary);
+}
+
+/* Header */
+.analysis-page__header {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.analysis-page__header-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  max-width: 100%;
+}
+
+.analysis-page__back {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.analysis-page__back:hover {
+  background: var(--accent);
+  border-color: var(--accent-foreground);
+}
+
+.analysis-page__title-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.analysis-page__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-page__meta {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.analysis-page__status {
+  flex-shrink: 0;
+}
+
+.analysis-page__status-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.analysis-page__status-badge--starting {
+  background: hsl(var(--primary) / 0.1);
+  color: var(--primary);
+}
+
+.analysis-page__status-badge--analyzing {
+  background: hsl(var(--primary) / 0.1);
+  color: var(--primary);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.analysis-page__status-badge--complete {
+  background: hsl(142 71% 45% / 0.1);
+  color: hsl(142 71% 45%);
+}
+
+.analysis-page__status-badge--error {
+  background: hsl(0 84% 60% / 0.1);
+  color: hsl(0 84% 60%);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Main content area */
+.analysis-page__main {
+  flex: 1;
+  overflow: hidden;
+}
+
+.analysis-page__main--layout {
+  display: flex;
+  height: 100%;
+}
+
+/* Right panel with tabs */
+.analysis-page__right-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--card);
+}
+
+.analysis-page__tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.analysis-page__tab {
+  position: relative;
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.analysis-page__tab:hover {
+  color: var(--foreground);
+  background: var(--accent);
+}
+
+.analysis-page__tab--active {
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+}
+
+.analysis-page__tab-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.analysis-page__tab-content {
+  flex: 1;
+  overflow: hidden;
+}

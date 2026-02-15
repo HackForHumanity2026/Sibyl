@@ -52,5 +52,16 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Async generator that yields a database session.
+    
+    For use outside of FastAPI dependency injection (e.g., in LangGraph nodes).
+    Does NOT auto-commit; caller is responsible for commit/rollback.
+    """
+    async with async_session_maker() as session:
+        yield session
+
+
 # Type alias for dependency injection
 DbSession = Annotated[AsyncSession, Depends(get_db)]

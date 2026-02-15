@@ -1,21 +1,26 @@
 /**
  * AnalysisPage - Main page for viewing claims extraction results with PDF viewer.
- * Implements FRD 3 Section 7.2, enhanced in FRD 4 with three-panel layout.
+ * Implements FRD 3 Section 7.2, enhanced in FRD 4 with three-panel layout,
+ * and FRD 5 with SSE streaming and agent reasoning panel.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAnalysis } from "@/hooks";
+import { useAnalysis, useSSE } from "@/hooks";
 import { getReportStatus, getPDFUrl } from "@/services/api";
 import {
   AnalysisProgress,
   AnalysisLayout,
   ClaimsPanel,
   DashboardPlaceholder,
+  AgentReasoningPanel,
 } from "@/components/Analysis";
 import { PDFViewer } from "@/components/PDFViewer";
 import type { ReportStatusResponse } from "@/types/report";
 import type { Claim } from "@/types/claim";
+import "./AnalysisPage.css";
+
+type RightPanelTab = "activity" | "claims";
 
 export function AnalysisPage() {
   const { reportId } = useParams<{ reportId?: string }>();
@@ -45,6 +50,32 @@ export function AnalysisPage() {
   // Cross-panel state
   const [activeClaim, setActiveClaim] = useState<Claim | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // FRD 5: Right panel tab state
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("activity");
+
+  // FRD 5: SSE connection for real-time agent events
+  const isAnalyzing =
+    analysisState === "starting" ||
+    analysisState === "analyzing" ||
+    analysisState === "error";
+
+  const {
+    events,
+    eventsByAgent,
+    isConnected,
+    activeAgents,
+    completedAgents,
+    erroredAgents,
+    pipelineComplete,
+  } = useSSE(reportId, isAnalyzing);
+
+  // Switch to claims tab when analysis completes
+  useEffect(() => {
+    if (analysisState === "complete" || pipelineComplete) {
+      setRightPanelTab("claims");
+    }
+  }, [analysisState, pipelineComplete]);
 
   // Fetch report info and start analysis on mount — runs once per reportId
   useEffect(() => {
@@ -138,11 +169,65 @@ export function AnalysisPage() {
 
   const pdfUrl = getPDFUrl(reportId);
 
-  // Show progress indicator while analyzing
-  const isAnalyzing =
-    analysisState === "starting" ||
-    analysisState === "analyzing" ||
-    analysisState === "error";
+  // Show progress indicator while analyzing (but also show panels if we have events)
+  const showProgress = isAnalyzing && events.length === 0;
+
+  // Right panel content with tabs
+  const rightPanelContent = (
+    <div className="analysis-page__right-panel">
+      {/* Tab bar */}
+      <div className="analysis-page__tab-bar">
+        <button
+          className={`analysis-page__tab ${
+            rightPanelTab === "activity" ? "analysis-page__tab--active" : ""
+          }`}
+          onClick={() => setRightPanelTab("activity")}
+        >
+          Agent Activity
+          {isAnalyzing && (
+            <span className="analysis-page__tab-indicator" />
+          )}
+        </button>
+        <button
+          className={`analysis-page__tab ${
+            rightPanelTab === "claims" ? "analysis-page__tab--active" : ""
+          }`}
+          onClick={() => setRightPanelTab("claims")}
+        >
+          Claims ({claimsCount})
+        </button>
+      </div>
+
+      {/* Tab content */}
+      <div className="analysis-page__tab-content">
+        {rightPanelTab === "activity" ? (
+          <AgentReasoningPanel
+            events={events}
+            eventsByAgent={eventsByAgent}
+            activeAgents={activeAgents}
+            completedAgents={completedAgents}
+            erroredAgents={erroredAgents}
+            pipelineComplete={pipelineComplete}
+            isConnected={isConnected}
+          />
+        ) : (
+          <ClaimsPanel
+            claims={filteredClaims}
+            activeClaim={activeClaim}
+            onClaimClick={handleClaimClick}
+            onGoToPage={handleGoToPage}
+            typeFilter={typeFilter}
+            priorityFilter={priorityFilter}
+            onTypeFilterChange={setTypeFilter}
+            onPriorityFilterChange={setPriorityFilter}
+            claimsByType={claimsByType}
+            claimsByPriority={claimsByPriority}
+            isLoading={analysisState !== "complete"}
+          />
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="analysis-page analysis-page--three-panel">
@@ -183,7 +268,7 @@ export function AnalysisPage() {
 
       {/* Main content - Three Panel Layout */}
       <main className="analysis-page__main analysis-page__main--layout">
-        {isAnalyzing ? (
+        {showProgress ? (
           <AnalysisProgress
             state={analysisState}
             claimsCount={claimsCount}
@@ -203,21 +288,7 @@ export function AnalysisPage() {
               />
             }
             centerPanel={<DashboardPlaceholder />}
-            rightPanel={
-              <ClaimsPanel
-                claims={filteredClaims}
-                activeClaim={activeClaim}
-                onClaimClick={handleClaimClick}
-                onGoToPage={handleGoToPage}
-                typeFilter={typeFilter}
-                priorityFilter={priorityFilter}
-                onTypeFilterChange={setTypeFilter}
-                onPriorityFilterChange={setPriorityFilter}
-                claimsByType={claimsByType}
-                claimsByPriority={claimsByPriority}
-                isLoading={analysisState !== "complete"}
-              />
-            }
+            rightPanel={rightPanelContent}
           />
         )}
       </main>

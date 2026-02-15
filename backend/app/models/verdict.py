@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,7 @@ from app.core.database import Base, generate_uuid7
 
 if TYPE_CHECKING:
     from app.models.claim import Claim
+    from app.models.report import Report
 
 
 class Verdict(Base):
@@ -31,6 +32,10 @@ class Verdict(Base):
         primary_key=True,
         default=generate_uuid7,
     )
+    report_id: Mapped[UUID] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     claim_id: Mapped[UUID] = mapped_column(
         ForeignKey("claims.id", ondelete="CASCADE"),
         nullable=False,
@@ -48,4 +53,9 @@ class Verdict(Base):
     )
 
     # Relationships
+    report: Mapped["Report"] = relationship("Report", back_populates="verdicts")
     claim: Mapped["Claim"] = relationship("Claim", back_populates="verdict")
+
+    __table_args__ = (
+        Index("ix_verdicts_report_id", "report_id"),
+    )

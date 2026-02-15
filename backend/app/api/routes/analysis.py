@@ -1,6 +1,6 @@
 """Analysis endpoints for claims extraction and pipeline control.
 
-Implements FRD 3 (Claims Agent).
+Implements FRD 3 (Claims Agent) and FRD 5 (Orchestrator Agent).
 """
 
 import logging
@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import get_db
 from app.models.claim import Claim
+from app.models.finding import Finding
 from app.models.report import Report
+from app.models.verdict import Verdict
 from app.schemas.analysis import (
     AnalysisStatusResponse,
     ClaimResponse,
@@ -27,7 +29,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Redis queue key for claims extraction
+# Redis queue keys
+# FRD 5: New pipeline queue replaces extract_claims for full pipeline
+RUN_PIPELINE_QUEUE = "sibyl:tasks:run_pipeline"
+# Legacy queue for backwards compatibility (standalone claims extraction)
 EXTRACT_CLAIMS_QUEUE = "sibyl:tasks:extract_claims"
 
 
@@ -64,17 +69,64 @@ def _claim_to_response(claim: Claim) -> ClaimResponse:
     )
 
 
+def _derive_pipeline_stage(
+    status: str,
+    claims_count: int,
+    findings_count: int,
+    verdicts_count: int,
+) -> str | None:
+    """Derive the pipeline stage from counts and status.
+    
+    Args:
+        status: Report status
+        claims_count: Number of claims
+        findings_count: Number of findings
+        verdicts_count: Number of verdicts
+        
+    Returns:
+        Pipeline stage string or None if not applicable
+    """
+    if status == "completed":
+        return "completed"
+    if status == "error":
+        return "error"
+    if status != "analyzing":
+        return None
+    
+    # Derive from entity counts
+    if verdicts_count > 0:
+        return "compiling"
+    if findings_count > 0:
+        return "judging"
+    if claims_count > 0:
+        return "investigating"
+    
+    return "extracting_claims"
+
+
 @router.post("/{report_id}/start", response_model=StartAnalysisResponse)
 async def start_analysis(
     report_id: str,
+    skip_claims_extraction: bool = Query(
+        False,
+        description="Skip claims extraction and start from routing (if claims exist)",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> StartAnalysisResponse:
-    """Start claims extraction analysis for a report.
-
+    """Start the full analysis pipeline for a report.
+    
+    FRD 5: This now enqueues to the full pipeline queue instead of
+    just claims extraction. The pipeline includes:
+    - Claims extraction (unless skip_claims_extraction=true)
+    - Orchestrator routing
+    - Specialist agent investigation (stubs)
+    - Judge evaluation (stub)
+    - Report compilation
+    
     The report must be in 'parsed' status. This endpoint:
     1. Sets the report status to 'analyzing'
-    2. Enqueues a claims extraction task in Redis
-    3. Returns immediately while extraction happens in the background
+    2. Enqueues a pipeline task in Redis
+    3. Returns immediately while the pipeline runs in the background
     """
     # Fetch the report
     try:
@@ -108,23 +160,40 @@ async def start_analysis(
             f"Current status: '{report.status}'.",
         )
 
+    # If skipping claims extraction, verify claims exist
+    if skip_claims_extraction:
+        claims_count_stmt = select(func.count()).where(Claim.report_id == report_uuid)
+        claims_result = await db.execute(claims_count_stmt)
+        claims_count = claims_result.scalar() or 0
+        
+        if claims_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot skip claims extraction: no claims exist for this report.",
+            )
+
     # Set status to analyzing
     report.status = "analyzing"
     report.error_message = None  # Clear any previous error
     await db.commit()
 
-    # Enqueue the claims extraction task
+    # Enqueue the full pipeline task (FRD 5)
     redis_client = await get_redis()
     try:
-        await redis_client.lpush(EXTRACT_CLAIMS_QUEUE, report_id)
-        logger.info("Enqueued claims extraction task for report: %s", report_id)
+        # Include skip flag in the task payload
+        task_payload = report_id
+        if skip_claims_extraction:
+            task_payload = f"{report_id}:skip_claims"
+        
+        await redis_client.lpush(RUN_PIPELINE_QUEUE, task_payload)
+        logger.info("Enqueued pipeline task for report: %s", report_id)
     finally:
         await redis_client.aclose()
 
     return StartAnalysisResponse(
         report_id=report_id,
         status="analyzing",
-        message="Claims extraction started.",
+        message="Analysis pipeline started.",
     )
 
 
@@ -134,8 +203,13 @@ async def get_analysis_status(
     db: AsyncSession = Depends(get_db),
 ) -> AnalysisStatusResponse:
     """Get the current analysis status for a report.
-
-    Returns claim counts by type and priority once extraction begins.
+    
+    FRD 5 additions:
+    - pipeline_stage: Current stage of the pipeline
+    - active_agents: List of agents currently executing
+    - iteration_count: Current re-investigation cycle
+    - findings_count: Total findings produced
+    - verdicts_count: Total verdicts issued
     """
     # Fetch the report
     try:
@@ -170,6 +244,36 @@ async def get_analysis_status(
 
     # Total claims count
     total_claims = sum(claims_by_type.values())
+    
+    # FRD 5: Count findings
+    findings_count_stmt = (
+        select(func.count())
+        .where(Finding.report_id == report_uuid)
+    )
+    findings_result = await db.execute(findings_count_stmt)
+    findings_count = findings_result.scalar() or 0
+    
+    # FRD 5: Count verdicts
+    verdicts_count_stmt = (
+        select(func.count())
+        .where(Verdict.report_id == report_uuid)
+    )
+    verdicts_result = await db.execute(verdicts_count_stmt)
+    verdicts_count = verdicts_result.scalar() or 0
+    
+    # Derive pipeline stage
+    pipeline_stage = _derive_pipeline_stage(
+        report.status,
+        total_claims,
+        findings_count,
+        verdicts_count,
+    )
+    
+    # For active_agents and iteration_count, we would need to query the
+    # LangGraph checkpoint or maintain this in the Report model.
+    # For now, return empty/default values as these are best obtained via SSE.
+    active_agents: list[str] = []
+    iteration_count = 0
 
     return AnalysisStatusResponse(
         report_id=report_id,
@@ -177,6 +281,11 @@ async def get_analysis_status(
         claims_count=total_claims,
         claims_by_type=claims_by_type,
         claims_by_priority=claims_by_priority,
+        pipeline_stage=pipeline_stage,
+        active_agents=active_agents,
+        iteration_count=iteration_count,
+        findings_count=findings_count,
+        verdicts_count=verdicts_count,
         error_message=report.error_message,
         updated_at=report.updated_at,
     )
