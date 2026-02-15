@@ -51,7 +51,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5174:5173"
+      - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
