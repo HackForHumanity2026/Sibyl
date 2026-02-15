@@ -35,7 +35,8 @@ async def investigate_news(state: SibylState) -> dict:
         Partial state update with news/media findings
     """
     agent_name = "news_media"
-    events = []
+    events: list[StreamEvent] = []
+    findings: list[AgentFinding] = []
     
     # Emit start event
     events.append(
@@ -48,19 +49,14 @@ async def investigate_news(state: SibylState) -> dict:
     )
     
     # Find claims assigned to this agent
+    routing_plan = state.get("routing_plan", [])
     assigned_claims = [
-        a for a in state.routing_plan
+        a for a in routing_plan
         if agent_name in a.assigned_agents
     ]
     
-    # Update agent status
-    agent_status = dict(state.agent_status)
-    agent_status[agent_name] = AgentStatus(
-        agent_name=agent_name,
-        status="working",
-        claims_assigned=len(assigned_claims),
-        claims_completed=0,
-    )
+    # Get current iteration count
+    iteration_count = state.get("iteration_count", 0)
     
     # Emit thinking event
     events.append(
@@ -75,8 +71,7 @@ async def investigate_news(state: SibylState) -> dict:
         )
     )
     
-    # Generate placeholder findings
-    findings = list(state.findings)
+    # Generate placeholder findings (only NEW findings, reducer will merge)
     for assignment in assigned_claims:
         finding = AgentFinding(
             finding_id=str(generate_uuid7()),
@@ -88,7 +83,7 @@ async def investigate_news(state: SibylState) -> dict:
             details={"stub": True, "agent": agent_name},
             supports_claim=None,
             confidence=None,
-            iteration=state.iteration_count + 1,
+            iteration=iteration_count + 1,
         )
         findings.append(finding)
         
@@ -107,14 +102,6 @@ async def investigate_news(state: SibylState) -> dict:
             )
         )
     
-    # Update agent status to completed
-    agent_status[agent_name] = AgentStatus(
-        agent_name=agent_name,
-        status="completed",
-        claims_assigned=len(assigned_claims),
-        claims_completed=len(assigned_claims),
-    )
-    
     # Emit completion event
     events.append(
         StreamEvent(
@@ -122,14 +109,22 @@ async def investigate_news(state: SibylState) -> dict:
             agent_name=agent_name,
             data={
                 "claims_processed": len(assigned_claims),
-                "findings_count": len(assigned_claims),
+                "findings_count": len(findings),
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
     )
     
+    # Return only NEW items - the reducer (operator.add) will merge them
     return {
         "findings": findings,
-        "agent_status": agent_status,
-        "events": state.events + events,
+        "agent_status": {
+            agent_name: AgentStatus(
+                agent_name=agent_name,
+                status="completed",
+                claims_assigned=len(assigned_claims),
+                claims_completed=len(assigned_claims),
+            )
+        },
+        "events": events,
     }

@@ -17,7 +17,6 @@ from app.agents.state import (
     SibylState,
     StreamEvent,
 )
-from app.core.database import generate_uuid7
 
 
 async def judge_evidence(state: SibylState) -> dict:
@@ -49,7 +48,12 @@ async def judge_evidence(state: SibylState) -> dict:
         Partial state update with verdicts and/or reinvestigation requests
     """
     agent_name = "judge"
-    events = []
+    events: list[StreamEvent] = []
+    
+    # Get state values using dict access
+    claims = state.get("claims", [])
+    findings = state.get("findings", [])
+    iteration_count = state.get("iteration_count", 0)
     
     # Emit start event
     events.append(
@@ -67,8 +71,8 @@ async def judge_evidence(state: SibylState) -> dict:
             event_type="agent_thinking",
             agent_name=agent_name,
             data={
-                "message": f"Evaluating evidence for {len(state.claims)} claims "
-                f"from {len(state.findings)} findings... "
+                "message": f"Evaluating evidence for {len(claims)} claims "
+                f"from {len(findings)} findings... "
                 "(stub -- full evidence evaluation in FRD 11)"
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -77,7 +81,7 @@ async def judge_evidence(state: SibylState) -> dict:
     
     # Group findings by claim_id
     findings_by_claim: dict[str, list] = {}
-    for finding in state.findings:
+    for finding in findings:
         if finding.claim_id not in findings_by_claim:
             findings_by_claim[finding.claim_id] = []
         findings_by_claim[finding.claim_id].append(finding)
@@ -85,7 +89,7 @@ async def judge_evidence(state: SibylState) -> dict:
     # Generate placeholder verdicts for each claim
     verdicts: list[ClaimVerdict] = []
     
-    for claim in state.claims:
+    for claim in claims:
         claim_findings = findings_by_claim.get(claim.claim_id, [])
         
         # Stub verdict: always "unverified"
@@ -104,7 +108,7 @@ async def judge_evidence(state: SibylState) -> dict:
                 "agents_consulted": list(set(f.agent_name for f in claim_findings)),
                 "stub": True,
             },
-            iteration_count=state.iteration_count + 1,
+            iteration_count=iteration_count + 1,
         )
         verdicts.append(verdict)
         
@@ -141,9 +145,10 @@ async def judge_evidence(state: SibylState) -> dict:
         )
     )
     
+    # Return only NEW items - the reducer will merge them
     return {
         "verdicts": verdicts,
         "reinvestigation_requests": [],  # Empty to avoid cycles
-        "iteration_count": state.iteration_count + 1,
-        "events": state.events + events,
+        "iteration_count": iteration_count + 1,
+        "events": events,
     }

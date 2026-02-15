@@ -12,11 +12,12 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.state import SibylState, StreamEvent
 from app.core.database import generate_uuid7, get_db_session
+from app.models.claim import Claim as DBClaim
 from app.models.finding import Finding
 from app.models.report import Report
 from app.models.verdict import Verdict
@@ -45,7 +46,13 @@ async def compile_report(state: SibylState) -> dict:
     Returns:
         Empty partial state update (terminal node)
     """
-    events = []
+    events: list[StreamEvent] = []
+    
+    # Get state values using dict access
+    verdicts = state.get("verdicts", [])
+    findings = state.get("findings", [])
+    claims = state.get("claims", [])
+    iteration_count = state.get("iteration_count", 0)
     
     # Emit start event
     events.append(
@@ -63,8 +70,8 @@ async def compile_report(state: SibylState) -> dict:
             event_type="agent_thinking",
             agent_name="compiler",
             data={
-                "message": f"Compiling report with {len(state.verdicts)} verdicts "
-                f"and {len(state.findings)} findings..."
+                "message": f"Compiling report with {len(verdicts)} verdicts "
+                f"and {len(findings)} findings..."
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -87,12 +94,12 @@ async def compile_report(state: SibylState) -> dict:
         )
     
     # Compute summary statistics
-    verdict_counts = {}
-    for v in state.verdicts:
+    verdict_counts: dict[str, int] = {}
+    for v in verdicts:
         verdict_counts[v.verdict] = verdict_counts.get(v.verdict, 0) + 1
     
-    agent_findings = {}
-    for f in state.findings:
+    agent_findings: dict[str, int] = {}
+    for f in findings:
         agent_findings[f.agent_name] = agent_findings.get(f.agent_name, 0) + 1
     
     # Emit pipeline_completed event
@@ -101,10 +108,10 @@ async def compile_report(state: SibylState) -> dict:
             event_type="pipeline_completed",
             agent_name=None,
             data={
-                "total_claims": len(state.claims),
-                "total_findings": len(state.findings),
-                "total_verdicts": len(state.verdicts),
-                "iterations": state.iteration_count,
+                "total_claims": len(claims),
+                "total_findings": len(findings),
+                "total_verdicts": len(verdicts),
+                "iterations": iteration_count,
                 "verdict_breakdown": verdict_counts,
                 "findings_by_agent": agent_findings,
             },
@@ -112,30 +119,57 @@ async def compile_report(state: SibylState) -> dict:
         )
     )
     
+    # Return only NEW events - the reducer will merge them
     return {
-        "events": state.events + events,
+        "events": events,
     }
 
 
 async def _persist_results(state: SibylState, db: AsyncSession) -> None:
-    """Persist findings and verdicts to the database.
+    """Persist claims, findings, and verdicts to the database.
     
     Args:
         state: Final pipeline state
         db: Database session
     """
-    report_id = UUID(state.report_id)
+    report_id_str = state.get("report_id", "")
+    report_id = UUID(report_id_str)
+    claims = state.get("claims", [])
+    findings = state.get("findings", [])
+    verdicts = state.get("verdicts", [])
     
-    # Persist findings
-    for finding in state.findings:
+    # Persist claims first (other entities reference them)
+    claim_id_mapping: dict[str, UUID] = {}  # Maps state claim_id -> DB UUID
+    for claim in claims:
+        db_claim_id = generate_uuid7()
+        claim_id_mapping[claim.claim_id] = db_claim_id
+        
+        db_claim = DBClaim(
+            id=db_claim_id,
+            report_id=report_id,
+            claim_text=claim.text,
+            claim_type=claim.claim_type,
+            source_page=claim.page_number,
+            source_location=claim.source_location,
+            ifrs_paragraphs=[{"paragraph_id": p} for p in claim.ifrs_paragraphs],
+            priority=claim.priority,
+            agent_reasoning=claim.agent_reasoning,
+        )
+        db.add(db_claim)
+    
+    # Persist findings (using mapped claim IDs)
+    for finding in findings:
         # Skip if this is a stub finding without real evidence
         if finding.details.get("stub"):
             continue
         
+        # Map state claim_id to the persisted DB claim UUID
+        db_claim_id = claim_id_mapping.get(finding.claim_id) if finding.claim_id else None
+        
         db_finding = Finding(
             id=generate_uuid7(),
             report_id=report_id,
-            claim_id=UUID(finding.claim_id) if finding.claim_id else None,
+            claim_id=db_claim_id,
             agent_name=finding.agent_name,
             evidence_type=finding.evidence_type,
             summary=finding.summary,
@@ -146,12 +180,20 @@ async def _persist_results(state: SibylState, db: AsyncSession) -> None:
         )
         db.add(db_finding)
     
-    # Persist verdicts
-    for verdict in state.verdicts:
+    # Persist verdicts (using mapped claim IDs)
+    for verdict in verdicts:
+        # Map state claim_id to the persisted DB claim UUID
+        db_claim_id = claim_id_mapping.get(verdict.claim_id)
+        if not db_claim_id:
+            logger.warning(
+                "Verdict references unknown claim_id: %s", verdict.claim_id
+            )
+            continue
+        
         db_verdict = Verdict(
             id=generate_uuid7(),
             report_id=report_id,
-            claim_id=UUID(verdict.claim_id),
+            claim_id=db_claim_id,
             verdict=verdict.verdict,
             reasoning=verdict.reasoning,
             ifrs_mapping=verdict.ifrs_mapping,
@@ -171,8 +213,9 @@ async def _persist_results(state: SibylState, db: AsyncSession) -> None:
     await db.commit()
     
     logger.info(
-        "Persisted %d findings and %d verdicts for report %s",
-        len([f for f in state.findings if not f.details.get("stub")]),
-        len(state.verdicts),
-        state.report_id,
+        "Persisted %d claims, %d findings, and %d verdicts for report %s",
+        len(claims),
+        len([f for f in findings if not f.details.get("stub")]),
+        len(verdicts),
+        report_id_str,
     )

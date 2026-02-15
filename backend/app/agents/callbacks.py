@@ -52,10 +52,12 @@ class SSECallbackHandler:
         
         Args:
             node_name: Name of the LangGraph node
-            state: Current SibylState
+            state: Current SibylState (TypedDict)
         """
         # Track event count before node execution
-        event_count = len(state.events) if hasattr(state, 'events') else 0
+        # Support both dict access (TypedDict) and attribute access (legacy)
+        events = state.get("events", []) if isinstance(state, dict) else getattr(state, "events", [])
+        event_count = len(events)
         self._last_event_count[node_name] = event_count
         logger.debug("Node %s started, event count: %d", node_name, event_count)
     
@@ -69,12 +71,14 @@ class SSECallbackHandler:
             node_name: Name of the LangGraph node
             state: Current SibylState after node execution
         """
-        if not hasattr(state, 'events'):
+        # Support both dict access (TypedDict) and attribute access (legacy)
+        events = state.get("events", []) if isinstance(state, dict) else getattr(state, "events", None)
+        if events is None:
             return
         
         # Get new events since node started
         last_count = self._last_event_count.get(node_name, 0)
-        new_events = state.events[last_count:]
+        new_events = events[last_count:]
         
         # Push new events to the queue
         for event in new_events:
@@ -147,6 +151,8 @@ def extract_new_events(state, last_count: int) -> list[StreamEvent]:
     Returns:
         List of new StreamEvent objects
     """
-    if not hasattr(state, 'events'):
+    # Support both dict access (TypedDict) and attribute access (legacy)
+    events = state.get("events", []) if isinstance(state, dict) else getattr(state, "events", [])
+    if not events:
         return []
-    return list(state.events[last_count:])
+    return list(events[last_count:])

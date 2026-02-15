@@ -127,6 +127,8 @@ export function useAnalysis(): UseAnalysisReturn {
             setAnalysisState("error");
             setError(status.error_message || "Analysis failed");
             stopPolling();
+            // Still fetch claims - they may have been extracted before the error
+            await fetchClaims(reportId);
             return;
           }
         } catch (err) {

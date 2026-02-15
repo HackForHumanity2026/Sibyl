@@ -6,8 +6,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createSSEConnection,
-  StreamEvent,
-  StreamEventType,
+  type StreamEvent,
+  type StreamEventType,
 } from "@/services/sse";
 
 export interface UseSSEReturn {
@@ -100,8 +100,20 @@ export function useSSE(
   const handleEvent = useCallback((event: StreamEvent, _id: number) => {
     setEvents((prev) => [...prev, event]);
 
-    if (event.event_type === "pipeline_completed") {
-      setPipelineComplete(true);
+    // Close connection on terminal events to prevent EventSource auto-reconnect
+    if (
+      event.event_type === "pipeline_completed" ||
+      event.event_type === "error"
+    ) {
+      if (event.event_type === "pipeline_completed") {
+        setPipelineComplete(true);
+      }
+      // Close the connection to prevent the EventSource from
+      // auto-reconnecting after the server ends the stream.
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     }
   }, []);
 

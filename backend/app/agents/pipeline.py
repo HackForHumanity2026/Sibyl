@@ -70,13 +70,24 @@ async def run_pipeline(report_id: str, db: AsyncSession) -> None:
     # Load report
     report = await load_report(report_id, db)
     
-    # Create initial state
-    initial_state = SibylState(
-        report_id=report_id,
-        document_content=report.parsed_content,
-        document_chunks=[],
-        max_iterations=getattr(settings, 'MAX_JUDGE_ITERATIONS', 3),
-    )
+    # Create initial state (SibylState is a TypedDict)
+    initial_state: SibylState = {
+        "report_id": report_id,
+        "document_content": report.parsed_content,
+        "document_chunks": [],
+        "max_iterations": getattr(settings, 'MAX_JUDGE_ITERATIONS', 3),
+        "iteration_count": 0,
+        "claims": [],
+        "routing_plan": [],
+        "agent_status": {},
+        "findings": [],
+        "info_requests": [],
+        "info_responses": [],
+        "verdicts": [],
+        "reinvestigation_requests": [],
+        "disclosure_gaps": [],
+        "events": [],
+    }
     
     # Set up SSE streaming
     event_queue = get_event_queue(report_id)
@@ -209,14 +220,24 @@ async def run_pipeline_skip_claims(
             )
         )
     
-    # Create initial state with existing claims
-    initial_state = SibylState(
-        report_id=report_id,
-        document_content=report.parsed_content,
-        document_chunks=[],
-        claims=state_claims,
-        max_iterations=getattr(settings, 'MAX_JUDGE_ITERATIONS', 3),
-    )
+    # Create initial state with existing claims (SibylState is a TypedDict)
+    initial_state: SibylState = {
+        "report_id": report_id,
+        "document_content": report.parsed_content,
+        "document_chunks": [],
+        "claims": state_claims,
+        "max_iterations": getattr(settings, 'MAX_JUDGE_ITERATIONS', 3),
+        "iteration_count": 0,
+        "routing_plan": [],
+        "agent_status": {},
+        "findings": [],
+        "info_requests": [],
+        "info_responses": [],
+        "verdicts": [],
+        "reinvestigation_requests": [],
+        "disclosure_gaps": [],
+        "events": [],
+    }
     
     # Set up SSE streaming
     event_queue = get_event_queue(report_id)

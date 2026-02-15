@@ -282,18 +282,18 @@ async def _route_with_llm(claims: list) -> list[RoutingAssignment] | None:
         return None
 
 
-def _route_info_requests(state: SibylState) -> list:
+def _route_info_requests(info_requests: list) -> list:
     """Route pending InfoRequests to appropriate agents.
     
     Args:
-        state: Current pipeline state
+        info_requests: List of InfoRequest objects from the state
         
     Returns:
         Updated info_requests list
     """
-    info_requests = list(state.info_requests)
+    updated_requests = list(info_requests)
     
-    for request in info_requests:
+    for request in updated_requests:
         if request.status != "pending":
             continue
         
@@ -342,7 +342,7 @@ def _route_info_requests(state: SibylState) -> list:
         # Store target in context
         request.context["target_agents"] = target_agents
     
-    return info_requests
+    return updated_requests
 
 
 # =============================================================================
@@ -365,6 +365,14 @@ async def orchestrate(state: SibylState) -> dict:
     """
     events: list[StreamEvent] = []
     
+    # Get state values using dict access
+    claims = state.get("claims", [])
+    current_routing_plan = state.get("routing_plan", [])
+    current_agent_status = state.get("agent_status", {})
+    info_requests = state.get("info_requests", [])
+    reinvestigation_requests = state.get("reinvestigation_requests", [])
+    iteration_count = state.get("iteration_count", 0)
+    
     # Emit start event
     events.append(
         StreamEvent(
@@ -377,15 +385,15 @@ async def orchestrate(state: SibylState) -> dict:
     
     # Determine operating mode
     is_initial_routing = (
-        state.iteration_count == 0 and len(state.routing_plan) == 0
+        iteration_count == 0 and len(current_routing_plan) == 0
     )
     is_reinvestigation = (
-        state.iteration_count > 0 or len(state.reinvestigation_requests) > 0
+        iteration_count > 0 or len(reinvestigation_requests) > 0
     )
     
     routing_plan: list[RoutingAssignment] = []
-    iteration_count = state.iteration_count
-    agent_status = dict(state.agent_status)
+    new_iteration_count = iteration_count
+    agent_status: dict[str, AgentStatus] = dict(current_agent_status)
     
     if is_initial_routing:
         # =====================================================================
@@ -397,14 +405,14 @@ async def orchestrate(state: SibylState) -> dict:
                 event_type="agent_thinking",
                 agent_name="orchestrator",
                 data={
-                    "message": f"Analyzing {len(state.claims)} claims for routing..."
+                    "message": f"Analyzing {len(claims)} claims for routing..."
                 },
                 timestamp=datetime.now(timezone.utc).isoformat(),
             )
         )
         
         # Try LLM routing first
-        llm_assignments = await _route_with_llm(state.claims)
+        llm_assignments = await _route_with_llm(claims)
         
         if llm_assignments:
             routing_plan = llm_assignments
@@ -418,7 +426,7 @@ async def orchestrate(state: SibylState) -> dict:
             )
         else:
             # Fallback to rule-based routing
-            routing_plan = _apply_default_routing(state.claims)
+            routing_plan = _apply_default_routing(claims)
             events.append(
                 StreamEvent(
                     event_type="agent_thinking",
@@ -460,21 +468,21 @@ async def orchestrate(state: SibylState) -> dict:
         # Re-investigation mode
         # =====================================================================
         
-        iteration_count += 1
+        new_iteration_count = iteration_count + 1
         
         events.append(
             StreamEvent(
                 event_type="agent_thinking",
                 agent_name="orchestrator",
                 data={
-                    "message": f"Processing re-investigation requests (cycle {iteration_count})"
+                    "message": f"Processing re-investigation requests (cycle {new_iteration_count})"
                 },
                 timestamp=datetime.now(timezone.utc).isoformat(),
             )
         )
         
         # Process reinvestigation requests
-        for request in state.reinvestigation_requests:
+        for request in reinvestigation_requests:
             # Create targeted routing assignment
             assignment = RoutingAssignment(
                 claim_id=request.claim_id,
@@ -491,7 +499,7 @@ async def orchestrate(state: SibylState) -> dict:
                     data={
                         "claim_id": request.claim_id,
                         "target_agents": request.target_agents,
-                        "cycle": iteration_count,
+                        "cycle": new_iteration_count,
                         "evidence_gap": request.evidence_gap,
                     },
                     timestamp=datetime.now(timezone.utc).isoformat(),
@@ -512,7 +520,7 @@ async def orchestrate(state: SibylState) -> dict:
     # Process InfoRequests (on every invocation)
     # =========================================================================
     
-    updated_info_requests = _route_info_requests(state)
+    updated_info_requests = _route_info_requests(info_requests)
     
     # Emit events for newly routed InfoRequests
     for request in updated_info_requests:
@@ -553,17 +561,19 @@ async def orchestrate(state: SibylState) -> dict:
             data={
                 "routing_plan_size": len(routing_plan),
                 "agent_workload": agent_workload,
-                "iteration": iteration_count,
+                "iteration": new_iteration_count,
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
     )
     
+    # Return only NEW items - the reducer will merge them
+    # NOTE: routing_plan is new assignments only; the reducer will concatenate
     return {
         "routing_plan": routing_plan,
         "agent_status": agent_status,
         "info_requests": updated_info_requests,
-        "iteration_count": iteration_count,
+        "iteration_count": new_iteration_count,
         "reinvestigation_requests": [],  # Clear processed requests
-        "events": state.events + events,
+        "events": events,
     }

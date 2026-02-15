@@ -764,7 +764,8 @@ async def extract_claims(state: SibylState) -> dict:
         # ================================================================
         # Phase 1: Split document into chunks
         # ================================================================
-        chunks = _split_document_into_chunks(state.document_content)
+        document_content = state.get("document_content", "")
+        chunks = _split_document_into_chunks(document_content)
 
         logger.warning(
             "Map-Reduce extraction: %d chunks, %d pages, concurrency=%d",
@@ -970,11 +971,11 @@ async def run_claims_extraction(
     if report.parsed_content is None:
         raise ValueError(f"Report has no parsed content: {report_id}")
 
-    # Build minimal state
-    state = SibylState(
-        report_id=report_id,
-        document_content=report.parsed_content,
-    )
+    # Build minimal state (SibylState is now a TypedDict)
+    state: SibylState = {
+        "report_id": report_id,
+        "document_content": report.parsed_content,
+    }
 
     # Run extraction
     result_dict = await extract_claims(state)

@@ -61,14 +61,15 @@ def route_to_specialists(state: SibylState) -> list[str]:
     InfoRequests), routes directly to judge_evidence.
     
     Args:
-        state: Current pipeline state with routing plan
+        state: Current pipeline state with routing plan (TypedDict)
         
     Returns:
         List of node names to route to
     """
     active_agents = set()
+    routing_plan = state.get("routing_plan", [])
     
-    for assignment in state.routing_plan:
+    for assignment in routing_plan:
         for agent in assignment.assigned_agents:
             if agent in AGENT_TO_NODE:
                 node_name = AGENT_TO_NODE[agent]
@@ -96,19 +97,23 @@ def should_continue_or_compile(
     Returns "compile_report" otherwise.
     
     Args:
-        state: Current pipeline state
+        state: Current pipeline state (TypedDict)
         
     Returns:
         Next node name to route to
     """
-    has_reinvestigation = len(state.reinvestigation_requests) > 0
-    within_limit = state.iteration_count < state.max_iterations
+    reinvestigation_requests = state.get("reinvestigation_requests", [])
+    iteration_count = state.get("iteration_count", 0)
+    max_iterations = state.get("max_iterations", 3)
+    
+    has_reinvestigation = len(reinvestigation_requests) > 0
+    within_limit = iteration_count < max_iterations
     
     if has_reinvestigation and within_limit:
         logger.info(
             "Re-investigation requested (iteration %d/%d)",
-            state.iteration_count,
-            state.max_iterations,
+            iteration_count,
+            max_iterations,
         )
         return "orchestrate"
     

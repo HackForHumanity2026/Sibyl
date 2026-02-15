@@ -1,6 +1,22 @@
-"""LangGraph shared state schema for the Sibyl pipeline."""
+"""LangGraph shared state schema for the Sibyl pipeline.
+
+This module defines the state schema for LangGraph using TypedDict with
+Annotated types. List fields that receive concurrent updates from multiple
+parallel nodes (e.g., specialist agents writing to 'findings' simultaneously)
+use `operator.add` as the reducer function to merge the updates.
+
+See: https://langchain-ai.github.io/langgraph/concepts/low_level/#reducers
+"""
+
+import operator
+from typing import Annotated, TypedDict
 
 from pydantic import BaseModel
+
+
+# =============================================================================
+# Pydantic models for individual data types
+# =============================================================================
 
 
 class DocumentChunk(BaseModel):
@@ -109,36 +125,69 @@ class StreamEvent(BaseModel):
     timestamp: str  # ISO 8601
 
 
-class SibylState(BaseModel):
-    """Shared state for the entire LangGraph pipeline."""
+# =============================================================================
+# Custom reducers for complex merge operations
+# =============================================================================
 
-    # --- Input ---
+
+def merge_agent_status(
+    current: dict[str, AgentStatus], updates: dict[str, AgentStatus]
+) -> dict[str, AgentStatus]:
+    """Merge agent status dictionaries, preferring newer updates."""
+    if not current:
+        return updates
+    if not updates:
+        return current
+    merged = dict(current)
+    merged.update(updates)
+    return merged
+
+
+# =============================================================================
+# LangGraph State Schema (TypedDict with Annotated reducers)
+# =============================================================================
+
+
+class SibylState(TypedDict, total=False):
+    """Shared state for the entire LangGraph pipeline.
+
+    Uses TypedDict with Annotated types for LangGraph compatibility.
+    List fields use `operator.add` as reducer to merge concurrent updates
+    from parallel specialist agent nodes.
+
+    Fields marked with `Annotated[..., operator.add]` will concatenate
+    list values when multiple nodes write to them in the same step.
+    """
+
+    # --- Input (set once, not updated concurrently) ---
     report_id: str
-    document_content: str = ""
-    document_chunks: list[DocumentChunk] = []
+    document_content: str
+    document_chunks: list[DocumentChunk]
 
-    # --- Claims Agent output ---
-    claims: list[Claim] = []
+    # --- Claims Agent output (set once by claims agent) ---
+    claims: Annotated[list[Claim], operator.add]
 
     # --- Orchestrator tracking ---
-    routing_plan: list[RoutingAssignment] = []
-    agent_status: dict[str, AgentStatus] = {}
+    # routing_plan: set by orchestrator, may be updated on re-investigation
+    routing_plan: Annotated[list[RoutingAssignment], operator.add]
+    # agent_status: dictionary merging from multiple agents
+    agent_status: Annotated[dict[str, AgentStatus], merge_agent_status]
 
-    # --- Specialist agent findings ---
-    findings: list[AgentFinding] = []
+    # --- Specialist agent findings (CONCURRENT WRITES from parallel agents) ---
+    findings: Annotated[list[AgentFinding], operator.add]
 
     # --- Inter-agent communication ---
-    info_requests: list[InfoRequest] = []
-    info_responses: list[InfoResponse] = []
+    info_requests: Annotated[list[InfoRequest], operator.add]
+    info_responses: Annotated[list[InfoResponse], operator.add]
 
     # --- Judge Agent ---
-    verdicts: list[ClaimVerdict] = []
-    reinvestigation_requests: list[ReinvestigationRequest] = []
-    iteration_count: int = 0
-    max_iterations: int = 3
+    verdicts: Annotated[list[ClaimVerdict], operator.add]
+    reinvestigation_requests: Annotated[list[ReinvestigationRequest], operator.add]
+    iteration_count: int
+    max_iterations: int
 
     # --- Disclosure gaps (Legal Agent) ---
-    disclosure_gaps: list[dict] = []
+    disclosure_gaps: Annotated[list[dict], operator.add]
 
-    # --- Streaming ---
-    events: list[StreamEvent] = []
+    # --- Streaming (CONCURRENT WRITES from parallel agents) ---
+    events: Annotated[list[StreamEvent], operator.add]

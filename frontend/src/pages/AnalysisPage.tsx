@@ -9,7 +9,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAnalysis, useSSE } from "@/hooks";
 import { getReportStatus, getPDFUrl } from "@/services/api";
 import {
-  AnalysisProgress,
   AnalysisLayout,
   ClaimsPanel,
   DashboardPlaceholder,
@@ -169,9 +168,6 @@ export function AnalysisPage() {
 
   const pdfUrl = getPDFUrl(reportId);
 
-  // Show progress indicator while analyzing (but also show panels if we have events)
-  const showProgress = isAnalyzing && events.length === 0;
-
   // Right panel content with tabs
   const rightPanelContent = (
     <div className="analysis-page__right-panel">
@@ -264,33 +260,38 @@ export function AnalysisPage() {
             </span>
           </div>
         </div>
+        {/* Error banner with retry */}
+        {analysisState === "error" && error && (
+          <div className="analysis-page__error-banner">
+            <span className="analysis-page__error-message">
+              {error}
+            </span>
+            <button
+              className="analysis-page__retry-button"
+              onClick={handleRetry}
+            >
+              Retry Analysis
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main content - Three Panel Layout */}
       <main className="analysis-page__main analysis-page__main--layout">
-        {showProgress ? (
-          <AnalysisProgress
-            state={analysisState}
-            claimsCount={claimsCount}
-            error={error}
-            onRetry={handleRetry}
-          />
-        ) : (
-          <AnalysisLayout
-            leftPanel={
-              <PDFViewer
-                pdfUrl={pdfUrl}
-                claims={claims}
-                activeClaim={activeClaim}
-                onClaimClick={handleClaimClick}
-                onPageChange={handlePageChange}
-                currentPage={currentPage}
-              />
-            }
-            centerPanel={<DashboardPlaceholder />}
-            rightPanel={rightPanelContent}
-          />
-        )}
+        <AnalysisLayout
+          leftPanel={
+            <PDFViewer
+              pdfUrl={pdfUrl}
+              claims={claims}
+              activeClaim={activeClaim}
+              onClaimClick={handleClaimClick}
+              onPageChange={handlePageChange}
+              currentPage={currentPage}
+            />
+          }
+          centerPanel={<DashboardPlaceholder />}
+          rightPanel={rightPanelContent}
+        />
       </main>
     </div>
   );

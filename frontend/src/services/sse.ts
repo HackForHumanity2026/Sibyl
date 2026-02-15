@@ -63,7 +63,11 @@ export function createSSEConnection(
   eventSource.onopen = onOpen;
   eventSource.onerror = onError;
 
-  // Listen for all event types
+  // Listen for all event types.
+  // NOTE: "error" is handled separately below because the browser's native
+  // EventSource fires its own "error" Event when the connection closes/fails.
+  // Registering addEventListener("error") would catch both, and the native
+  // error Event has no .data property, causing JSON.parse(undefined) to throw.
   const eventTypes: StreamEventType[] = [
     "agent_started",
     "agent_thinking",
@@ -76,7 +80,6 @@ export function createSSEConnection(
     "info_request_routed",
     "info_response_posted",
     "pipeline_completed",
-    "error",
   ];
 
   for (const eventType of eventTypes) {
@@ -90,6 +93,22 @@ export function createSSEConnection(
       }
     });
   }
+
+  // Handle the application "error" event type separately.
+  // Only parse if it's a MessageEvent with data (i.e., from the server),
+  // ignoring the browser's native connection-error Events.
+  eventSource.addEventListener("error", (e: Event) => {
+    if (e instanceof MessageEvent && e.data != null) {
+      try {
+        const event: StreamEvent = JSON.parse(e.data);
+        const id = parseInt(e.lastEventId, 10) || 0;
+        onEvent(event, id);
+      } catch (err) {
+        console.error("Failed to parse SSE error event:", err, e.data);
+      }
+    }
+    // Native connection errors are handled by eventSource.onerror above.
+  });
 
   return eventSource;
 }

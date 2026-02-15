@@ -3,7 +3,7 @@
  * Implements FRD 4 - center panel placeholder.
  *
  * This will be replaced with the actual React Flow network graph
- * in FRD 5 (Orchestrator Agent / LangGraph Pipeline).
+ * in FRD 12 (Investigation Dashboard).
  */
 
 export function DashboardPlaceholder() {
@@ -33,7 +33,7 @@ export function DashboardPlaceholder() {
           the Claims Agent's findings and subsequent specialist agent analyses.
         </p>
         <div className="dashboard-placeholder__coming-soon">
-          Coming in FRD 5
+          Coming in FRD 12
         </div>
       </div>
     </div>
