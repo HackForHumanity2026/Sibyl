@@ -324,3 +324,208 @@ def sample_state_gap_detection():
     """State for testing gap detection."""
     from tests.fixtures.sample_states import create_state_for_gap_detection
     return create_state_for_gap_detection()
+
+
+# ============================================================================
+# Data Metrics Agent Mocking
+# ============================================================================
+
+@pytest.fixture
+def mock_openrouter_data_metrics(mocker):
+    """Mock OpenRouter client for data_metrics_agent with tool support.
+    
+    This patches the openrouter_client's _client to handle tool calling flow.
+    
+    Usage:
+        def test_example(mock_openrouter_data_metrics):
+            mock_openrouter_data_metrics('{"result": "test"}')
+    """
+    def _mock_completion(response_content: str, tool_calls: list | None = None):
+        # Build response structure matching OpenRouter format
+        response_data = {
+            "choices": [{
+                "message": {
+                    "content": response_content,
+                    "tool_calls": tool_calls or [],
+                },
+                "finish_reason": "stop" if not tool_calls else "tool_calls",
+            }],
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 200,
+            }
+        }
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = response_data
+        mock_response.raise_for_status = MagicMock()
+        
+        mock_post = AsyncMock(return_value=mock_response)
+        mocker.patch(
+            "app.agents.data_metrics_agent.openrouter_client._client.post",
+            mock_post
+        )
+        return mock_post
+    return _mock_completion
+
+
+@pytest.fixture
+def mock_openrouter_data_metrics_tool_loop(mocker):
+    """Mock OpenRouter with tool calling sequence for data_metrics_agent.
+    
+    Simulates a tool loop where the LLM first calls calculator, then returns final JSON.
+    
+    Usage:
+        def test_tool_loop(mock_openrouter_data_metrics_tool_loop):
+            mock_openrouter_data_metrics_tool_loop(
+                calculator_calls=[("2+2", "4")],
+                final_response='{"claim_id": "test", ...}'
+            )
+    """
+    def _mock_tool_loop(calculator_calls: list[tuple[str, str]], final_response: str):
+        responses = []
+        
+        # Add tool call responses
+        for expression, result in calculator_calls:
+            tool_response = {
+                "choices": [{
+                    "message": {
+                        "content": "",
+                        "tool_calls": [{
+                            "id": f"call_{len(responses)}",
+                            "type": "function",
+                            "function": {
+                                "name": "calculator",
+                                "arguments": json.dumps({"expression": expression})
+                            }
+                        }]
+                    },
+                    "finish_reason": "tool_calls",
+                }],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 50}
+            }
+            responses.append(tool_response)
+        
+        # Add final response
+        final = {
+            "choices": [{
+                "message": {
+                    "content": final_response,
+                    "tool_calls": [],
+                },
+                "finish_reason": "stop",
+            }],
+            "usage": {"prompt_tokens": 200, "completion_tokens": 500}
+        }
+        responses.append(final)
+        
+        mock_responses = []
+        for resp_data in responses:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = resp_data
+            mock_resp.raise_for_status = MagicMock()
+            mock_responses.append(mock_resp)
+        
+        mock_post = AsyncMock(side_effect=mock_responses)
+        mocker.patch(
+            "app.agents.data_metrics_agent.openrouter_client._client.post",
+            mock_post
+        )
+        return mock_post
+    return _mock_tool_loop
+
+
+@pytest.fixture
+def mock_calculator_tool(mocker):
+    """Mock the calculator tool directly for unit testing.
+    
+    Usage:
+        def test_example(mock_calculator_tool):
+            mock_calculator_tool({"2+2": "4", "3*4": "12"})
+    """
+    def _mock_calculator(results: dict[str, str]):
+        def calculator_side_effect(args):
+            expression = args.get("expression", "")
+            return results.get(expression, f"Unknown: {expression}")
+        
+        from app.agents.tools import calculator
+        mock = MagicMock(side_effect=calculator_side_effect)
+        mocker.patch.object(calculator.calculator, "invoke", mock)
+        return mock
+    return _mock_calculator
+
+
+# ============================================================================
+# Data Metrics Sample State Fixtures
+# ============================================================================
+
+@pytest.fixture
+def sample_state_emissions():
+    """State with a scope emissions claim for data_metrics agent."""
+    from tests.fixtures.sample_states import create_state_with_emissions_claim
+    return create_state_with_emissions_claim()
+
+
+@pytest.fixture
+def sample_state_scope_mismatch():
+    """State with a scope claim that has incorrect totals."""
+    from tests.fixtures.sample_states import create_state_with_scope_mismatch_claim
+    return create_state_with_scope_mismatch_claim()
+
+
+@pytest.fixture
+def sample_state_yoy():
+    """State with a YoY percentage change claim."""
+    from tests.fixtures.sample_states import create_state_with_yoy_claim
+    return create_state_with_yoy_claim()
+
+
+@pytest.fixture
+def sample_state_target():
+    """State with a target achievability claim."""
+    from tests.fixtures.sample_states import create_state_with_target_claim
+    return create_state_with_target_claim()
+
+
+@pytest.fixture
+def sample_state_aggressive_target():
+    """State with an aggressive target that may be questionable."""
+    from tests.fixtures.sample_states import create_state_with_aggressive_target_claim
+    return create_state_with_aggressive_target_claim()
+
+
+@pytest.fixture
+def sample_state_intensity():
+    """State with an intensity metric claim."""
+    from tests.fixtures.sample_states import create_state_with_intensity_claim
+    return create_state_with_intensity_claim()
+
+
+@pytest.fixture
+def sample_state_multiple_quantitative():
+    """State with multiple quantitative claims."""
+    from tests.fixtures.sample_states import create_state_with_multiple_quantitative_claims
+    return create_state_with_multiple_quantitative_claims()
+
+
+@pytest.fixture
+def sample_state_benchmark_response():
+    """State with benchmark InfoResponse for data_metrics agent."""
+    from tests.fixtures.sample_states import create_state_with_benchmark_info_response
+    return create_state_with_benchmark_info_response()
+
+
+@pytest.fixture
+def sample_state_data_metrics_reinvestigation():
+    """State with re-investigation request for data_metrics agent."""
+    from tests.fixtures.sample_states import create_state_with_data_metrics_reinvestigation
+    return create_state_with_data_metrics_reinvestigation()
+
+
+@pytest.fixture
+def sample_state_no_data_metrics_claims():
+    """State where no claims are routed to data_metrics agent."""
+    from tests.fixtures.sample_states import create_state_with_no_data_metrics_claims
+    return create_state_with_no_data_metrics_claims()

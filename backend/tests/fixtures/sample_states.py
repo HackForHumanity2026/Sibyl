@@ -26,6 +26,21 @@ from tests.fixtures.sample_claims import (
     ROUTING_METRICS,
     ROUTING_RISK_MANAGEMENT,
     ROUTING_NO_LEGAL,
+    # Data Metrics imports
+    DATA_METRICS_CLAIM_SCOPE_TOTALS,
+    DATA_METRICS_CLAIM_SCOPE_MISMATCH,
+    DATA_METRICS_CLAIM_YOY_CHANGE,
+    DATA_METRICS_CLAIM_TARGET,
+    DATA_METRICS_CLAIM_TARGET_AGGRESSIVE,
+    DATA_METRICS_CLAIM_INTENSITY,
+    DATA_METRICS_CLAIM_MULTIPLE_SCOPES,
+    ROUTING_DATA_METRICS_SCOPE,
+    ROUTING_DATA_METRICS_SCOPE_MISMATCH,
+    ROUTING_DATA_METRICS_YOY,
+    ROUTING_DATA_METRICS_TARGET,
+    ROUTING_DATA_METRICS_TARGET_AGGRESSIVE,
+    ROUTING_DATA_METRICS_INTENSITY,
+    ROUTING_DATA_METRICS_MULTIPLE,
 )
 
 
@@ -229,4 +244,138 @@ def create_state_for_gap_detection() -> SibylState:
         report_id="test-report-gaps",
         claims=[GOVERNANCE_CLAIM, RISK_MANAGEMENT_CLAIM],
         routing_plan=[ROUTING_GOVERNANCE, ROUTING_RISK_MANAGEMENT],
+    )
+
+
+# ============================================================================
+# Data Metrics Agent State Factories
+# ============================================================================
+
+
+def create_state_with_emissions_claim() -> SibylState:
+    """Create a state with a scope emissions claim routed to data_metrics agent."""
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_SCOPE_TOTALS],
+        routing_plan=[ROUTING_DATA_METRICS_SCOPE],
+    )
+
+
+def create_state_with_scope_mismatch_claim() -> SibylState:
+    """Create a state with a scope claim that has incorrect totals."""
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_SCOPE_MISMATCH],
+        routing_plan=[ROUTING_DATA_METRICS_SCOPE_MISMATCH],
+    )
+
+
+def create_state_with_yoy_claim() -> SibylState:
+    """Create a state with a YoY percentage change claim."""
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_YOY_CHANGE],
+        routing_plan=[ROUTING_DATA_METRICS_YOY],
+    )
+
+
+def create_state_with_target_claim() -> SibylState:
+    """Create a state with a target achievability claim."""
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_TARGET],
+        routing_plan=[ROUTING_DATA_METRICS_TARGET],
+    )
+
+
+def create_state_with_aggressive_target_claim() -> SibylState:
+    """Create a state with an aggressive target that may be questionable."""
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_TARGET_AGGRESSIVE],
+        routing_plan=[ROUTING_DATA_METRICS_TARGET_AGGRESSIVE],
+    )
+
+
+def create_state_with_intensity_claim() -> SibylState:
+    """Create a state with an intensity metric claim needing benchmark data."""
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_INTENSITY],
+        routing_plan=[ROUTING_DATA_METRICS_INTENSITY],
+    )
+
+
+def create_state_with_multiple_quantitative_claims() -> SibylState:
+    """Create a state with multiple quantitative claims of different types."""
+    return create_base_state(
+        claims=[
+            DATA_METRICS_CLAIM_SCOPE_TOTALS,
+            DATA_METRICS_CLAIM_YOY_CHANGE,
+            DATA_METRICS_CLAIM_TARGET,
+            DATA_METRICS_CLAIM_INTENSITY,
+        ],
+        routing_plan=[
+            ROUTING_DATA_METRICS_SCOPE,
+            ROUTING_DATA_METRICS_YOY,
+            ROUTING_DATA_METRICS_TARGET,
+            ROUTING_DATA_METRICS_INTENSITY,
+        ],
+    )
+
+
+def create_state_with_benchmark_info_response() -> SibylState:
+    """Create a state with a pending benchmark InfoResponse for data_metrics agent."""
+    # Simulate an InfoRequest the data_metrics agent posted previously
+    info_request = InfoRequest(
+        request_id="req-dm-001",
+        requesting_agent="data_metrics",
+        description="Request sector benchmark data for emission_intensity to validate claim",
+        context={
+            "claim_id": "claim-dm-006",
+            "metric_type": "emission_intensity",
+            "target_agent": "academic",
+        },
+        status="responded",
+    )
+    # Simulate an InfoResponse from the academic agent
+    info_response = InfoResponse(
+        request_id="req-dm-001",
+        responding_agent="academic",
+        response="Manufacturing sector average emission intensity: 0.8 tCO2e per $1M revenue (source: industry benchmarks 2024).",
+        details={
+            "sector": "manufacturing",
+            "average_intensity": 0.8,
+            "unit": "tCO2e per $1M revenue",
+            "source": "Industry Sector Benchmarks 2024",
+            "sample_size": 150,
+        },
+    )
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_INTENSITY],
+        routing_plan=[ROUTING_DATA_METRICS_INTENSITY],
+        info_requests=[info_request],
+        info_responses=[info_response],
+    )
+
+
+def create_state_with_data_metrics_reinvestigation() -> SibylState:
+    """Create a state with a re-investigation request from Judge targeting data_metrics."""
+    reinvestigation = ReinvestigationRequest(
+        claim_id=DATA_METRICS_CLAIM_TARGET.claim_id,
+        target_agents=["data_metrics"],
+        evidence_gap="Target achievability calculation needs verification with interim milestones",
+        refined_queries=[
+            "Search for interim emission targets between 2019 and 2030",
+            "Find historical emission reduction rates for comparison",
+        ],
+        required_evidence="Interim targets and historical reduction rates to validate achievability",
+    )
+    return create_base_state(
+        claims=[DATA_METRICS_CLAIM_TARGET],
+        routing_plan=[ROUTING_DATA_METRICS_TARGET],
+        reinvestigation_requests=[reinvestigation],
+        iteration_count=1,
+    )
+
+
+def create_state_with_no_data_metrics_claims() -> SibylState:
+    """Create a state where no claims are routed to the data_metrics agent."""
+    return create_base_state(
+        claims=[GOVERNANCE_CLAIM],
+        routing_plan=[ROUTING_GOVERNANCE],
     )

@@ -89,6 +89,88 @@ NO_TRANSITION_PLAN_CLAIM = Claim(
 
 
 # ============================================================================
+# Data Metrics Agent Sample Claims
+# ============================================================================
+
+DATA_METRICS_CLAIM_SCOPE_TOTALS = Claim(
+    claim_id="claim-dm-001",
+    text="Scope 1: 2.3M tCO2e, Scope 2: 1.1M tCO2e, Scope 3: 8.5M tCO2e, Total: 12.0M tCO2e",
+    page_number=45,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(a)(i)", "S2.29(a)(ii)", "S2.29(a)(iii)"],
+    priority="high",
+    source_location={"source_context": "Section 7.1 GHG Emissions Summary"},
+    agent_reasoning="Quantitative claim with scope emissions totals requiring consistency check."
+)
+
+DATA_METRICS_CLAIM_SCOPE_MISMATCH = Claim(
+    claim_id="claim-dm-002",
+    text="Scope 1: 2.3M tCO2e, Scope 2: 1.1M tCO2e, Scope 3: 8.5M tCO2e, Total: 15.0M tCO2e",
+    page_number=46,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(a)(i)", "S2.29(a)(ii)", "S2.29(a)(iii)"],
+    priority="high",
+    source_location={"source_context": "Section 7.1 GHG Emissions Summary"},
+    agent_reasoning="Quantitative claim with INCORRECT total - scope sum does not match reported total."
+)
+
+DATA_METRICS_CLAIM_YOY_CHANGE = Claim(
+    claim_id="claim-dm-003",
+    text="Our emissions decreased 6.1% from 2.45M tCO2e in FY2023 to 2.3M tCO2e in FY2024",
+    page_number=47,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29"],
+    priority="high",
+    source_location={"source_context": "Section 7.2 Year-over-Year Performance"},
+    agent_reasoning="Quantitative claim with YoY percentage change requiring validation."
+)
+
+DATA_METRICS_CLAIM_TARGET = Claim(
+    claim_id="claim-dm-004",
+    text="42% reduction in Scope 1+2 emissions by 2030 from 2019 baseline of 2.5M tCO2e",
+    page_number=52,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.33", "S2.34", "S2.35"],
+    priority="high",
+    source_location={"source_context": "Section 8.1 Climate Targets"},
+    agent_reasoning="Target claim requiring achievability assessment and IFRS S2.33-36 compliance."
+)
+
+DATA_METRICS_CLAIM_TARGET_AGGRESSIVE = Claim(
+    claim_id="claim-dm-005",
+    text="90% reduction in total emissions by 2029 from 2024 baseline of 5.0M tCO2e",
+    page_number=53,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.33", "S2.34"],
+    priority="high",
+    source_location={"source_context": "Section 8.1 Climate Targets"},
+    agent_reasoning="Aggressive target claim that may be mathematically questionable."
+)
+
+DATA_METRICS_CLAIM_INTENSITY = Claim(
+    claim_id="claim-dm-006",
+    text="Emission intensity: 0.5 tCO2e per $1M revenue for our manufacturing operations",
+    page_number=48,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(e)", "S2.30"],
+    priority="medium",
+    source_location={"source_context": "Section 7.3 Emission Intensity"},
+    agent_reasoning="Intensity metric claim requiring benchmark comparison."
+)
+
+DATA_METRICS_CLAIM_MULTIPLE_SCOPES = Claim(
+    claim_id="claim-dm-007",
+    text="Total GHG emissions of 14.2M tCO2e, comprising Scope 1 (2.1M), Scope 2 location-based (1.5M), Scope 2 market-based (1.2M), and Scope 3 (10.6M).",
+    page_number=49,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(a)", "S2.29(a)(i)", "S2.29(a)(ii)", "S2.29(a)(iii)"],
+    priority="high",
+    source_location={"source_context": "Section 7.1 Complete GHG Profile"},
+    agent_reasoning="Complex emissions claim with both location and market-based Scope 2."
+)
+
+
+# ============================================================================
 # Sample Routing Assignments
 # ============================================================================
 
@@ -135,6 +217,50 @@ ROUTING_NO_LEGAL = RoutingAssignment(
 )
 
 
+# Data Metrics Agent Routing Assignments
+ROUTING_DATA_METRICS_SCOPE = RoutingAssignment(
+    claim_id="claim-dm-001",
+    assigned_agents=["data_metrics"],
+    reasoning="Scope emissions claim requiring consistency validation."
+)
+
+ROUTING_DATA_METRICS_SCOPE_MISMATCH = RoutingAssignment(
+    claim_id="claim-dm-002",
+    assigned_agents=["data_metrics"],
+    reasoning="Scope emissions claim with potential mismatch."
+)
+
+ROUTING_DATA_METRICS_YOY = RoutingAssignment(
+    claim_id="claim-dm-003",
+    assigned_agents=["data_metrics"],
+    reasoning="YoY percentage change claim requiring calculation validation."
+)
+
+ROUTING_DATA_METRICS_TARGET = RoutingAssignment(
+    claim_id="claim-dm-004",
+    assigned_agents=["data_metrics"],
+    reasoning="Target claim requiring achievability assessment."
+)
+
+ROUTING_DATA_METRICS_TARGET_AGGRESSIVE = RoutingAssignment(
+    claim_id="claim-dm-005",
+    assigned_agents=["data_metrics"],
+    reasoning="Aggressive target claim requiring critical assessment."
+)
+
+ROUTING_DATA_METRICS_INTENSITY = RoutingAssignment(
+    claim_id="claim-dm-006",
+    assigned_agents=["data_metrics", "academic"],
+    reasoning="Intensity claim requiring benchmark comparison."
+)
+
+ROUTING_DATA_METRICS_MULTIPLE = RoutingAssignment(
+    claim_id="claim-dm-007",
+    assigned_agents=["data_metrics", "legal"],
+    reasoning="Complex emissions claim requiring both quantitative and compliance validation."
+)
+
+
 # ============================================================================
 # Sample Claims Lists
 # ============================================================================
@@ -166,4 +292,26 @@ ALL_ROUTING_ASSIGNMENTS = [
     ROUTING_METRICS_COMPLETE,
     ROUTING_RISK_MANAGEMENT,
     ROUTING_NO_LEGAL,
+]
+
+
+# Data Metrics Claims Lists
+DATA_METRICS_CLAIMS = [
+    DATA_METRICS_CLAIM_SCOPE_TOTALS,
+    DATA_METRICS_CLAIM_SCOPE_MISMATCH,
+    DATA_METRICS_CLAIM_YOY_CHANGE,
+    DATA_METRICS_CLAIM_TARGET,
+    DATA_METRICS_CLAIM_TARGET_AGGRESSIVE,
+    DATA_METRICS_CLAIM_INTENSITY,
+    DATA_METRICS_CLAIM_MULTIPLE_SCOPES,
+]
+
+DATA_METRICS_ROUTING_ASSIGNMENTS = [
+    ROUTING_DATA_METRICS_SCOPE,
+    ROUTING_DATA_METRICS_SCOPE_MISMATCH,
+    ROUTING_DATA_METRICS_YOY,
+    ROUTING_DATA_METRICS_TARGET,
+    ROUTING_DATA_METRICS_TARGET_AGGRESSIVE,
+    ROUTING_DATA_METRICS_INTENSITY,
+    ROUTING_DATA_METRICS_MULTIPLE,
 ]

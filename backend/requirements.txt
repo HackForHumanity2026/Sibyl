@@ -25,6 +25,9 @@ langgraph>=0.2.0
 langchain-core>=0.3.0
 langgraph-checkpoint-postgres>=2.0.0
 
+# Safe expression evaluation for calculator tool
+simpleeval>=1.0.0
+
 # PDF parsing
 pymupdf4llm>=0.0.17
 

@@ -275,6 +275,321 @@ MOCK_GAP_DETECTION_CHUNK_COVERAGE = {
 
 
 # ============================================================================
+# Data Metrics Agent Mock Responses
+# ============================================================================
+
+MOCK_SCOPE_ADDITION_PASS = {
+    "claim_id": "claim-dm-001",
+    "consistency_checks": [
+        {
+            "check_name": "scope_addition",
+            "claim_id": "claim-dm-001",
+            "result": "pass",
+            "details": {
+                "scope1": 2300000,
+                "scope2": 1100000,
+                "scope3": 8500000,
+                "calculated_total": 11900000,
+                "reported_total": 12000000,
+                "discrepancy_percent": 0.83
+            },
+            "severity": "info",
+            "message": "Scope 1+2+3 equals reported total within 1% tolerance (0.83% discrepancy)"
+        }
+    ],
+    "unit_validation": {
+        "units_valid": True,
+        "methodology_aligned": True,
+        "conversion_factors_appropriate": True,
+        "issues": []
+    },
+    "benchmark_comparison": None,
+    "target_achievability": None,
+    "historical_consistency": None,
+    "ifrs_compliance": {
+        "claim_id": "claim-dm-001",
+        "ifrs_paragraphs": ["S2.29(a)(i)", "S2.29(a)(ii)", "S2.29(a)(iii)"],
+        "compliance_status": "compliant",
+        "missing_requirements": [],
+        "compliance_details": {
+            "scope1_disclosed": True,
+            "scope2_disclosed": True,
+            "scope3_disclosed": True,
+            "methodology_stated": True
+        },
+        "reasoning": "Claim discloses all three emission scopes with totals, meeting S2.29(a) requirements."
+    },
+    "summary": "All scope emissions correctly sum to total within tolerance. IFRS S2.29 compliant.",
+    "supports_claim": True,
+    "confidence": "high",
+    "missing_data": []
+}
+
+
+MOCK_SCOPE_ADDITION_FAIL = {
+    "claim_id": "claim-dm-002",
+    "consistency_checks": [
+        {
+            "check_name": "scope_addition",
+            "claim_id": "claim-dm-002",
+            "result": "fail",
+            "details": {
+                "scope1": 2300000,
+                "scope2": 1100000,
+                "scope3": 8500000,
+                "calculated_total": 11900000,
+                "reported_total": 15000000,
+                "discrepancy_percent": 26.05
+            },
+            "severity": "critical",
+            "message": "Scope 1+2+3 does not equal reported total. Discrepancy: 26.05% (exceeds 1% tolerance)"
+        }
+    ],
+    "unit_validation": {
+        "units_valid": True,
+        "methodology_aligned": True,
+        "conversion_factors_appropriate": True,
+        "issues": []
+    },
+    "benchmark_comparison": None,
+    "target_achievability": None,
+    "historical_consistency": None,
+    "ifrs_compliance": {
+        "claim_id": "claim-dm-002",
+        "ifrs_paragraphs": ["S2.29(a)(i)", "S2.29(a)(ii)", "S2.29(a)(iii)"],
+        "compliance_status": "partially_compliant",
+        "missing_requirements": ["Internal consistency of reported totals"],
+        "compliance_details": {
+            "scope1_disclosed": True,
+            "scope2_disclosed": True,
+            "scope3_disclosed": True,
+            "totals_consistent": False
+        },
+        "reasoning": "Scopes are disclosed but total is inconsistent with sum of scopes."
+    },
+    "summary": "Critical: Scope totals do not add up. 26% discrepancy between sum and reported total.",
+    "supports_claim": False,
+    "confidence": "high",
+    "missing_data": []
+}
+
+
+MOCK_YOY_PERCENTAGE_PASS = {
+    "claim_id": "claim-dm-003",
+    "consistency_checks": [
+        {
+            "check_name": "yoy_percentage",
+            "claim_id": "claim-dm-003",
+            "result": "pass",
+            "details": {
+                "prior_value": 2450000,
+                "current_value": 2300000,
+                "reported_change_percent": -6.1,
+                "calculated_change_percent": -6.12,
+                "discrepancy_pp": 0.02
+            },
+            "severity": "info",
+            "message": "Reported YoY change (6.1% decrease) matches calculated change within 0.1pp tolerance"
+        }
+    ],
+    "unit_validation": {
+        "units_valid": True,
+        "methodology_aligned": True,
+        "conversion_factors_appropriate": True,
+        "issues": []
+    },
+    "benchmark_comparison": None,
+    "target_achievability": None,
+    "historical_consistency": {
+        "claim_id": "claim-dm-003",
+        "current_year": 2024,
+        "current_value": 2300000,
+        "prior_years": [{"year": 2023, "value": 2450000}],
+        "yoy_change_consistent": True,
+        "trend_consistent": True,
+        "methodology_changes": [],
+        "unexplained_deviations": [],
+        "assessment": "consistent",
+        "reasoning": "YoY change of 6.1% matches calculated value and continues downward trend."
+    },
+    "ifrs_compliance": {
+        "claim_id": "claim-dm-003",
+        "ifrs_paragraphs": ["S2.29"],
+        "compliance_status": "compliant",
+        "missing_requirements": [],
+        "compliance_details": {},
+        "reasoning": "Year-over-year comparison with prior period as required by S2.29."
+    },
+    "summary": "YoY percentage change verified. 6.1% decrease is mathematically accurate.",
+    "supports_claim": True,
+    "confidence": "high",
+    "missing_data": []
+}
+
+
+MOCK_TARGET_ACHIEVABILITY_ACHIEVABLE = {
+    "claim_id": "claim-dm-004",
+    "consistency_checks": [
+        {
+            "check_name": "target_calculation",
+            "claim_id": "claim-dm-004",
+            "result": "pass",
+            "details": {
+                "baseline_value": 2500000,
+                "target_percentage": 42,
+                "target_value_calculated": 1450000,
+                "years_to_target": 11,
+                "required_annual_rate": 4.8
+            },
+            "severity": "info",
+            "message": "42% reduction from 2.5M tCO2e requires 4.8% annual reduction rate"
+        }
+    ],
+    "unit_validation": {
+        "units_valid": True,
+        "methodology_aligned": True,
+        "conversion_factors_appropriate": True,
+        "issues": []
+    },
+    "benchmark_comparison": None,
+    "target_achievability": {
+        "claim_id": "claim-dm-004",
+        "target_type": "absolute_reduction",
+        "baseline_year": 2019,
+        "baseline_value": 2500000,
+        "target_year": 2030,
+        "target_value": 1450000,
+        "target_percentage": 42.0,
+        "required_annual_reduction_rate": 4.8,
+        "achievability_assessment": "achievable",
+        "interim_targets_consistent": True,
+        "ifrs_s2_33_36_compliant": True,
+        "missing_ifrs_requirements": [],
+        "reasoning": "4.8% annual reduction rate is consistent with sector averages for companies with similar transition plans. SBTi 1.5C pathway requires ~4.2% annual reduction."
+    },
+    "historical_consistency": None,
+    "ifrs_compliance": {
+        "claim_id": "claim-dm-004",
+        "ifrs_paragraphs": ["S2.33", "S2.34", "S2.35", "S2.36"],
+        "compliance_status": "compliant",
+        "missing_requirements": [],
+        "compliance_details": {
+            "target_disclosed": True,
+            "baseline_disclosed": True,
+            "timeline_disclosed": True,
+            "scope_specified": True
+        },
+        "reasoning": "Target disclosure meets S2.33-36 requirements with baseline, timeline, and scope."
+    },
+    "summary": "42% reduction target by 2030 is achievable with 4.8% annual rate. IFRS S2.33-36 compliant.",
+    "supports_claim": True,
+    "confidence": "high",
+    "missing_data": []
+}
+
+
+MOCK_TARGET_ACHIEVABILITY_QUESTIONABLE = {
+    "claim_id": "claim-dm-005",
+    "consistency_checks": [
+        {
+            "check_name": "target_calculation",
+            "claim_id": "claim-dm-005",
+            "result": "pass",
+            "details": {
+                "baseline_value": 5000000,
+                "target_percentage": 90,
+                "target_value_calculated": 500000,
+                "years_to_target": 5,
+                "required_annual_rate": 36.9
+            },
+            "severity": "warning",
+            "message": "90% reduction in 5 years requires 36.9% annual reduction rate - significantly above historical norms"
+        }
+    ],
+    "unit_validation": {
+        "units_valid": True,
+        "methodology_aligned": True,
+        "conversion_factors_appropriate": True,
+        "issues": []
+    },
+    "benchmark_comparison": None,
+    "target_achievability": {
+        "claim_id": "claim-dm-005",
+        "target_type": "absolute_reduction",
+        "baseline_year": 2024,
+        "baseline_value": 5000000,
+        "target_year": 2029,
+        "target_value": 500000,
+        "target_percentage": 90.0,
+        "required_annual_reduction_rate": 36.9,
+        "achievability_assessment": "questionable",
+        "interim_targets_consistent": None,
+        "ifrs_s2_33_36_compliant": False,
+        "missing_ifrs_requirements": ["Interim milestones", "Transition plan details"],
+        "reasoning": "36.9% annual reduction is far beyond any documented sector achievement. Average is 3-5% annually. This target appears unrealistic without extraordinary circumstances."
+    },
+    "historical_consistency": None,
+    "ifrs_compliance": {
+        "claim_id": "claim-dm-005",
+        "ifrs_paragraphs": ["S2.33", "S2.34"],
+        "compliance_status": "partially_compliant",
+        "missing_requirements": ["S2.34 interim milestones", "S2.35 transition plan"],
+        "compliance_details": {
+            "target_disclosed": True,
+            "baseline_disclosed": True,
+            "interim_milestones": False,
+            "transition_plan": False
+        },
+        "reasoning": "Target lacks interim milestones and transition plan required by S2.34-35."
+    },
+    "summary": "90% reduction in 5 years is mathematically questionable (36.9% annual rate). Missing IFRS requirements.",
+    "supports_claim": False,
+    "confidence": "high",
+    "missing_data": ["Interim targets", "Transition plan details"]
+}
+
+
+MOCK_INTENSITY_BENCHMARK = {
+    "claim_id": "claim-dm-006",
+    "consistency_checks": [],
+    "unit_validation": {
+        "units_valid": True,
+        "methodology_aligned": True,
+        "conversion_factors_appropriate": True,
+        "issues": []
+    },
+    "benchmark_comparison": {
+        "metric_name": "Emission intensity",
+        "reported_value": 0.5,
+        "reported_unit": "tCO2e per $1M revenue",
+        "sector_average": 0.8,
+        "sector_unit": "tCO2e per $1M revenue",
+        "benchmark_source": "Industry sector benchmark data",
+        "assessment": "plausible",
+        "reasoning": "Reported intensity of 0.5 tCO2e/$M is 37.5% below sector average of 0.8 tCO2e/$M. This is within plausible range for companies with advanced efficiency measures."
+    },
+    "target_achievability": None,
+    "historical_consistency": None,
+    "ifrs_compliance": {
+        "claim_id": "claim-dm-006",
+        "ifrs_paragraphs": ["S2.29(e)", "S2.30"],
+        "compliance_status": "compliant",
+        "missing_requirements": [],
+        "compliance_details": {
+            "intensity_metric_disclosed": True,
+            "unit_appropriate": True,
+            "methodology_clear": True
+        },
+        "reasoning": "Intensity metric meets S2.29(e) requirements for cross-entity comparison."
+    },
+    "summary": "Intensity metric of 0.5 tCO2e/$M is plausible (37.5% below sector average).",
+    "supports_claim": True,
+    "confidence": "medium",
+    "missing_data": []
+}
+
+
+# ============================================================================
 # Helper Functions
 # ============================================================================
 
@@ -308,3 +623,62 @@ def get_mock_metrics_response() -> str:
 def get_mock_risk_management_response() -> str:
     """Get a mock LLM response for risk management claim assessment."""
     return json.dumps(MOCK_RISK_MANAGEMENT_ASSESSMENT)
+
+
+# ============================================================================
+# Data Metrics Helper Functions
+# ============================================================================
+
+
+def get_mock_data_metrics_response(scenario: str = "scope_addition_pass") -> str:
+    """Get a mock LLM response for data metrics validation.
+    
+    Args:
+        scenario: One of:
+            - "scope_addition_pass"
+            - "scope_addition_fail"
+            - "yoy_percentage_pass"
+            - "target_achievable"
+            - "target_questionable"
+            - "intensity_benchmark"
+        
+    Returns:
+        JSON string of the mock response
+    """
+    responses = {
+        "scope_addition_pass": MOCK_SCOPE_ADDITION_PASS,
+        "scope_addition_fail": MOCK_SCOPE_ADDITION_FAIL,
+        "yoy_percentage_pass": MOCK_YOY_PERCENTAGE_PASS,
+        "target_achievable": MOCK_TARGET_ACHIEVABILITY_ACHIEVABLE,
+        "target_questionable": MOCK_TARGET_ACHIEVABILITY_QUESTIONABLE,
+        "intensity_benchmark": MOCK_INTENSITY_BENCHMARK,
+    }
+    return json.dumps(responses.get(scenario, MOCK_SCOPE_ADDITION_PASS))
+
+
+def get_mock_scope_addition_response(pass_fail: str = "pass") -> str:
+    """Get a mock LLM response for scope addition check.
+    
+    Args:
+        pass_fail: Either "pass" or "fail"
+        
+    Returns:
+        JSON string of the mock response
+    """
+    if pass_fail == "fail":
+        return json.dumps(MOCK_SCOPE_ADDITION_FAIL)
+    return json.dumps(MOCK_SCOPE_ADDITION_PASS)
+
+
+def get_mock_target_response(achievability: str = "achievable") -> str:
+    """Get a mock LLM response for target achievability assessment.
+    
+    Args:
+        achievability: Either "achievable" or "questionable"
+        
+    Returns:
+        JSON string of the mock response
+    """
+    if achievability == "questionable":
+        return json.dumps(MOCK_TARGET_ACHIEVABILITY_QUESTIONABLE)
+    return json.dumps(MOCK_TARGET_ACHIEVABILITY_ACHIEVABLE)
