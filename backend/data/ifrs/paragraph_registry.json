@@ -1,0 +1,631 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-02-16",
+  "description": "IFRS S1/S2 Sustainability Disclosure Requirements Registry for Legal Agent gap detection",
+  "paragraphs": [
+    {
+      "paragraph_id": "S1.26",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Governance Objective",
+      "requirement_text": "The objective of sustainability-related financial disclosures on governance is to enable users to understand the governance processes, controls and procedures an entity uses to monitor, manage and oversee sustainability-related risks and opportunities.",
+      "sub_requirements": [],
+      "s1_counterpart": null,
+      "materiality_note": "This paragraph establishes the objective for governance disclosures. All subsequent governance requirements flow from this objective.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(a)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Governance Body Oversight",
+      "requirement_text": "Disclose information about the governance body(s) or individual(s) responsible for oversight of sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "identify_governance_body", "required": true, "description": "Identify the governance body(s) or individual(s) responsible for oversight"},
+        {"requirement": "terms_of_reference", "required": true, "description": "How responsibilities are reflected in terms of reference, mandates, role descriptions"},
+        {"requirement": "skills_competencies", "required": true, "description": "How the body determines whether appropriate skills and competencies are available"},
+        {"requirement": "reporting_frequency", "required": true, "description": "How and how often the body is informed about sustainability-related risks and opportunities"},
+        {"requirement": "strategy_oversight", "required": true, "description": "How the body takes into account risks/opportunities when overseeing strategy, major transactions, risk management"},
+        {"requirement": "target_oversight", "required": true, "description": "How the body oversees target setting and monitors progress, including remuneration policies"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Governance oversight is fundamental to sustainability disclosure credibility. Missing governance body identification or unclear oversight mechanisms undermine trust in reported information.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(a)(i)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Terms of Reference",
+      "requirement_text": "How responsibilities for sustainability-related risks and opportunities are reflected in the terms of reference, mandates, role descriptions and other related policies applicable to that body(s) or individual(s).",
+      "sub_requirements": [
+        {"requirement": "responsibilities_documented", "required": true, "description": "Sustainability responsibilities documented in formal governance policies"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Clear documentation of sustainability responsibilities ensures accountability and demonstrates formal commitment to sustainability governance.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(a)(ii)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Skills and Competencies",
+      "requirement_text": "How the body(s) or individual(s) determines whether appropriate skills and competencies are available or will be developed to oversee strategies designed to respond to sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "competency_assessment", "required": true, "description": "Process for assessing board/management sustainability competencies"},
+        {"requirement": "competency_development", "required": true, "description": "Plans for developing sustainability expertise if gaps exist"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Board competency in sustainability matters is critical for effective oversight. Lack of disclosed competency assessment suggests potential governance weakness.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(a)(iii)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Reporting Frequency",
+      "requirement_text": "How and how often the body(s) or individual(s) is informed about sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "information_frequency", "required": true, "description": "Frequency of sustainability reporting to governance body"},
+        {"requirement": "information_mechanism", "required": true, "description": "Mechanism by which sustainability information reaches the governance body"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Regular reporting cadence indicates active governance engagement. Infrequent or unclear reporting mechanisms suggest sustainability may not receive adequate board attention.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(a)(iv)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Strategy Integration",
+      "requirement_text": "How the body(s) or individual(s) takes into account sustainability-related risks and opportunities when overseeing the entity's strategy, its decisions on major transactions and its risk management processes and related policies, including whether the body(s) or individual(s) has considered trade-offs associated with those risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "strategy_consideration", "required": true, "description": "Integration of sustainability into strategic oversight"},
+        {"requirement": "major_transaction_consideration", "required": true, "description": "Sustainability considered in major transaction decisions"},
+        {"requirement": "risk_process_integration", "required": true, "description": "Integration with risk management processes"},
+        {"requirement": "tradeoff_consideration", "required": true, "description": "Consideration of trade-offs between sustainability factors"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Integration of sustainability into strategy and major decisions is essential for demonstrating that sustainability is not treated as a peripheral concern.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(a)(v)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Target Oversight and Remuneration",
+      "requirement_text": "How the body(s) or individual(s) oversees the setting of targets related to sustainability-related risks and opportunities, and monitors progress towards those targets, including whether and how related performance metrics are included in remuneration policies.",
+      "sub_requirements": [
+        {"requirement": "target_setting_oversight", "required": true, "description": "Governance body involvement in setting sustainability targets"},
+        {"requirement": "progress_monitoring", "required": true, "description": "Process for monitoring progress toward targets"},
+        {"requirement": "remuneration_link", "required": true, "description": "Whether and how sustainability metrics are linked to remuneration"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Linking sustainability targets to executive remuneration creates accountability and incentivizes achievement. Absence of remuneration links suggests limited commitment.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.27(b)",
+      "standard": "S1",
+      "pillar": "governance",
+      "section": "Management Role",
+      "requirement_text": "Management's role in the governance processes, controls and procedures used to monitor, manage and oversee sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "delegation_structure", "required": true, "description": "Whether responsibility is delegated to specific management position or committee"},
+        {"requirement": "oversight_mechanism", "required": true, "description": "How oversight is exercised over that position or committee"},
+        {"requirement": "controls_and_procedures", "required": true, "description": "Whether management uses controls and procedures to support oversight"},
+        {"requirement": "internal_function_integration", "required": true, "description": "How controls and procedures are integrated with other internal functions"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Clear management accountability structures demonstrate operational commitment to sustainability governance beyond board-level oversight.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.38",
+      "standard": "S1",
+      "pillar": "risk_management",
+      "section": "Risk Management Objective",
+      "requirement_text": "The objective of sustainability-related financial disclosures on risk management is to enable users to understand the processes an entity uses to identify, assess, prioritise and monitor sustainability-related risks and opportunities.",
+      "sub_requirements": [],
+      "s1_counterpart": null,
+      "materiality_note": "This paragraph establishes the objective for risk management disclosures. All subsequent risk management requirements flow from this objective.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.41(a)",
+      "standard": "S1",
+      "pillar": "risk_management",
+      "section": "Risk Identification",
+      "requirement_text": "The processes and related policies the entity uses to identify sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "identification_process", "required": true, "description": "Process for identifying sustainability-related risks and opportunities"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Clear risk identification processes demonstrate systematic approach to sustainability risk management. Missing identification processes suggest ad-hoc risk management.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.41(b)",
+      "standard": "S1",
+      "pillar": "risk_management",
+      "section": "Risk Assessment",
+      "requirement_text": "The processes the entity uses to assess, prioritise and monitor sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "assessment_process", "required": true, "description": "Process for assessing sustainability risks and opportunities"},
+        {"requirement": "prioritization_process", "required": true, "description": "Process for prioritizing risks and opportunities"},
+        {"requirement": "monitoring_process", "required": true, "description": "Process for ongoing monitoring"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Assessment and prioritization processes enable stakeholders to understand how the entity focuses its sustainability risk management efforts.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.41(c)",
+      "standard": "S1",
+      "pillar": "risk_management",
+      "section": "Risk Monitoring Input Parameters",
+      "requirement_text": "The inputs used to identify, assess, prioritise and monitor sustainability-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "input_parameters", "required": true, "description": "Inputs used in the risk identification and assessment process"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Disclosure of inputs demonstrates the rigor and data-driven nature of risk management processes.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.41(d)",
+      "standard": "S1",
+      "pillar": "risk_management",
+      "section": "Integration with Overall Risk Management",
+      "requirement_text": "How the processes the entity uses to identify, assess, prioritise and monitor sustainability-related risks and opportunities are integrated into and inform the entity's overall risk management.",
+      "sub_requirements": [
+        {"requirement": "integration_with_erm", "required": true, "description": "Integration of sustainability risk processes with overall enterprise risk management"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Integration with enterprise risk management demonstrates that sustainability risks are treated with the same rigor as financial and operational risks.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S1.42",
+      "standard": "S1",
+      "pillar": "risk_management",
+      "section": "Changes from Prior Period",
+      "requirement_text": "Whether and how the processes described in paragraph 41 have changed compared with the prior period.",
+      "sub_requirements": [
+        {"requirement": "process_changes", "required": true, "description": "Description of any changes to risk management processes from prior period"}
+      ],
+      "s1_counterpart": null,
+      "materiality_note": "Disclosure of process changes enables trend analysis and demonstrates continuous improvement in risk management.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.5",
+      "standard": "S2",
+      "pillar": "governance",
+      "section": "Climate Governance Objective",
+      "requirement_text": "The objective of climate-related financial disclosures on governance is to enable users to understand the governance processes, controls and procedures an entity uses to monitor, manage and oversee climate-related risks and opportunities.",
+      "sub_requirements": [],
+      "s1_counterpart": "S1.26",
+      "materiality_note": "Climate-specific governance is critical given the materiality and complexity of climate risks. This paragraph establishes the objective for climate governance disclosures.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.6",
+      "standard": "S2",
+      "pillar": "governance",
+      "section": "Climate Governance Body Oversight",
+      "requirement_text": "Disclose information about the governance body(s) or individual(s) responsible for oversight of climate-related risks and opportunities, including competencies, reporting frequency, strategy integration, and target oversight with remuneration links.",
+      "sub_requirements": [
+        {"requirement": "identify_climate_governance_body", "required": true, "description": "Identify the governance body(s) responsible for climate oversight"},
+        {"requirement": "climate_responsibilities", "required": true, "description": "How climate responsibilities are reflected in terms of reference"},
+        {"requirement": "climate_competencies", "required": true, "description": "How the body assesses climate-specific skills and competencies"},
+        {"requirement": "climate_reporting_frequency", "required": true, "description": "How and how often informed about climate risks/opportunities"},
+        {"requirement": "climate_strategy_integration", "required": true, "description": "How climate factors are considered in strategy, transactions, risk management"},
+        {"requirement": "climate_target_remuneration", "required": true, "description": "Oversight of climate targets and whether linked to remuneration"}
+      ],
+      "s1_counterpart": "S1.27(a)",
+      "materiality_note": "Climate-specific governance structures demonstrate focused attention on climate risks. Board competencies in climate matters are increasingly scrutinized by investors.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.7",
+      "standard": "S2",
+      "pillar": "governance",
+      "section": "Climate Management Role",
+      "requirement_text": "Management's role in the governance processes, controls and procedures used to monitor, manage and oversee climate-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "climate_management_delegation", "required": true, "description": "Whether climate responsibility delegated to specific management position/committee"},
+        {"requirement": "climate_management_oversight", "required": true, "description": "How oversight is exercised over climate management roles"},
+        {"requirement": "climate_controls_procedures", "required": true, "description": "Management controls and procedures for climate oversight"},
+        {"requirement": "climate_function_integration", "required": true, "description": "Integration with other internal functions"}
+      ],
+      "s1_counterpart": "S1.27(b)",
+      "materiality_note": "Clear climate management accountability is essential for operational implementation of climate strategy.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Strategy and Decision-Making",
+      "requirement_text": "An entity shall disclose information that enables users to understand the effects of climate-related risks and opportunities on its strategy and decision-making, including transition plans.",
+      "sub_requirements": [
+        {"requirement": "resource_allocation_changes", "required": true, "description": "How the entity is responding through changes to resource allocation"},
+        {"requirement": "direct_mitigation", "required": true, "description": "Direct mitigation and adaptation efforts"},
+        {"requirement": "indirect_mitigation", "required": true, "description": "Indirect mitigation and adaptation efforts"},
+        {"requirement": "transition_plan", "required": true, "description": "Transition plan including key assumptions, dependencies, and timeline"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Strategic response to climate risks is critical for assessing an entity's climate strategy credibility and long-term viability.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(a)(i)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Resource Allocation Changes",
+      "requirement_text": "How the entity is responding to climate-related risks and opportunities in its strategy and decision-making, including how it plans to change resource allocation.",
+      "sub_requirements": [
+        {"requirement": "resource_reallocation", "required": true, "description": "Specific resource allocation changes in response to climate factors"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Resource allocation changes demonstrate concrete commitment to climate strategy beyond aspirational statements.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(a)(ii)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Direct Mitigation and Adaptation",
+      "requirement_text": "Direct mitigation and adaptation efforts the entity is undertaking.",
+      "sub_requirements": [
+        {"requirement": "direct_mitigation_efforts", "required": true, "description": "Direct actions to mitigate climate risks"},
+        {"requirement": "direct_adaptation_efforts", "required": true, "description": "Direct actions to adapt to climate impacts"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Direct mitigation and adaptation efforts represent concrete actions rather than reliance on external solutions.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(a)(iii)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Indirect Mitigation",
+      "requirement_text": "Indirect mitigation and adaptation efforts including value chain engagement and carbon offsets.",
+      "sub_requirements": [
+        {"requirement": "value_chain_engagement", "required": true, "description": "Engagement with value chain partners on climate mitigation"},
+        {"requirement": "carbon_offsets", "required": true, "description": "Use of carbon offsets as part of climate strategy"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Indirect efforts including offsets require scrutiny as they may not represent real emissions reductions.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(a)(iv)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Transition Plan",
+      "requirement_text": "An entity shall disclose its transition plan, including information about: key assumptions used in developing its transition plan; dependencies on which the entity's transition plan relies; the timeline for achieving transition plan objectives.",
+      "sub_requirements": [
+        {"requirement": "key_assumptions", "required": true, "description": "Key assumptions used in developing the transition plan (e.g., carbon price, economic growth, technology availability)"},
+        {"requirement": "dependencies", "required": true, "description": "Dependencies on which the transition plan relies (e.g., policy support, technology deployment, market conditions)"},
+        {"requirement": "timeline", "required": true, "description": "Timeline for achieving transition plan objectives with milestones"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Transition plans are critical for assessing climate strategy credibility. Missing assumptions or dependencies makes it impossible to evaluate plan feasibility. Many greenwashing concerns relate to vague transition plans without concrete details.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(a)(v)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Target Achievement Plans",
+      "requirement_text": "How the entity plans to achieve any climate-related targets it has set or is required to meet by law or regulation.",
+      "sub_requirements": [
+        {"requirement": "target_achievement_strategy", "required": true, "description": "Specific plans and actions to achieve climate targets"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Target achievement plans demonstrate how aspirational targets will be operationalized. Absence of concrete plans undermines target credibility.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(b)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Resourcing",
+      "requirement_text": "How the entity is resourcing its climate-related strategy and decision-making.",
+      "sub_requirements": [
+        {"requirement": "resource_commitment", "required": true, "description": "Resources (financial, human, technological) committed to climate strategy"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Resource commitment indicates seriousness of climate strategy. Underfunded climate initiatives are unlikely to achieve stated objectives.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.14(c)",
+      "standard": "S2",
+      "pillar": "strategy",
+      "section": "Progress on Prior Plans",
+      "requirement_text": "Quantitative and qualitative information about progress of plans disclosed in prior periods.",
+      "sub_requirements": [
+        {"requirement": "quantitative_progress", "required": true, "description": "Quantitative metrics showing progress on prior climate plans"},
+        {"requirement": "qualitative_progress", "required": true, "description": "Qualitative description of progress and any plan modifications"}
+      ],
+      "s1_counterpart": "S1.33",
+      "materiality_note": "Progress reporting enables accountability for prior commitments. Lack of progress disclosure suggests either failure to meet commitments or lack of tracking.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.24",
+      "standard": "S2",
+      "pillar": "risk_management",
+      "section": "Climate Risk Management Objective",
+      "requirement_text": "The objective of climate-related financial disclosures on risk management is to enable users to understand the processes an entity uses to identify, assess, prioritise and monitor climate-related risks and opportunities.",
+      "sub_requirements": [],
+      "s1_counterpart": "S1.38",
+      "materiality_note": "Climate-specific risk management is critical given the unique nature and materiality of climate risks.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.25(a)",
+      "standard": "S2",
+      "pillar": "risk_management",
+      "section": "Climate Risk Identification",
+      "requirement_text": "The processes and related policies the entity uses to identify climate-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "climate_risk_identification_process", "required": true, "description": "Process for identifying climate-related physical and transition risks"},
+        {"requirement": "climate_opportunity_identification", "required": true, "description": "Process for identifying climate-related opportunities"}
+      ],
+      "s1_counterpart": "S1.41(a)",
+      "materiality_note": "Climate risk identification requires specialized processes given the complexity of physical and transition risks.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.25(b)",
+      "standard": "S2",
+      "pillar": "risk_management",
+      "section": "Climate Risk Assessment",
+      "requirement_text": "The processes the entity uses to assess, prioritise and monitor climate-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "climate_risk_assessment", "required": true, "description": "Process for assessing climate risks (likelihood, magnitude, time horizon)"},
+        {"requirement": "climate_risk_prioritization", "required": true, "description": "Process for prioritizing climate risks"},
+        {"requirement": "climate_risk_monitoring", "required": true, "description": "Ongoing monitoring of climate risks"}
+      ],
+      "s1_counterpart": "S1.41(b)",
+      "materiality_note": "Climate risk assessment enables understanding of which risks are considered most material.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.25(c)",
+      "standard": "S2",
+      "pillar": "risk_management",
+      "section": "Climate Risk Inputs",
+      "requirement_text": "The inputs used to identify, assess, prioritise and monitor climate-related risks and opportunities.",
+      "sub_requirements": [
+        {"requirement": "climate_scenario_inputs", "required": true, "description": "Climate scenarios and data used in risk assessment"},
+        {"requirement": "external_data_sources", "required": true, "description": "External climate data sources utilized"}
+      ],
+      "s1_counterpart": "S1.41(c)",
+      "materiality_note": "Climate risk inputs (especially scenarios) determine the rigor of climate risk assessment.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.26",
+      "standard": "S2",
+      "pillar": "risk_management",
+      "section": "Climate Risk Integration",
+      "requirement_text": "How the processes the entity uses to identify, assess, prioritise and monitor climate-related risks and opportunities are integrated into and inform the entity's overall risk management.",
+      "sub_requirements": [
+        {"requirement": "climate_erm_integration", "required": true, "description": "Integration of climate risk processes with enterprise risk management"}
+      ],
+      "s1_counterpart": "S1.41(d)",
+      "materiality_note": "Integration with ERM demonstrates that climate risks are given appropriate attention alongside other business risks.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.27",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Climate Metrics Objective",
+      "requirement_text": "The objective of climate-related financial disclosures on metrics and targets is to enable users to understand an entity's performance in relation to its climate-related risks and opportunities, including progress towards any climate-related targets it has set.",
+      "sub_requirements": [],
+      "s1_counterpart": "S1.43",
+      "materiality_note": "Climate metrics are essential for assessing actual performance against stated climate commitments.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.29(a)",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "GHG Emissions",
+      "requirement_text": "An entity shall disclose its absolute gross greenhouse gas emissions generated during the reporting period, expressed as metric tonnes of CO2 equivalent, classified as Scope 1, Scope 2, and Scope 3 emissions.",
+      "sub_requirements": [
+        {"requirement": "scope_1_emissions", "required": true, "description": "Absolute gross Scope 1 GHG emissions in metric tonnes CO2e"},
+        {"requirement": "scope_2_emissions", "required": true, "description": "Absolute gross Scope 2 GHG emissions in metric tonnes CO2e"},
+        {"requirement": "scope_3_emissions", "required": true, "description": "Absolute gross Scope 3 GHG emissions in metric tonnes CO2e"},
+        {"requirement": "total_ghg_emissions", "required": true, "description": "Total GHG emissions (Scope 1+2+3)"}
+      ],
+      "s1_counterpart": "S1.46",
+      "materiality_note": "GHG emissions are the foundational metric for climate performance. Omitting any scope understates the entity's true climate footprint.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.29(a)(i)",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Scope 1 Emissions",
+      "requirement_text": "Scope 1 greenhouse gas emissions - direct emissions from sources that are owned or controlled by the entity.",
+      "sub_requirements": [
+        {"requirement": "scope_1_absolute", "required": true, "description": "Absolute Scope 1 emissions in metric tonnes CO2e"},
+        {"requirement": "scope_1_methodology", "required": true, "description": "Methodology used to calculate Scope 1 emissions"}
+      ],
+      "s1_counterpart": "S1.46",
+      "materiality_note": "Scope 1 emissions represent direct operational emissions under the entity's control.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.29(a)(ii)",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Scope 2 Emissions",
+      "requirement_text": "Scope 2 greenhouse gas emissions - indirect emissions from the generation of purchased or acquired energy.",
+      "sub_requirements": [
+        {"requirement": "scope_2_location_based", "required": true, "description": "Scope 2 emissions using location-based method"},
+        {"requirement": "scope_2_market_based", "required": true, "description": "Scope 2 emissions using market-based method (if applicable)"},
+        {"requirement": "scope_2_methodology", "required": true, "description": "Methodology used to calculate Scope 2 emissions"}
+      ],
+      "s1_counterpart": "S1.46",
+      "materiality_note": "Scope 2 emissions from purchased energy are often a significant source of indirect emissions.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.29(a)(iii)",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Scope 3 Emissions",
+      "requirement_text": "Scope 3 greenhouse gas emissions by category, measured in accordance with the GHG Protocol Corporate Value Chain Standard.",
+      "sub_requirements": [
+        {"requirement": "scope_3_total", "required": true, "description": "Total Scope 3 emissions in metric tonnes CO2e"},
+        {"requirement": "scope_3_by_category", "required": true, "description": "Scope 3 emissions broken down by the 15 GHG Protocol categories"},
+        {"requirement": "scope_3_methodology", "required": true, "description": "Methodology and data sources for Scope 3 calculation"},
+        {"requirement": "ghg_protocol_alignment", "required": true, "description": "Alignment with GHG Protocol Corporate Value Chain Standard"}
+      ],
+      "s1_counterpart": "S1.46",
+      "materiality_note": "Scope 3 emissions typically represent the majority of a company's total GHG footprint (often 70-90%). Omitting Scope 3 or not disclosing by category understates climate exposure and fails to provide a complete picture. For many sectors, Scope 3 emissions can be 5-10x larger than Scope 1+2 combined.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.30",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "GHG Measurement Approach",
+      "requirement_text": "An entity shall disclose the measurement approach, inputs and assumptions used to measure GHG emissions.",
+      "sub_requirements": [
+        {"requirement": "measurement_methodology", "required": true, "description": "Methodology used for GHG emissions measurement"},
+        {"requirement": "emission_factors", "required": true, "description": "Emission factors used"},
+        {"requirement": "data_sources", "required": true, "description": "Data sources for activity data"},
+        {"requirement": "assumptions", "required": true, "description": "Key assumptions in GHG calculations"}
+      ],
+      "s1_counterpart": "S1.46",
+      "materiality_note": "Measurement methodology transparency enables assessment of emissions data quality and comparability.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.31",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Consolidation Approach",
+      "requirement_text": "An entity shall disclose the approach used to determine the consolidation of GHG emissions (equity share, financial control, or operational control).",
+      "sub_requirements": [
+        {"requirement": "consolidation_approach", "required": true, "description": "Consolidation approach for GHG emissions (equity share, financial control, or operational control)"}
+      ],
+      "s1_counterpart": "S1.46",
+      "materiality_note": "Consolidation approach affects reported emissions totals and comparability across entities.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.28",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Climate-related Metrics",
+      "requirement_text": "An entity shall disclose climate-related metrics including emission intensity, internal carbon prices, and climate-related remuneration.",
+      "sub_requirements": [
+        {"requirement": "emission_intensity", "required": true, "description": "GHG emission intensity metrics"},
+        {"requirement": "industry_metrics", "required": true, "description": "Industry-specific climate metrics from SASB standards"}
+      ],
+      "s1_counterpart": "S1.45",
+      "materiality_note": "Emission intensity metrics enable normalization and benchmarking across entities of different sizes.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.29(e)",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Internal Carbon Pricing",
+      "requirement_text": "If the entity uses internal carbon prices, disclose how the entity is applying the carbon price in decision-making.",
+      "sub_requirements": [
+        {"requirement": "carbon_price_application", "required": true, "description": "How internal carbon price is used in decision-making"},
+        {"requirement": "carbon_price_level", "required": true, "description": "Level of internal carbon price used"}
+      ],
+      "s1_counterpart": "S1.45",
+      "materiality_note": "Internal carbon pricing demonstrates sophisticated integration of climate factors into business decisions.",
+      "applicability": "conditional"
+    },
+    {
+      "paragraph_id": "S2.29(g)",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Climate-related Remuneration",
+      "requirement_text": "The percentage of executive management remuneration recognized in the current period that is linked to climate-related considerations.",
+      "sub_requirements": [
+        {"requirement": "remuneration_percentage", "required": true, "description": "Percentage of executive remuneration linked to climate metrics"},
+        {"requirement": "remuneration_structure", "required": true, "description": "Description of how climate considerations factor into remuneration"}
+      ],
+      "s1_counterpart": "S1.45",
+      "materiality_note": "Climate-linked remuneration creates executive accountability for climate performance.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.33",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Climate Targets",
+      "requirement_text": "An entity shall disclose each climate-related target it has set, including information about metrics, base period, interim and ultimate milestones, and progress.",
+      "sub_requirements": [
+        {"requirement": "target_metric", "required": true, "description": "The metric used to set the target"},
+        {"requirement": "target_objective", "required": true, "description": "The objective of the target (e.g., mitigation, adaptation)"},
+        {"requirement": "target_scope", "required": true, "description": "The part of the entity to which the target applies"}
+      ],
+      "s1_counterpart": "S1.51",
+      "materiality_note": "Climate targets are critical for assessing an entity's climate ambition and commitment.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.34",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "GHG Emission Targets",
+      "requirement_text": "For GHG emission targets, disclose the targeted reduction in absolute emissions or intensity, whether the target is gross or net (including role of offsets), and scope coverage.",
+      "sub_requirements": [
+        {"requirement": "absolute_vs_intensity", "required": true, "description": "Whether target is absolute reduction or intensity-based"},
+        {"requirement": "gross_vs_net", "required": true, "description": "Whether target is gross or net of GHG removals/offsets"},
+        {"requirement": "offset_role", "required": true, "description": "Role of offsets in achieving net targets"},
+        {"requirement": "scope_coverage", "required": true, "description": "Which GHG emission scopes the target covers"}
+      ],
+      "s1_counterpart": "S1.51",
+      "materiality_note": "GHG target clarity is essential for assessing ambition. Targets that rely heavily on offsets may be less credible than gross reduction targets.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.35",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Target Baseline and Milestones",
+      "requirement_text": "For each target, disclose the base period, baseline value, target value, and interim milestones.",
+      "sub_requirements": [
+        {"requirement": "base_period", "required": true, "description": "The base period against which progress is measured"},
+        {"requirement": "baseline_value", "required": true, "description": "The baseline value for the metric"},
+        {"requirement": "target_value", "required": true, "description": "The target value to be achieved"},
+        {"requirement": "interim_milestones", "required": true, "description": "Interim milestones between base period and target date"}
+      ],
+      "s1_counterpart": "S1.52",
+      "materiality_note": "Clear baselines and milestones enable tracking of progress and accountability for interim performance.",
+      "applicability": "all_entities"
+    },
+    {
+      "paragraph_id": "S2.36",
+      "standard": "S2",
+      "pillar": "metrics_targets",
+      "section": "Target Progress",
+      "requirement_text": "For each target, disclose performance against the target and analysis of trends or changes in the entity's performance.",
+      "sub_requirements": [
+        {"requirement": "current_performance", "required": true, "description": "Current performance against the target"},
+        {"requirement": "trend_analysis", "required": true, "description": "Analysis of trends or changes in performance"},
+        {"requirement": "restatement_explanation", "required": true, "description": "If targets restated, explanation of changes"}
+      ],
+      "s1_counterpart": "S1.53",
+      "materiality_note": "Progress disclosure enables assessment of whether the entity is on track to meet its targets.",
+      "applicability": "all_entities"
+    }
+  ]
+}
