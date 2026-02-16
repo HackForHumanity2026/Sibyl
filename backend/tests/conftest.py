@@ -529,3 +529,216 @@ def sample_state_no_data_metrics_claims():
     """State where no claims are routed to data_metrics agent."""
     from tests.fixtures.sample_states import create_state_with_no_data_metrics_claims
     return create_state_with_no_data_metrics_claims()
+
+
+# ============================================================================
+# News/Media Agent Mocking - Tavily Search API
+# ============================================================================
+
+
+@pytest.fixture
+def mock_tavily_search(mocker):
+    """Mock Tavily search API calls.
+    
+    Usage:
+        def test_example(mock_tavily_search):
+            from tests.fixtures.mock_tavily import get_formatted_tavily_response
+            mock_tavily_search(get_formatted_tavily_response("supporting"))
+    """
+    def _mock_search(response_data: dict):
+        # Mock the TavilySearchProvider's search method
+        mock_provider = MagicMock()
+        mock_provider.search = AsyncMock(return_value=response_data)
+        
+        # Patch the provider getter
+        mocker.patch(
+            "app.agents.tools.search_web._get_search_provider",
+            return_value=mock_provider
+        )
+        return mock_provider.search
+    return _mock_search
+
+
+@pytest.fixture
+def mock_tavily_search_sequence(mocker):
+    """Mock Tavily with multiple sequential responses for different queries.
+    
+    Usage:
+        def test_example(mock_tavily_search_sequence):
+            mock_tavily_search_sequence([
+                response_1,  # For company_specific query
+                response_2,  # For industry_wide query
+                response_3,  # For controversy query
+            ])
+    """
+    def _mock_sequence(responses: list[dict]):
+        mock_provider = MagicMock()
+        mock_provider.search = AsyncMock(side_effect=responses)
+        
+        mocker.patch(
+            "app.agents.tools.search_web._get_search_provider",
+            return_value=mock_provider
+        )
+        return mock_provider.search
+    return _mock_sequence
+
+
+@pytest.fixture
+def mock_tavily_search_error(mocker):
+    """Mock Tavily to raise errors.
+    
+    Usage:
+        def test_example(mock_tavily_search_error):
+            mock_tavily_search_error(SearchAPIError("Rate limit exceeded"))
+    """
+    def _mock_error(error: Exception):
+        from app.agents.tools.search_web import SearchAPIError
+        
+        mock_provider = MagicMock()
+        mock_provider.search = AsyncMock(side_effect=error)
+        
+        mocker.patch(
+            "app.agents.tools.search_web._get_search_provider",
+            return_value=mock_provider
+        )
+        return mock_provider.search
+    return _mock_error
+
+
+# ============================================================================
+# News/Media Agent Mocking - OpenRouter
+# ============================================================================
+
+
+@pytest.fixture
+def mock_openrouter_news(mocker):
+    """Mock OpenRouter for news_media_agent LLM calls.
+    
+    Usage:
+        def test_example(mock_openrouter_news):
+            mock_openrouter_news('{"tier": 2, "reasoning": "test"}')
+    """
+    def _mock_completion(response_content: str):
+        mock_chat = AsyncMock(return_value=response_content)
+        mocker.patch(
+            "app.agents.news_media_agent.openrouter_client.chat_completion",
+            mock_chat
+        )
+        return mock_chat
+    return _mock_completion
+
+
+@pytest.fixture
+def mock_openrouter_news_sequence(mocker):
+    """Mock OpenRouter with sequence for multiple LLM calls in news_media_agent.
+    
+    The news agent makes multiple LLM calls per claim:
+    1. Query construction
+    2. Credibility classification (per source)
+    3. Contradiction detection (per source)
+    4. Relevance summary (per source)
+    
+    Usage:
+        def test_example(mock_openrouter_news_sequence):
+            mock_openrouter_news_sequence([
+                query_response,        # Query construction
+                credibility_response,  # First source credibility
+                contradiction_response, # First source contradiction
+                relevance_response,    # First source relevance
+                # ... more responses for additional sources
+            ])
+    """
+    def _mock_sequence(responses: list[str]):
+        mock_chat = AsyncMock(side_effect=responses)
+        mocker.patch(
+            "app.agents.news_media_agent.openrouter_client.chat_completion",
+            mock_chat
+        )
+        return mock_chat
+    return _mock_sequence
+
+
+@pytest.fixture
+def mock_openrouter_news_error(mocker):
+    """Mock OpenRouter to raise errors for news_media_agent.
+    
+    Usage:
+        def test_example(mock_openrouter_news_error):
+            mock_openrouter_news_error(Exception("API timeout"))
+    """
+    def _mock_error(error: Exception):
+        mock_chat = AsyncMock(side_effect=error)
+        mocker.patch(
+            "app.agents.news_media_agent.openrouter_client.chat_completion",
+            mock_chat
+        )
+        return mock_chat
+    return _mock_error
+
+
+# ============================================================================
+# News/Media Agent Sample State Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_state_news_claim():
+    """State with a single emissions claim for news_media agent."""
+    from tests.fixtures.sample_states import create_state_with_news_claim
+    return create_state_with_news_claim()
+
+
+@pytest.fixture
+def sample_state_news_certification():
+    """State with a certification claim for news_media verification."""
+    from tests.fixtures.sample_states import create_state_with_news_certification_claim
+    return create_state_with_news_certification_claim()
+
+
+@pytest.fixture
+def sample_state_news_controversy():
+    """State with a controversy claim for news_media investigation."""
+    from tests.fixtures.sample_states import create_state_with_news_controversy_claim
+    return create_state_with_news_controversy_claim()
+
+
+@pytest.fixture
+def sample_state_news_multiple_claims():
+    """State with multiple news-related claims."""
+    from tests.fixtures.sample_states import create_state_with_news_multiple_claims
+    return create_state_with_news_multiple_claims()
+
+
+@pytest.fixture
+def sample_state_news_reinvestigation():
+    """State with re-investigation request for news_media agent."""
+    from tests.fixtures.sample_states import create_state_with_news_reinvestigation
+    return create_state_with_news_reinvestigation()
+
+
+@pytest.fixture
+def sample_state_news_info_request():
+    """State with InfoRequest for news_media agent."""
+    from tests.fixtures.sample_states import create_state_with_news_info_request
+    return create_state_with_news_info_request()
+
+
+@pytest.fixture
+def sample_state_news_info_response():
+    """State with InfoResponse for news_media agent."""
+    from tests.fixtures.sample_states import create_state_with_news_info_response
+    return create_state_with_news_info_response()
+
+
+@pytest.fixture
+def sample_state_no_news_claims():
+    """State where no claims are routed to news_media agent."""
+    from tests.fixtures.sample_states import create_state_with_no_news_claims
+    return create_state_with_no_news_claims()
+
+
+@pytest.fixture
+def sample_state_news_supply_chain():
+    """State with supply chain claim for investigative news verification."""
+    from tests.fixtures.sample_states import create_state_with_news_supply_chain_claim
+    return create_state_with_news_supply_chain_claim()

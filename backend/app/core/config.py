@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     MAX_JUDGE_ITERATIONS: int = 3
     AUTO_START_ANALYSIS: bool = False  # Set True for demo mode to auto-trigger claims extraction
 
+    # Tavily Search API (for News/Media and Academic agents)
+    TAVILY_API_KEY: str | None = None
+    SEARCH_MAX_RESULTS: int = 10
+    SEARCH_TIMEOUT_SECONDS: int = 30
+
 
 # Singleton settings instance
 settings = Settings()

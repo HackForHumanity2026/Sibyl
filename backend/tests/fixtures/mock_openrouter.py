@@ -682,3 +682,146 @@ def get_mock_target_response(achievability: str = "achievable") -> str:
     if achievability == "questionable":
         return json.dumps(MOCK_TARGET_ACHIEVABILITY_QUESTIONABLE)
     return json.dumps(MOCK_TARGET_ACHIEVABILITY_ACHIEVABLE)
+
+
+# ============================================================================
+# News/Media Agent Mock Responses
+# ============================================================================
+
+MOCK_NEWS_QUERY_CONSTRUCTION = {
+    "company_specific": '"ExxonMobil" Scope 1 emissions reduction 2024',
+    "industry_wide": "oil gas industry emissions reduction targets 2024",
+    "controversy": '"ExxonMobil" emissions (violation OR investigation OR greenwashing)',
+}
+
+MOCK_NEWS_QUERY_CONSTRUCTION_CERTIFICATION = {
+    "company_specific": '"TestCorp" ISO 14001 certification environmental management',
+    "industry_wide": "manufacturing ISO 14001 environmental certification trends",
+    "controversy": '"TestCorp" certification (revoked OR violation OR fraud)',
+}
+
+MOCK_NEWS_CREDIBILITY_TIER_1 = {
+    "tier": 1,
+    "reasoning": "Major regulatory enforcement source (SEC filing)",
+}
+
+MOCK_NEWS_CREDIBILITY_TIER_2 = {
+    "tier": 2,
+    "reasoning": "Established news organization with editorial standards",
+}
+
+MOCK_NEWS_CREDIBILITY_TIER_3 = {
+    "tier": 3,
+    "reasoning": "Company press release distributed via wire service",
+}
+
+MOCK_NEWS_CREDIBILITY_TIER_4 = {
+    "tier": 4,
+    "reasoning": "Personal blog without editorial oversight or verification",
+}
+
+MOCK_NEWS_CONTRADICTION_DIRECT = {
+    "contradicts": True,
+    "contradiction_type": "direct",
+    "confidence": 0.92,
+    "explanation": "The source explicitly states emissions increased by 8%, directly contradicting the claim of a 12% decrease.",
+}
+
+MOCK_NEWS_CONTRADICTION_CONTEXTUAL = {
+    "contradicts": True,
+    "contradiction_type": "contextual",
+    "confidence": 0.78,
+    "explanation": "While the source does not directly dispute the numbers, it reveals that the reported reductions are primarily due to asset divestiture rather than operational improvements, undermining the claim's implication of genuine sustainability progress.",
+}
+
+MOCK_NEWS_CONTRADICTION_OMISSION = {
+    "contradicts": True,
+    "contradiction_type": "omission",
+    "confidence": 0.85,
+    "explanation": "The source reveals an ongoing EPA investigation into emissions reporting at the company that was not disclosed in the sustainability report, representing a material omission.",
+}
+
+MOCK_NEWS_CONTRADICTION_TIMELINE = {
+    "contradicts": True,
+    "contradiction_type": "timeline",
+    "confidence": 0.88,
+    "explanation": "The source reports the company delayed its net-zero target from 2050 to 2060, contradicting the sustainability report which states a 2050 target.",
+}
+
+MOCK_NEWS_NO_CONTRADICTION = {
+    "contradicts": False,
+    "contradiction_type": None,
+    "confidence": 0.75,
+    "explanation": "The source corroborates the claim, confirming the reported emissions reductions and noting positive third-party verification.",
+}
+
+MOCK_NEWS_RELEVANCE_SUMMARY = "This Reuters article discusses the company's annual sustainability report, confirming the reported 12% reduction in Scope 1 emissions. The source cites third-party verification of the emissions data."
+
+
+# ============================================================================
+# News/Media Agent Helper Functions
+# ============================================================================
+
+def get_mock_news_query_response(claim_type: str = "emissions") -> str:
+    """Get a mock LLM response for search query construction.
+    
+    Args:
+        claim_type: Either "emissions" or "certification"
+        
+    Returns:
+        JSON string of the mock response
+    """
+    if claim_type == "certification":
+        return json.dumps(MOCK_NEWS_QUERY_CONSTRUCTION_CERTIFICATION)
+    return json.dumps(MOCK_NEWS_QUERY_CONSTRUCTION)
+
+
+def get_mock_news_credibility_response(tier: int = 2) -> str:
+    """Get a mock LLM response for source credibility classification.
+    
+    Args:
+        tier: Credibility tier (1-4)
+        
+    Returns:
+        JSON string of the mock response
+    """
+    tier_responses = {
+        1: MOCK_NEWS_CREDIBILITY_TIER_1,
+        2: MOCK_NEWS_CREDIBILITY_TIER_2,
+        3: MOCK_NEWS_CREDIBILITY_TIER_3,
+        4: MOCK_NEWS_CREDIBILITY_TIER_4,
+    }
+    return json.dumps(tier_responses.get(tier, MOCK_NEWS_CREDIBILITY_TIER_2))
+
+
+def get_mock_news_contradiction_response(
+    contradiction_type: str | None = None
+) -> str:
+    """Get a mock LLM response for contradiction detection.
+    
+    Args:
+        contradiction_type: One of "direct", "contextual", "omission", "timeline", 
+                          or None for no contradiction
+        
+    Returns:
+        JSON string of the mock response
+    """
+    if contradiction_type is None:
+        return json.dumps(MOCK_NEWS_NO_CONTRADICTION)
+    
+    type_responses = {
+        "direct": MOCK_NEWS_CONTRADICTION_DIRECT,
+        "contextual": MOCK_NEWS_CONTRADICTION_CONTEXTUAL,
+        "omission": MOCK_NEWS_CONTRADICTION_OMISSION,
+        "timeline": MOCK_NEWS_CONTRADICTION_TIMELINE,
+    }
+    return json.dumps(type_responses.get(contradiction_type, MOCK_NEWS_NO_CONTRADICTION))
+
+
+def get_mock_news_relevance_summary() -> str:
+    """Get a mock relevance summary response.
+    
+    Returns:
+        Plain text summary string
+    """
+    return MOCK_NEWS_RELEVANCE_SUMMARY

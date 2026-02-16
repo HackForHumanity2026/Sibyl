@@ -315,3 +315,144 @@ DATA_METRICS_ROUTING_ASSIGNMENTS = [
     ROUTING_DATA_METRICS_INTENSITY,
     ROUTING_DATA_METRICS_MULTIPLE,
 ]
+
+
+# ============================================================================
+# News/Media Agent Sample Claims
+# ============================================================================
+
+NEWS_CLAIM_EMISSIONS_REDUCTION = Claim(
+    claim_id="claim-news-001",
+    text="Our total Scope 1 emissions decreased by 12% year-over-year, from 2.45 million tonnes CO2e in FY2023 to 2.15 million tonnes CO2e in FY2024, reflecting significant investments in operational efficiency and fuel switching.",
+    page_number=42,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(a)(i)"],
+    priority="high",
+    source_location={"source_context": "Section 6.1 GHG Emissions Performance"},
+    agent_reasoning="Quantitative emissions claim requiring public news verification."
+)
+
+NEWS_CLAIM_CERTIFICATION = Claim(
+    claim_id="claim-news-002",
+    text="Our Singapore facility has achieved ISO 14001:2015 certification for environmental management, with annual surveillance audits conducted by an accredited third-party certifier.",
+    page_number=28,
+    claim_type="legal_governance",
+    ifrs_paragraphs=["S2.6"],
+    priority="medium",
+    source_location={"source_context": "Section 4.2 Environmental Management"},
+    agent_reasoning="Certification claim requiring external verification via public sources."
+)
+
+NEWS_CLAIM_CONTROVERSY = Claim(
+    claim_id="claim-news-003",
+    text="We maintain strong environmental compliance across all operations, with no material environmental violations or enforcement actions during the reporting period.",
+    page_number=35,
+    claim_type="legal_governance",
+    ifrs_paragraphs=["S2.25(a)"],
+    priority="high",
+    source_location={"source_context": "Section 5.1 Regulatory Compliance"},
+    agent_reasoning="Compliance claim that may be contradicted by public news of violations."
+)
+
+NEWS_CLAIM_NET_ZERO_TARGET = Claim(
+    claim_id="claim-news-004",
+    text="We have committed to achieving net-zero greenhouse gas emissions by 2050, with interim targets of 42% reduction by 2030 from our 2019 baseline.",
+    page_number=8,
+    claim_type="strategic",
+    ifrs_paragraphs=["S2.14(a)(iv)", "S2.33"],
+    priority="high",
+    source_location={"source_context": "Executive Summary"},
+    agent_reasoning="Strategic target claim that should be verifiable through public announcements."
+)
+
+NEWS_CLAIM_REFORESTATION = Claim(
+    claim_id="claim-news-005",
+    text="Our reforestation initiative in Central Kalimantan, Borneo has successfully restored 5,000 hectares of degraded peatland forest since 2020, in partnership with local conservation organizations.",
+    page_number=55,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.14(a)"],
+    priority="medium",
+    source_location={"source_context": "Section 7.3 Nature-Based Solutions"},
+    agent_reasoning="Environmental initiative claim requiring verification via news and NGO sources."
+)
+
+NEWS_CLAIM_SUPPLY_CHAIN = Claim(
+    claim_id="claim-news-006",
+    text="We have achieved 100% traceability for palm oil in our supply chain, with all suppliers audited against RSPO certification requirements.",
+    page_number=62,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.25(b)"],
+    priority="high",
+    source_location={"source_context": "Section 8.1 Supply Chain Sustainability"},
+    agent_reasoning="Supply chain claim that may be verified or contradicted by investigative reporting."
+)
+
+
+# ============================================================================
+# News/Media Agent Routing Assignments
+# ============================================================================
+
+ROUTING_NEWS_EMISSIONS = RoutingAssignment(
+    claim_id="claim-news-001",
+    assigned_agents=["news_media", "data_metrics"],
+    reasoning="Quantitative emissions claim requiring both news verification and data validation."
+)
+
+ROUTING_NEWS_CERTIFICATION = RoutingAssignment(
+    claim_id="claim-news-002",
+    assigned_agents=["news_media", "legal"],
+    reasoning="Certification claim requiring news verification and legal compliance assessment."
+)
+
+ROUTING_NEWS_CONTROVERSY = RoutingAssignment(
+    claim_id="claim-news-003",
+    assigned_agents=["news_media"],
+    reasoning="Compliance claim specifically requiring news/media investigation for violations."
+)
+
+ROUTING_NEWS_NET_ZERO = RoutingAssignment(
+    claim_id="claim-news-004",
+    assigned_agents=["news_media", "legal"],
+    reasoning="Strategic target claim requiring news verification of public commitments."
+)
+
+ROUTING_NEWS_REFORESTATION = RoutingAssignment(
+    claim_id="claim-news-005",
+    assigned_agents=["news_media", "geography"],
+    reasoning="Reforestation claim requiring news verification and geographic validation."
+)
+
+ROUTING_NEWS_SUPPLY_CHAIN = RoutingAssignment(
+    claim_id="claim-news-006",
+    assigned_agents=["news_media"],
+    reasoning="Supply chain claim requiring investigation of public reporting on supply chain issues."
+)
+
+ROUTING_NO_NEWS = RoutingAssignment(
+    claim_id="claim-gov-001",
+    assigned_agents=["legal"],
+    reasoning="Governance claim not assigned to news_media agent."
+)
+
+
+# ============================================================================
+# News/Media Claims Lists
+# ============================================================================
+
+NEWS_MEDIA_CLAIMS = [
+    NEWS_CLAIM_EMISSIONS_REDUCTION,
+    NEWS_CLAIM_CERTIFICATION,
+    NEWS_CLAIM_CONTROVERSY,
+    NEWS_CLAIM_NET_ZERO_TARGET,
+    NEWS_CLAIM_REFORESTATION,
+    NEWS_CLAIM_SUPPLY_CHAIN,
+]
+
+NEWS_MEDIA_ROUTING_ASSIGNMENTS = [
+    ROUTING_NEWS_EMISSIONS,
+    ROUTING_NEWS_CERTIFICATION,
+    ROUTING_NEWS_CONTROVERSY,
+    ROUTING_NEWS_NET_ZERO,
+    ROUTING_NEWS_REFORESTATION,
+    ROUTING_NEWS_SUPPLY_CHAIN,
+]

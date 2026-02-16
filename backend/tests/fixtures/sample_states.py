@@ -41,6 +41,20 @@ from tests.fixtures.sample_claims import (
     ROUTING_DATA_METRICS_TARGET_AGGRESSIVE,
     ROUTING_DATA_METRICS_INTENSITY,
     ROUTING_DATA_METRICS_MULTIPLE,
+    # News/Media imports
+    NEWS_CLAIM_EMISSIONS_REDUCTION,
+    NEWS_CLAIM_CERTIFICATION,
+    NEWS_CLAIM_CONTROVERSY,
+    NEWS_CLAIM_NET_ZERO_TARGET,
+    NEWS_CLAIM_REFORESTATION,
+    NEWS_CLAIM_SUPPLY_CHAIN,
+    ROUTING_NEWS_EMISSIONS,
+    ROUTING_NEWS_CERTIFICATION,
+    ROUTING_NEWS_CONTROVERSY,
+    ROUTING_NEWS_NET_ZERO,
+    ROUTING_NEWS_REFORESTATION,
+    ROUTING_NEWS_SUPPLY_CHAIN,
+    ROUTING_NO_NEWS,
 )
 
 
@@ -378,4 +392,134 @@ def create_state_with_no_data_metrics_claims() -> SibylState:
     return create_base_state(
         claims=[GOVERNANCE_CLAIM],
         routing_plan=[ROUTING_GOVERNANCE],
+    )
+
+
+# ============================================================================
+# News/Media Agent State Factories
+# ============================================================================
+
+
+def create_state_with_news_claim() -> SibylState:
+    """Create a state with a single emissions claim routed to news_media agent."""
+    return create_base_state(
+        claims=[NEWS_CLAIM_EMISSIONS_REDUCTION],
+        routing_plan=[ROUTING_NEWS_EMISSIONS],
+    )
+
+
+def create_state_with_news_certification_claim() -> SibylState:
+    """Create a state with a certification claim for news_media verification."""
+    return create_base_state(
+        claims=[NEWS_CLAIM_CERTIFICATION],
+        routing_plan=[ROUTING_NEWS_CERTIFICATION],
+    )
+
+
+def create_state_with_news_controversy_claim() -> SibylState:
+    """Create a state with a controversy claim likely to surface contradictions."""
+    return create_base_state(
+        claims=[NEWS_CLAIM_CONTROVERSY],
+        routing_plan=[ROUTING_NEWS_CONTROVERSY],
+    )
+
+
+def create_state_with_news_multiple_claims() -> SibylState:
+    """Create a state with multiple news-related claims."""
+    return create_base_state(
+        claims=[
+            NEWS_CLAIM_EMISSIONS_REDUCTION,
+            NEWS_CLAIM_CERTIFICATION,
+            NEWS_CLAIM_NET_ZERO_TARGET,
+        ],
+        routing_plan=[
+            ROUTING_NEWS_EMISSIONS,
+            ROUTING_NEWS_CERTIFICATION,
+            ROUTING_NEWS_NET_ZERO,
+        ],
+    )
+
+
+def create_state_with_news_reinvestigation() -> SibylState:
+    """Create a state with a re-investigation request from Judge targeting news_media."""
+    reinvestigation = ReinvestigationRequest(
+        claim_id=NEWS_CLAIM_CONTROVERSY.claim_id,
+        target_agents=["news_media"],
+        evidence_gap="Need deeper investigation into compliance violations mentioned in initial search",
+        refined_queries=[
+            '"{company_name}" EPA enforcement action 2024',
+            '"{company_name}" environmental violation settlement',
+            '"{company_name}" whistleblower environmental',
+        ],
+        required_evidence="Official regulatory actions, court filings, or verified investigative reporting",
+    )
+    return create_base_state(
+        claims=[NEWS_CLAIM_CONTROVERSY],
+        routing_plan=[ROUTING_NEWS_CONTROVERSY],
+        reinvestigation_requests=[reinvestigation],
+        iteration_count=1,
+    )
+
+
+def create_state_with_news_info_request() -> SibylState:
+    """Create a state with an InfoRequest from another agent to news_media."""
+    info_request = InfoRequest(
+        request_id="req-news-001",
+        requesting_agent="legal",
+        description="Need public news verification of compliance claims",
+        context={
+            "claim_id": NEWS_CLAIM_CERTIFICATION.claim_id,
+            "question": "Has the company's ISO 14001 certification been publicly verified or questioned?",
+        },
+        status="pending",
+    )
+    return create_base_state(
+        claims=[NEWS_CLAIM_CERTIFICATION],
+        routing_plan=[ROUTING_NEWS_CERTIFICATION],
+        info_requests=[info_request],
+    )
+
+
+def create_state_with_news_info_response() -> SibylState:
+    """Create a state with an InfoResponse from another agent to news_media."""
+    info_request = InfoRequest(
+        request_id="req-news-002",
+        requesting_agent="news_media",
+        description="Request geographic verification of reforestation site",
+        context={
+            "claim_id": NEWS_CLAIM_REFORESTATION.claim_id,
+            "target_agent": "geography",
+        },
+        status="completed",
+    )
+    info_response = InfoResponse(
+        request_id="req-news-002",
+        responding_agent="geography",
+        response="Satellite imagery confirms reforestation activity in the specified region of Central Kalimantan.",
+        details={
+            "verification_source": "Sentinel-2 imagery analysis",
+            "confidence": "high",
+        },
+    )
+    return create_base_state(
+        claims=[NEWS_CLAIM_REFORESTATION],
+        routing_plan=[ROUTING_NEWS_REFORESTATION],
+        info_requests=[info_request],
+        info_responses=[info_response],
+    )
+
+
+def create_state_with_no_news_claims() -> SibylState:
+    """Create a state where no claims are routed to the news_media agent."""
+    return create_base_state(
+        claims=[GOVERNANCE_CLAIM],
+        routing_plan=[ROUTING_NO_NEWS],
+    )
+
+
+def create_state_with_news_supply_chain_claim() -> SibylState:
+    """Create a state with a supply chain claim for investigative news verification."""
+    return create_base_state(
+        claims=[NEWS_CLAIM_SUPPLY_CHAIN],
+        routing_plan=[ROUTING_NEWS_SUPPLY_CHAIN],
     )
