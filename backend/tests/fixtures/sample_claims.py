@@ -456,3 +456,247 @@ NEWS_MEDIA_ROUTING_ASSIGNMENTS = [
     ROUTING_NEWS_REFORESTATION,
     ROUTING_NEWS_SUPPLY_CHAIN,
 ]
+
+
+# ============================================================================
+# Academic/Research Agent Sample Claims (FRD 9)
+# ============================================================================
+
+ACADEMIC_CLAIM_METHODOLOGY = Claim(
+    claim_id="claim-acad-001",
+    text="Our total Scope 3 emissions were 12.4 million tonnes CO2e in FY2024, calculated using spend-based methodology for upstream categories and life-cycle analysis for downstream. Measurement follows GHG Protocol Corporate Value Chain Standard.",
+    page_number=67,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(a)(iii)", "S1.46"],
+    priority="high",
+    source_location={"source_context": "Section 7.2 GHG Emissions"},
+    agent_reasoning="Methodology claim about Scope 3 emissions requiring academic validation of spend-based method.",
+)
+
+ACADEMIC_CLAIM_CERTIFICATION = Claim(
+    claim_id="claim-acad-002",
+    text="100% of our electricity comes from certified renewable sources via I-REC certificates purchased through the International REC Standard registry.",
+    page_number=34,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.29(b)"],
+    priority="high",
+    source_location={"source_context": "Section 6.3 Renewable Energy"},
+    agent_reasoning="Certification claim requiring validation of I-REC certificate legitimacy and additionality.",
+)
+
+ACADEMIC_CLAIM_SBTI = Claim(
+    claim_id="claim-acad-003",
+    text="We have committed to achieving net-zero emissions by 2050, validated by the Science Based Targets initiative. Our near-term target is a 42% reduction in Scope 1 and 2 emissions by 2030 from a 2019 baseline, aligned with a 1.5°C pathway.",
+    page_number=8,
+    claim_type="strategic",
+    ifrs_paragraphs=["S2.33", "S2.14(a)(iv)"],
+    priority="high",
+    source_location={"source_context": "Executive Summary"},
+    agent_reasoning="SBTi validation claim requiring verification of target alignment and validation status.",
+)
+
+ACADEMIC_CLAIM_BENCHMARK = Claim(
+    claim_id="claim-acad-004",
+    text="Our Scope 1 emission intensity is 0.15 tCO2e per $1M revenue, placing us among the top quartile of performers in the manufacturing sector.",
+    page_number=50,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(e)", "S2.30"],
+    priority="medium",
+    source_location={"source_context": "Section 7.3 Emission Intensity"},
+    agent_reasoning="Benchmark claim requiring comparison against industry sector averages.",
+)
+
+ACADEMIC_CLAIM_RESEARCH = Claim(
+    claim_id="claim-acad-005",
+    text="Our new carbon capture and utilisation technology at the Surabaya plant reduces facility emissions by 30%, based on pilot testing completed in 2024.",
+    page_number=72,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.14(a)"],
+    priority="medium",
+    source_location={"source_context": "Section 9.1 Technology Innovation"},
+    agent_reasoning="Technology effectiveness claim requiring validation against peer-reviewed research.",
+)
+
+ACADEMIC_CLAIM_OFFSET = Claim(
+    claim_id="claim-acad-006",
+    text="We offset 50,000 tonnes CO2e through Verified Carbon Standard (VCS) REDD+ forestry projects in the Amazon basin.",
+    page_number=58,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.29(d)"],
+    priority="high",
+    source_location={"source_context": "Section 7.5 Carbon Offsets"},
+    agent_reasoning="Carbon offset claim requiring validation of VCS standard and additionality assessment.",
+)
+
+
+# ============================================================================
+# Academic/Research Agent Routing Assignments
+# ============================================================================
+
+ROUTING_ACADEMIC_METHODOLOGY = RoutingAssignment(
+    claim_id="claim-acad-001",
+    assigned_agents=["academic", "data_metrics"],
+    reasoning="Methodology claim requiring academic validation and quantitative check.",
+)
+
+ROUTING_ACADEMIC_CERTIFICATION = RoutingAssignment(
+    claim_id="claim-acad-002",
+    assigned_agents=["academic"],
+    reasoning="Certification claim requiring academic research on I-REC legitimacy.",
+)
+
+ROUTING_ACADEMIC_SBTI = RoutingAssignment(
+    claim_id="claim-acad-003",
+    assigned_agents=["academic", "legal"],
+    reasoning="SBTi target claim requiring framework validation and compliance assessment.",
+)
+
+ROUTING_ACADEMIC_BENCHMARK = RoutingAssignment(
+    claim_id="claim-acad-004",
+    assigned_agents=["academic", "data_metrics"],
+    reasoning="Benchmark claim requiring sector comparison research.",
+)
+
+ROUTING_ACADEMIC_RESEARCH = RoutingAssignment(
+    claim_id="claim-acad-005",
+    assigned_agents=["academic"],
+    reasoning="Technology effectiveness claim needing peer-reviewed research validation.",
+)
+
+ROUTING_ACADEMIC_OFFSET = RoutingAssignment(
+    claim_id="claim-acad-006",
+    assigned_agents=["academic", "news_media"],
+    reasoning="Carbon offset claim requiring academic validation and news verification.",
+)
+
+ROUTING_NO_ACADEMIC = RoutingAssignment(
+    claim_id="claim-gov-001",
+    assigned_agents=["legal"],
+    reasoning="Governance claim not assigned to academic agent.",
+)
+
+
+# ============================================================================
+# Academic/Research Claims Lists
+# ============================================================================
+
+ACADEMIC_CLAIMS = [
+    ACADEMIC_CLAIM_METHODOLOGY,
+    ACADEMIC_CLAIM_CERTIFICATION,
+    ACADEMIC_CLAIM_SBTI,
+    ACADEMIC_CLAIM_BENCHMARK,
+    ACADEMIC_CLAIM_RESEARCH,
+    ACADEMIC_CLAIM_OFFSET,
+]
+
+ACADEMIC_ROUTING_ASSIGNMENTS = [
+    ROUTING_ACADEMIC_METHODOLOGY,
+    ROUTING_ACADEMIC_CERTIFICATION,
+    ROUTING_ACADEMIC_SBTI,
+    ROUTING_ACADEMIC_BENCHMARK,
+    ROUTING_ACADEMIC_RESEARCH,
+    ROUTING_ACADEMIC_OFFSET,
+]
+
+
+# ============================================================================
+# Geography Agent Sample Claims (FRD 10)
+# ============================================================================
+
+GEOGRAPHY_CLAIM_REFORESTATION = Claim(
+    claim_id="claim-geo-reforest-001",
+    text="Our reforestation initiative in Central Kalimantan, Borneo has successfully restored 5,000 hectares of degraded peatland forest since 2020, in partnership with local conservation organizations.",
+    page_number=55,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.14(a)"],
+    priority="high",
+    source_location={"source_context": "Section 7.3 Nature-Based Solutions"},
+    agent_reasoning="Geographic environmental claim requiring satellite imagery verification of reforestation.",
+)
+
+GEOGRAPHY_CLAIM_FACILITY = Claim(
+    claim_id="claim-geo-facility-001",
+    text="Our Surabaya manufacturing facility operates on a 50-hectare site with dedicated green space comprising 30% of the total area.",
+    page_number=22,
+    claim_type="geographic",
+    ifrs_paragraphs=[],
+    priority="medium",
+    source_location={"source_context": "Section 3.4 Operations Overview"},
+    agent_reasoning="Facility claim requiring satellite imagery verification of site characteristics.",
+)
+
+GEOGRAPHY_CLAIM_DEFORESTATION = Claim(
+    claim_id="claim-geo-deforest-001",
+    text="We have achieved zero deforestation across our palm oil supply chain in Sumatra since 2022, verified by annual satellite monitoring.",
+    page_number=60,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.25(b)"],
+    priority="high",
+    source_location={"source_context": "Section 8.2 Deforestation Policy"},
+    agent_reasoning="Deforestation claim requiring temporal satellite imagery comparison.",
+)
+
+GEOGRAPHY_CLAIM_SOLAR = Claim(
+    claim_id="claim-geo-solar-001",
+    text="We installed 200MW of solar capacity across our Chennai campus in 2024, covering approximately 400 hectares of rooftop and ground-mounted panels.",
+    page_number=40,
+    claim_type="environmental",
+    ifrs_paragraphs=["S2.14(a)"],
+    priority="medium",
+    source_location={"source_context": "Section 6.2 Renewable Energy"},
+    agent_reasoning="Solar installation claim verifiable via satellite land cover analysis.",
+)
+
+
+# ============================================================================
+# Geography Agent Routing Assignments
+# ============================================================================
+
+ROUTING_GEO_REFORESTATION = RoutingAssignment(
+    claim_id="claim-geo-reforest-001",
+    assigned_agents=["geography", "news_media"],
+    reasoning="Reforestation claim requiring satellite imagery and news verification.",
+)
+
+ROUTING_GEO_FACILITY = RoutingAssignment(
+    claim_id="claim-geo-facility-001",
+    assigned_agents=["geography"],
+    reasoning="Facility claim requiring satellite imagery analysis.",
+)
+
+ROUTING_GEO_DEFORESTATION = RoutingAssignment(
+    claim_id="claim-geo-deforest-001",
+    assigned_agents=["geography"],
+    reasoning="Deforestation claim requiring temporal satellite comparison.",
+)
+
+ROUTING_GEO_SOLAR = RoutingAssignment(
+    claim_id="claim-geo-solar-001",
+    assigned_agents=["geography"],
+    reasoning="Solar installation claim verifiable via satellite land cover analysis.",
+)
+
+ROUTING_NO_GEO = RoutingAssignment(
+    claim_id="claim-gov-001",
+    assigned_agents=["legal"],
+    reasoning="Governance claim not assigned to geography agent.",
+)
+
+
+# ============================================================================
+# Geography Claims Lists
+# ============================================================================
+
+GEOGRAPHY_CLAIMS = [
+    GEOGRAPHY_CLAIM_REFORESTATION,
+    GEOGRAPHY_CLAIM_FACILITY,
+    GEOGRAPHY_CLAIM_DEFORESTATION,
+    GEOGRAPHY_CLAIM_SOLAR,
+]
+
+GEOGRAPHY_ROUTING_ASSIGNMENTS = [
+    ROUTING_GEO_REFORESTATION,
+    ROUTING_GEO_FACILITY,
+    ROUTING_GEO_DEFORESTATION,
+    ROUTING_GEO_SOLAR,
+]

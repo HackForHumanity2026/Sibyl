@@ -825,3 +825,280 @@ def get_mock_news_relevance_summary() -> str:
         Plain text summary string
     """
     return MOCK_NEWS_RELEVANCE_SUMMARY
+
+
+# ============================================================================
+# Academic/Research Agent Mock Responses (FRD 9)
+# ============================================================================
+
+MOCK_ACADEMIC_QUERY_METHODOLOGY = {
+    "queries": [
+        "GHG Protocol Scope 3 spend-based method calculation guidance",
+        "spend-based carbon footprint methodology peer-reviewed accuracy",
+        "GHG Protocol Corporate Value Chain Standard Scope 3 categories",
+    ]
+}
+
+MOCK_ACADEMIC_QUERY_CERTIFICATION = {
+    "queries": [
+        "I-REC international renewable energy certificate standard legitimacy",
+        "renewable energy certificate additionality peer-reviewed research",
+        "I-REC greenwashing risks academic study",
+    ]
+}
+
+MOCK_ACADEMIC_QUERY_SBTI = {
+    "queries": [
+        "SBTi net-zero standard validation criteria requirements",
+        "SBTi 1.5C pathway manufacturing sector targets",
+        "science based targets initiative validated companies database",
+    ]
+}
+
+MOCK_ACADEMIC_QUERY_BENCHMARK = {
+    "queries": [
+        "manufacturing sector Scope 1 emission intensity benchmark 2024",
+        "CDP manufacturing disclosure emission intensity average",
+        "emission intensity per revenue manufacturing peer-reviewed",
+    ]
+}
+
+MOCK_ACADEMIC_QUERY_RESEARCH = {
+    "queries": [
+        "carbon capture utilisation technology emission reduction effectiveness peer-reviewed",
+        "carbon capture CCS CCU 30% reduction research study",
+        "industrial carbon capture pilot results journal",
+    ]
+}
+
+MOCK_ACADEMIC_ANALYSIS_METHODOLOGY = {
+    "investigation_type": "methodology_validation",
+    "supports_claim": True,
+    "confidence": 0.85,
+    "standard_alignment": "aligned",
+    "research_consensus": "The spend-based method is a recognized approach under the GHG Protocol Scope 3 Standard for estimating upstream emissions when activity-based data is unavailable. Peer-reviewed research indicates accuracy within ±30% for initial estimates.",
+    "limitations": [
+        "Higher uncertainty compared to activity-based methods",
+        "Requires accurate spend data and appropriate emission factors"
+    ],
+    "references": [
+        {
+            "type": "standard_document",
+            "title": "GHG Protocol Scope 3 Standard",
+            "url": "https://ghgprotocol.org/scope-3-standard",
+            "snippet": "The spend-based method uses financial data to estimate emissions by multiplying spend by sector-specific emission factors."
+        },
+        {
+            "type": "academic_paper",
+            "title": "Accuracy of Spend-Based Carbon Footprinting",
+            "authors": "Smith et al.",
+            "publication_date": "2023",
+            "url": "https://example.com/paper1",
+            "snippet": "Spend-based methods show acceptable accuracy for Scope 3 estimates within ±30%.",
+            "source_credibility": 1
+        }
+    ],
+    "summary": "The claimed spend-based method for Scope 3 emissions aligns with GHG Protocol guidance. Peer-reviewed research supports the method's use for initial estimates but notes higher uncertainty than activity-based methods."
+}
+
+MOCK_ACADEMIC_ANALYSIS_CERTIFICATION = {
+    "investigation_type": "certification_validation",
+    "supports_claim": None,
+    "confidence": 0.70,
+    "legitimacy_assessment": "legitimate",
+    "research_consensus": "I-RECs are recognized certificates but academic research questions additionality when certificates are unbundled from physical electricity. Studies suggest I-RECs may not drive additional renewable energy investment.",
+    "limitations": [
+        "Additionality concerns for unbundled certificates",
+        "Greenwashing risks identified in academic literature"
+    ],
+    "references": [
+        {
+            "type": "standard_document",
+            "title": "I-REC Standard Registry",
+            "url": "https://irecstandard.org",
+            "snippet": "The I-REC Standard provides a standardized framework for tracking renewable energy attributes."
+        },
+        {
+            "type": "academic_paper",
+            "title": "Renewable Energy Certificates and Additionality: A Critical Review",
+            "authors": "Jones et al.",
+            "publication_date": "2024",
+            "url": "https://example.com/paper2",
+            "snippet": "I-RECs show limited additionality when purchased separately from physical electricity delivery.",
+            "source_credibility": 1
+        }
+    ],
+    "summary": "The I-REC certification is recognized by the I-REC Standard registry. However, academic research raises concerns about additionality and greenwashing risks for unbundled certificates."
+}
+
+MOCK_ACADEMIC_ANALYSIS_SBTI = {
+    "investigation_type": "sbti_validation",
+    "supports_claim": True,
+    "confidence": 0.80,
+    "sbti_validation_status": "validated",
+    "standard_alignment": "aligned",
+    "research_consensus": "The 42% reduction by 2030 from a 2019 baseline aligns with SBTi 1.5°C pathway requirements for the manufacturing sector, which requires approximately 4.2% annual reduction.",
+    "limitations": [
+        "SBTi validation database should be checked directly for latest status",
+        "Scope 3 targets may have different requirements"
+    ],
+    "references": [
+        {
+            "type": "standard_document",
+            "title": "SBTi Target Setting Manual",
+            "url": "https://sciencebasedtargets.org/resources/files/SBTi-Target-Setting-Manual.pdf",
+            "snippet": "Near-term targets must be aligned with 1.5°C or well-below 2°C pathways."
+        }
+    ],
+    "summary": "The claimed science-based target aligns with SBTi framework requirements. The 42% reduction by 2030 is consistent with 1.5°C pathway for the sector."
+}
+
+MOCK_ACADEMIC_ANALYSIS_BENCHMARK = {
+    "investigation_type": "benchmark_comparison",
+    "supports_claim": True,
+    "confidence": 0.75,
+    "plausibility": "plausible",
+    "benchmark_range": {
+        "min": 0.10,
+        "max": 0.25,
+        "median": 0.18,
+        "reported": 0.15,
+        "unit": "tCO2e per $1M revenue"
+    },
+    "research_consensus": "Manufacturing sector Scope 1 emission intensities range from 0.10-0.25 tCO2e/$1M revenue based on CDP disclosures and peer-reviewed research. The reported 0.15 is within the plausible range.",
+    "limitations": [
+        "Benchmark range varies by sub-sector",
+        "Revenue-based intensity can be affected by pricing changes"
+    ],
+    "references": [
+        {
+            "type": "cdp_disclosure",
+            "title": "CDP Manufacturing Sector Disclosure Report 2024",
+            "url": "https://cdp.net/manufacturing-2024",
+            "snippet": "Sector average Scope 1 intensity: 0.18 tCO2e/$1M revenue.",
+            "source_credibility": 2
+        }
+    ],
+    "summary": "The reported Scope 1 emission intensity of 0.15 tCO2e/$M is within the plausible range for manufacturing (0.10-0.25). Top quartile claim requires further verification."
+}
+
+MOCK_ACADEMIC_ANALYSIS_RESEARCH = {
+    "investigation_type": "research_support",
+    "supports_claim": None,
+    "confidence": 0.60,
+    "research_consensus": "Peer-reviewed research on carbon capture and utilisation technologies reports emission reduction ranges of 15-40% depending on technology maturity, facility type, and CO2 utilisation pathway. The claimed 30% falls within published ranges but is at the upper end for pilot-stage projects.",
+    "limitations": [
+        "Pilot results may not scale to full operations",
+        "Long-term performance data is limited",
+        "Effectiveness depends on specific CCU technology variant"
+    ],
+    "references": [
+        {
+            "type": "academic_paper",
+            "title": "Carbon Capture and Utilisation: A Review of Emission Reduction Potential",
+            "authors": "Chen et al.",
+            "publication_date": "2024",
+            "url": "https://example.com/paper3",
+            "snippet": "CCU technologies demonstrate 15-40% emission reduction potential at pilot scale.",
+            "source_credibility": 1
+        }
+    ],
+    "summary": "Peer-reviewed research partially supports the claimed 30% reduction. The value falls within published ranges (15-40%) but is optimistic for pilot-stage technology."
+}
+
+
+def get_mock_academic_query_response(investigation_type: str = "methodology") -> str:
+    """Get a mock LLM response for academic query construction."""
+    responses = {
+        "methodology": MOCK_ACADEMIC_QUERY_METHODOLOGY,
+        "certification": MOCK_ACADEMIC_QUERY_CERTIFICATION,
+        "sbti": MOCK_ACADEMIC_QUERY_SBTI,
+        "benchmark": MOCK_ACADEMIC_QUERY_BENCHMARK,
+        "research": MOCK_ACADEMIC_QUERY_RESEARCH,
+    }
+    return json.dumps(responses.get(investigation_type, MOCK_ACADEMIC_QUERY_METHODOLOGY))
+
+
+def get_mock_academic_analysis_response(investigation_type: str = "methodology") -> str:
+    """Get a mock LLM response for academic analysis."""
+    responses = {
+        "methodology": MOCK_ACADEMIC_ANALYSIS_METHODOLOGY,
+        "certification": MOCK_ACADEMIC_ANALYSIS_CERTIFICATION,
+        "sbti": MOCK_ACADEMIC_ANALYSIS_SBTI,
+        "benchmark": MOCK_ACADEMIC_ANALYSIS_BENCHMARK,
+        "research": MOCK_ACADEMIC_ANALYSIS_RESEARCH,
+    }
+    return json.dumps(responses.get(investigation_type, MOCK_ACADEMIC_ANALYSIS_METHODOLOGY))
+
+
+# ============================================================================
+# Geography Agent Mock Responses (FRD 10)
+# ============================================================================
+
+MOCK_GEO_LOCATION_EXTRACTION = {
+    "location_name": "Central Kalimantan, Borneo, Indonesia",
+    "coordinates": [-1.5, 113.5],
+    "time_range": ["2020-01-01", "2024-12-31"],
+    "area_description": "5,000 hectares",
+    "confidence": 0.9,
+}
+
+MOCK_GEO_LOCATION_FACILITY = {
+    "location_name": "Surabaya, Indonesia",
+    "coordinates": [-7.2575, 112.7521],
+    "time_range": None,
+    "area_description": "50 hectares",
+    "confidence": 0.85,
+}
+
+MOCK_GEO_SATELLITE_ANALYSIS_REFORESTATION = {
+    "supports_claim": True,
+    "confidence": 0.82,
+    "observed_features": ["dense_forest", "reforestation_pattern", "peatland_restoration"],
+    "ndvi_estimate": 0.68,
+    "change_detected": True,
+    "change_area_hectares": 4200.0,
+    "reasoning": "Satellite imagery analysis shows significant vegetation increase in the specified area of Central Kalimantan between 2020 and 2024. NDVI values increased from approximately 0.35 to 0.68, consistent with forest restoration. The estimated area of change (~4,200 hectares) is close to but slightly below the claimed 5,000 hectares.",
+    "limitations": ["Seasonal variation may affect NDVI", "Cloud cover in some scenes limits precision"],
+}
+
+MOCK_GEO_SATELLITE_ANALYSIS_FACILITY = {
+    "supports_claim": True,
+    "confidence": 0.75,
+    "observed_features": ["industrial_facility", "urban_area", "green_space"],
+    "ndvi_estimate": 0.25,
+    "change_detected": None,
+    "change_area_hectares": None,
+    "reasoning": "Satellite imagery confirms the presence of an industrial facility in the Surabaya area. Some green space is visible but the claimed 30% coverage cannot be precisely verified at Sentinel-2 resolution.",
+    "limitations": ["10m resolution insufficient for precise green space measurement", "Building shadows may affect classification"],
+}
+
+MOCK_GEO_SATELLITE_ANALYSIS_DEFORESTATION = {
+    "supports_claim": True,
+    "confidence": 0.88,
+    "observed_features": ["intact_forest", "no_clearing_detected"],
+    "ndvi_estimate": 0.72,
+    "change_detected": False,
+    "change_area_hectares": 0.0,
+    "reasoning": "Temporal comparison of satellite imagery from 2022 to 2024 shows no significant deforestation in the specified Sumatra region. Forest cover remains consistent with NDVI values above 0.65 throughout the period.",
+    "limitations": ["Small-scale selective logging may not be detectable at Sentinel-2 resolution"],
+}
+
+
+def get_mock_geo_location_response(location_type: str = "reforestation") -> str:
+    """Get a mock LLM response for location extraction."""
+    responses = {
+        "reforestation": MOCK_GEO_LOCATION_EXTRACTION,
+        "facility": MOCK_GEO_LOCATION_FACILITY,
+    }
+    return json.dumps(responses.get(location_type, MOCK_GEO_LOCATION_EXTRACTION))
+
+
+def get_mock_geo_analysis_response(analysis_type: str = "reforestation") -> str:
+    """Get a mock LLM response for satellite imagery analysis."""
+    responses = {
+        "reforestation": MOCK_GEO_SATELLITE_ANALYSIS_REFORESTATION,
+        "facility": MOCK_GEO_SATELLITE_ANALYSIS_FACILITY,
+        "deforestation": MOCK_GEO_SATELLITE_ANALYSIS_DEFORESTATION,
+    }
+    return json.dumps(responses.get(analysis_type, MOCK_GEO_SATELLITE_ANALYSIS_REFORESTATION))

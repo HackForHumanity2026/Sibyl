@@ -21,6 +21,9 @@ from app.schemas.analysis import (
     AnalysisStatusResponse,
     ClaimResponse,
     ClaimsListResponse,
+    ClaimWithFindingsResponse,
+    FindingResponse,
+    FindingsListResponse,
     IFRSParagraphMapping,
     StartAnalysisResponse,
 )
@@ -386,3 +389,130 @@ async def get_claim(
         raise HTTPException(status_code=404, detail="Claim not found.")
 
     return _claim_to_response(claim)
+
+
+# =============================================================================
+# Findings Endpoints (Agent Investigation Results)
+# =============================================================================
+
+
+def _finding_to_response(finding: Finding) -> FindingResponse:
+    """Convert a Finding model to FindingResponse schema."""
+    return FindingResponse(
+        id=str(finding.id),
+        claim_id=str(finding.claim_id) if finding.claim_id else None,
+        agent_name=finding.agent_name,
+        evidence_type=finding.evidence_type,
+        summary=finding.summary,
+        details=finding.details,
+        supports_claim=finding.supports_claim,
+        confidence=finding.confidence,
+        iteration=finding.iteration,
+        created_at=finding.created_at,
+    )
+
+
+@router.get("/{report_id}/findings", response_model=FindingsListResponse)
+async def get_findings(
+    report_id: str,
+    agent_name: str | None = Query(None, description="Filter by agent name"),
+    claim_id: str | None = Query(None, description="Filter by claim ID"),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(50, ge=1, le=100, description="Page size"),
+    db: AsyncSession = Depends(get_db),
+) -> FindingsListResponse:
+    """Get paginated list of findings (agent investigation results) for a report.
+    
+    Findings represent evidence gathered by specialist agents (legal, news, academic, etc.)
+    during their investigation of claims.
+    """
+    # Validate report exists
+    try:
+        report_uuid = UUID(report_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid report ID format.")
+
+    stmt = select(Report.id).where(Report.id == report_uuid)
+    result = await db.execute(stmt)
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    # Build query for findings
+    query = select(Finding).where(Finding.report_id == report_uuid)
+
+    # Apply filters
+    if agent_name is not None:
+        query = query.where(Finding.agent_name == agent_name)
+    if claim_id is not None:
+        try:
+            claim_uuid = UUID(claim_id)
+            query = query.where(Finding.claim_id == claim_uuid)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid claim ID format.")
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Order by creation date (most recent first)
+    query = query.order_by(Finding.created_at.desc())
+
+    # Apply pagination
+    offset = (page - 1) * size
+    query = query.offset(offset).limit(size)
+
+    # Execute query
+    result = await db.execute(query)
+    findings = result.scalars().all()
+
+    # Convert to response
+    finding_responses = [_finding_to_response(finding) for finding in findings]
+
+    return FindingsListResponse(
+        findings=finding_responses,
+        total=total,
+        page=page,
+        size=size,
+    )
+
+
+@router.get("/{report_id}/claims/{claim_id}/findings", response_model=ClaimWithFindingsResponse)
+async def get_claim_with_findings(
+    report_id: str,
+    claim_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> ClaimWithFindingsResponse:
+    """Get a claim with all its associated findings.
+    
+    This endpoint combines the claim details with all evidence gathered by specialist agents.
+    """
+    # Validate UUIDs
+    try:
+        report_uuid = UUID(report_id)
+        claim_uuid = UUID(claim_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ID format.")
+
+    # Fetch the claim
+    claim_stmt = select(Claim).where(
+        Claim.id == claim_uuid,
+        Claim.report_id == report_uuid,
+    )
+    claim_result = await db.execute(claim_stmt)
+    claim = claim_result.scalar_one_or_none()
+
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found.")
+
+    # Fetch findings for this claim
+    findings_stmt = select(Finding).where(
+        Finding.claim_id == claim_uuid
+    ).order_by(Finding.created_at.asc())
+    findings_result = await db.execute(findings_stmt)
+    findings = findings_result.scalars().all()
+
+    return ClaimWithFindingsResponse(
+        claim=_claim_to_response(claim),
+        findings=[_finding_to_response(f) for f in findings],
+    )

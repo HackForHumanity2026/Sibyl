@@ -91,3 +91,39 @@ class EventsListResponse(BaseModel):
     events: list[StreamEventResponse]
     total: int
     pipeline_complete: bool
+
+
+# =============================================================================
+# Findings Endpoints (Agent Investigation Results)
+# =============================================================================
+
+
+class FindingResponse(BaseModel):
+    """Response for a single finding (agent investigation result)."""
+
+    id: str
+    claim_id: str | None = None
+    agent_name: str
+    evidence_type: str
+    summary: str
+    details: dict | None = None
+    supports_claim: bool | None = None
+    confidence: str | None = None
+    iteration: int
+    created_at: datetime
+
+
+class FindingsListResponse(BaseModel):
+    """Paginated response for findings list."""
+
+    findings: list[FindingResponse]
+    total: int
+    page: int
+    size: int
+
+
+class ClaimWithFindingsResponse(BaseModel):
+    """Response for a claim with its associated findings."""
+
+    claim: ClaimResponse
+    findings: list[FindingResponse] = Field(default_factory=list)

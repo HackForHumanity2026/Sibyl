@@ -55,6 +55,30 @@ from tests.fixtures.sample_claims import (
     ROUTING_NEWS_REFORESTATION,
     ROUTING_NEWS_SUPPLY_CHAIN,
     ROUTING_NO_NEWS,
+    # Academic/Research imports
+    ACADEMIC_CLAIM_METHODOLOGY,
+    ACADEMIC_CLAIM_CERTIFICATION,
+    ACADEMIC_CLAIM_SBTI,
+    ACADEMIC_CLAIM_BENCHMARK,
+    ACADEMIC_CLAIM_RESEARCH,
+    ACADEMIC_CLAIM_OFFSET,
+    ROUTING_ACADEMIC_METHODOLOGY,
+    ROUTING_ACADEMIC_CERTIFICATION,
+    ROUTING_ACADEMIC_SBTI,
+    ROUTING_ACADEMIC_BENCHMARK,
+    ROUTING_ACADEMIC_RESEARCH,
+    ROUTING_ACADEMIC_OFFSET,
+    ROUTING_NO_ACADEMIC,
+    # Geography imports
+    GEOGRAPHY_CLAIM_REFORESTATION,
+    GEOGRAPHY_CLAIM_FACILITY,
+    GEOGRAPHY_CLAIM_DEFORESTATION,
+    GEOGRAPHY_CLAIM_SOLAR,
+    ROUTING_GEO_REFORESTATION,
+    ROUTING_GEO_FACILITY,
+    ROUTING_GEO_DEFORESTATION,
+    ROUTING_GEO_SOLAR,
+    ROUTING_NO_GEO,
 )
 
 
@@ -522,4 +546,168 @@ def create_state_with_news_supply_chain_claim() -> SibylState:
     return create_base_state(
         claims=[NEWS_CLAIM_SUPPLY_CHAIN],
         routing_plan=[ROUTING_NEWS_SUPPLY_CHAIN],
+    )
+
+
+# ============================================================================
+# Academic/Research Agent State Factories (FRD 9)
+# ============================================================================
+
+
+def create_state_with_academic_methodology_claim() -> SibylState:
+    """Create a state with a methodology claim routed to academic agent."""
+    return create_base_state(
+        claims=[ACADEMIC_CLAIM_METHODOLOGY],
+        routing_plan=[ROUTING_ACADEMIC_METHODOLOGY],
+    )
+
+
+def create_state_with_academic_certification_claim() -> SibylState:
+    """Create a state with a certification claim for academic validation."""
+    return create_base_state(
+        claims=[ACADEMIC_CLAIM_CERTIFICATION],
+        routing_plan=[ROUTING_ACADEMIC_CERTIFICATION],
+    )
+
+
+def create_state_with_academic_sbti_claim() -> SibylState:
+    """Create a state with an SBTi target claim for academic validation."""
+    return create_base_state(
+        claims=[ACADEMIC_CLAIM_SBTI],
+        routing_plan=[ROUTING_ACADEMIC_SBTI],
+    )
+
+
+def create_state_with_academic_benchmark_claim() -> SibylState:
+    """Create a state with a benchmark comparison claim for academic validation."""
+    return create_base_state(
+        claims=[ACADEMIC_CLAIM_BENCHMARK],
+        routing_plan=[ROUTING_ACADEMIC_BENCHMARK],
+    )
+
+
+def create_state_with_academic_research_claim() -> SibylState:
+    """Create a state with a research support claim for academic validation."""
+    return create_base_state(
+        claims=[ACADEMIC_CLAIM_RESEARCH],
+        routing_plan=[ROUTING_ACADEMIC_RESEARCH],
+    )
+
+
+def create_state_with_academic_multiple_claims() -> SibylState:
+    """Create a state with multiple academic claims of different types."""
+    return create_base_state(
+        claims=[
+            ACADEMIC_CLAIM_METHODOLOGY,
+            ACADEMIC_CLAIM_CERTIFICATION,
+            ACADEMIC_CLAIM_SBTI,
+            ACADEMIC_CLAIM_BENCHMARK,
+        ],
+        routing_plan=[
+            ROUTING_ACADEMIC_METHODOLOGY,
+            ROUTING_ACADEMIC_CERTIFICATION,
+            ROUTING_ACADEMIC_SBTI,
+            ROUTING_ACADEMIC_BENCHMARK,
+        ],
+    )
+
+
+def create_state_with_academic_reinvestigation() -> SibylState:
+    """Create a state with a re-investigation request targeting academic agent."""
+    reinvestigation = ReinvestigationRequest(
+        claim_id=ACADEMIC_CLAIM_CERTIFICATION.claim_id,
+        target_agents=["academic"],
+        evidence_gap="Need peer-reviewed research on I-REC additionality in Southeast Asian markets",
+        refined_queries=[
+            "I-REC additionality Southeast Asia peer-reviewed research",
+            "renewable energy certificate greenwashing Asia-Pacific study",
+        ],
+        required_evidence="Academic research on whether I-RECs drive additional renewable energy investment",
+    )
+    return create_base_state(
+        claims=[ACADEMIC_CLAIM_CERTIFICATION],
+        routing_plan=[ROUTING_ACADEMIC_CERTIFICATION],
+        reinvestigation_requests=[reinvestigation],
+        iteration_count=1,
+    )
+
+
+def create_state_with_no_academic_claims() -> SibylState:
+    """Create a state where no claims are routed to the academic agent."""
+    return create_base_state(
+        claims=[GOVERNANCE_CLAIM],
+        routing_plan=[ROUTING_NO_ACADEMIC],
+    )
+
+
+# ============================================================================
+# Geography Agent State Factories (FRD 10)
+# ============================================================================
+
+
+def create_state_with_geo_reforestation_claim() -> SibylState:
+    """Create a state with a reforestation claim routed to geography agent."""
+    return create_base_state(
+        claims=[GEOGRAPHY_CLAIM_REFORESTATION],
+        routing_plan=[ROUTING_GEO_REFORESTATION],
+    )
+
+
+def create_state_with_geo_facility_claim() -> SibylState:
+    """Create a state with a facility claim for geography agent."""
+    return create_base_state(
+        claims=[GEOGRAPHY_CLAIM_FACILITY],
+        routing_plan=[ROUTING_GEO_FACILITY],
+    )
+
+
+def create_state_with_geo_deforestation_claim() -> SibylState:
+    """Create a state with a deforestation claim for geography agent."""
+    return create_base_state(
+        claims=[GEOGRAPHY_CLAIM_DEFORESTATION],
+        routing_plan=[ROUTING_GEO_DEFORESTATION],
+    )
+
+
+def create_state_with_geo_multiple_claims() -> SibylState:
+    """Create a state with multiple geographic claims."""
+    return create_base_state(
+        claims=[
+            GEOGRAPHY_CLAIM_REFORESTATION,
+            GEOGRAPHY_CLAIM_FACILITY,
+            GEOGRAPHY_CLAIM_DEFORESTATION,
+        ],
+        routing_plan=[
+            ROUTING_GEO_REFORESTATION,
+            ROUTING_GEO_FACILITY,
+            ROUTING_GEO_DEFORESTATION,
+        ],
+    )
+
+
+def create_state_with_geo_reinvestigation() -> SibylState:
+    """Create a state with a re-investigation request targeting geography agent."""
+    reinvestigation = ReinvestigationRequest(
+        claim_id=GEOGRAPHY_CLAIM_REFORESTATION.claim_id,
+        target_agents=["geography"],
+        evidence_gap="Need higher temporal resolution comparison focusing on northern sector",
+        refined_queries=[
+            "Focus NDVI analysis on the northern sector of the Central Kalimantan site",
+            "Compare 2020 baseline with 2022 and 2024 imagery for staged progress",
+        ],
+        required_evidence="Temporal comparison showing progressive reforestation across multiple years",
+    )
+    return create_base_state(
+        claims=[GEOGRAPHY_CLAIM_REFORESTATION],
+        routing_plan=[ROUTING_GEO_REFORESTATION],
+        reinvestigation_requests=[reinvestigation],
+        iteration_count=1,
+    )
+
+
+def create_state_with_no_geo_claims() -> SibylState:
+    """Create a state where no claims are routed to the geography agent."""
+    return create_base_state(
+        claims=[GOVERNANCE_CLAIM],
+        routing_plan=[ROUTING_NO_GEO],
     )

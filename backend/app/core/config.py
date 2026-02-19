@@ -35,6 +35,23 @@ class Settings(BaseSettings):
     SEARCH_MAX_RESULTS: int = 10
     SEARCH_TIMEOUT_SECONDS: int = 30
 
+    # Microsoft Planetary Computer (Geography Agent - FRD 10)
+    MPC_STAC_URL: str = "https://planetarycomputer.microsoft.com/api/stac/v1"
+    MPC_COLLECTION: str = "sentinel-2-l2a"
+
+    # Geocoding (Geography Agent)
+    GEOCODING_SERVICE_URL: str = "https://nominatim.openstreetmap.org/search"
+    GEOCODING_RATE_LIMIT_SECONDS: float = 1.0
+
+    # Image Processing (Geography Agent)
+    TEMP_IMAGE_DIR: str = "/tmp/sibyl-geography"
+    MAX_TEMP_DIR_SIZE_GB: float = 5.0
+
+    # Analysis thresholds (Geography Agent)
+    NDVI_CHANGE_THRESHOLD: float = 0.1
+    CLOUD_COVER_MAX_PREFERRED: float = 20.0
+    CLOUD_COVER_MAX_ACCEPTABLE: float = 50.0
+
 
 # Singleton settings instance
 settings = Settings()
