@@ -17,7 +17,7 @@ class Models:
     """OpenRouter model identifiers."""
 
     # Gemini models (use the latest available versions on OpenRouter)
-    GEMINI_FLASH = "google/gemini-2.0-flash-001"
+    GEMINI_FLASH = "google/gemini-2.5-flash"  # Fast, cheap reasoning model
     GEMINI_PRO = "google/gemini-2.5-pro"
     # Claude models
     CLAUDE_SONNET = "anthropic/claude-3.5-sonnet"

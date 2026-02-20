@@ -560,7 +560,7 @@ async def _assess_paragraph_coverage(
     
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.CLAUDE_HAIKU,  # Fast, cheap for coverage assessment
             messages=[
                 {"role": "system", "content": "You assess IFRS compliance coverage. Output only valid JSON."},
                 {"role": "user", "content": prompt},

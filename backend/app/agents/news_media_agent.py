@@ -250,7 +250,7 @@ Return the three queries as JSON."""
 
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.DEEPSEEK,  # Cheap model for simple query generation
             messages=[
                 {"role": "system", "content": QUERY_CONSTRUCTION_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -400,7 +400,7 @@ async def _assign_credibility_tier(source: dict) -> SourceCredibilityResult:
         )
         
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.CLAUDE_HAIKU,  # Fast, cheap for classification
             messages=[
                 {"role": "system", "content": "You classify news source credibility. Output only valid JSON."},
                 {"role": "user", "content": prompt},
@@ -453,7 +453,7 @@ async def _detect_contradiction(
     
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.CLAUDE_HAIKU,  # Fast, cheap for classification
             messages=[
                 {"role": "system", "content": "You analyze news sources for contradictions. Output only valid JSON."},
                 {"role": "user", "content": prompt},
@@ -504,7 +504,7 @@ async def _generate_relevance_summary(claim: Claim, source: dict) -> str:
     
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.CLAUDE_HAIKU,  # Fast, cheap for summarization
             messages=[
                 {"role": "user", "content": prompt},
             ],

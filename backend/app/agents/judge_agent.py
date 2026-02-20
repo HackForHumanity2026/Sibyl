@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Model Configuration
 # =============================================================================
 
-MODEL = Models.CLAUDE_OPUS
+MODEL = Models.CLAUDE_SONNET  # Sonnet for cost efficiency; Opus reserved for truly complex cases
 TEMPERATURE = 0.1
 MAX_TOKENS = 16384
 

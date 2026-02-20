@@ -145,7 +145,7 @@ async def _extract_location(claim: Claim) -> ExtractedLocation:
 
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.GEMINI_PRO,
+            model=Models.GEMINI_FLASH,  # Fast, cheap for simple location extraction
             messages=[
                 {"role": "system", "content": "Extract geographic location information. Output only valid JSON."},
                 {"role": "user", "content": prompt},

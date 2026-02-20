@@ -232,7 +232,7 @@ async def _route_with_llm(claims: list) -> list[RoutingAssignment] | None:
     
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.DEEPSEEK,  # Cheap model for structured routing decisions
             messages=[
                 {"role": "system", "content": ORCHESTRATOR_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
