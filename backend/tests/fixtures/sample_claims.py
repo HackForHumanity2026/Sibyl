@@ -700,3 +700,221 @@ GEOGRAPHY_ROUTING_ASSIGNMENTS = [
     ROUTING_GEO_DEFORESTATION,
     ROUTING_GEO_SOLAR,
 ]
+
+
+# ============================================================================
+# Judge Agent Sample Claims and Findings (FRD 11)
+# ============================================================================
+
+from app.agents.state import AgentFinding
+
+# Sample claim for Judge Agent testing
+JUDGE_CLAIM_TRANSITION_PLAN = Claim(
+    claim_id="claim-judge-001",
+    text="Our transition plan assumes a 2.5% annual GDP growth rate, carbon price of $75/tCO2e by 2030, "
+    "and availability of carbon capture and storage technology by 2028. We target net-zero by 2050 "
+    "with interim milestones: 20% reduction by 2025, 42% by 2030, 70% by 2040.",
+    page_number=45,
+    claim_type="strategic",
+    ifrs_paragraphs=["S2.14(a)(iv)", "S1.33"],
+    priority="high",
+    source_location={"source_context": "Section 5.2 Transition Plan"},
+    agent_reasoning="Strategic claim about transition plan with key assumptions, dependencies, and timeline.",
+)
+
+JUDGE_CLAIM_EMISSIONS = Claim(
+    claim_id="claim-judge-002",
+    text="We reduced Scope 1 emissions by 30% from 2020 baseline, achieving 2.3M tCO2e in FY2024.",
+    page_number=67,
+    claim_type="quantitative",
+    ifrs_paragraphs=["S2.29(a)(i)"],
+    priority="high",
+    source_location={"source_context": "Section 7.2 GHG Emissions"},
+    agent_reasoning="Quantitative emissions reduction claim requiring verification.",
+)
+
+JUDGE_CLAIM_GOVERNANCE = Claim(
+    claim_id="claim-judge-003",
+    text="The Board's Sustainability Committee oversees climate-related risks with quarterly reviews.",
+    page_number=12,
+    claim_type="legal_governance",
+    ifrs_paragraphs=["S2.6", "S1.27(a)"],
+    priority="medium",
+    source_location={"source_context": "Section 3.1 Governance"},
+    agent_reasoning="Governance claim about board oversight.",
+)
+
+# Sample AgentFindings for Judge Agent testing
+
+FINDING_LEGAL_SUPPORTING = AgentFinding(
+    finding_id="finding-legal-001",
+    agent_name="legal",
+    claim_id="claim-judge-001",
+    evidence_type="ifrs_compliance",
+    summary="Claim meets S2.14(a)(iv) requirements with all sub-requirements addressed. "
+    "Key assumptions, dependencies, and timeline are clearly documented.",
+    details={
+        "ifrs_mappings": [
+            {
+                "paragraph_id": "S2.14(a)(iv)",
+                "compliance_status": "fully_addressed",
+                "sub_requirements": [
+                    {"requirement": "key_assumptions", "addressed": True},
+                    {"requirement": "dependencies", "addressed": True},
+                    {"requirement": "timeline", "addressed": True},
+                ],
+            }
+        ],
+    },
+    supports_claim=True,
+    confidence="high",
+    iteration=1,
+)
+
+FINDING_GEOGRAPHY_SUPPORTING = AgentFinding(
+    finding_id="finding-geo-001",
+    agent_name="geography",
+    claim_id="claim-judge-001",
+    evidence_type="satellite_analysis",
+    summary="Satellite imagery confirms the stated environmental conditions and location characteristics.",
+    details={
+        "ndvi_estimate": 0.72,
+        "change_detected": True,
+        "observed_features": ["vegetation_increase", "land_restoration"],
+    },
+    supports_claim=True,
+    confidence="high",
+    iteration=1,
+)
+
+FINDING_ACADEMIC_SUPPORTING = AgentFinding(
+    finding_id="finding-academic-001",
+    agent_name="academic",
+    claim_id="claim-judge-001",
+    evidence_type="methodology_validation",
+    summary="Transition plan methodology aligns with SBTi 1.5C pathway requirements and peer-reviewed research.",
+    details={
+        "sbti_validation_status": "validated",
+        "standard_alignment": "aligned",
+    },
+    supports_claim=True,
+    confidence="high",
+    iteration=1,
+)
+
+FINDING_NEWS_SUPPORTING = AgentFinding(
+    finding_id="finding-news-001",
+    agent_name="news_media",
+    claim_id="claim-judge-001",
+    evidence_type="news_corroboration",
+    summary="Multiple Tier 2 news sources corroborate the company's transition plan commitment.",
+    details={
+        "source_tier": 2,
+        "sources_found": 3,
+    },
+    supports_claim=True,
+    confidence="medium",
+    iteration=1,
+)
+
+FINDING_DATA_METRICS_SUPPORTING = AgentFinding(
+    finding_id="finding-dm-001",
+    agent_name="data_metrics",
+    claim_id="claim-judge-001",
+    evidence_type="mathematical_consistency",
+    summary="Target achievability assessment shows 4.8% annual reduction rate is consistent with sector averages.",
+    details={
+        "target_achievability": "achievable",
+        "required_annual_rate": 4.8,
+    },
+    supports_claim=True,
+    confidence="high",
+    iteration=1,
+)
+
+FINDING_NEWS_CONTRADICTING = AgentFinding(
+    finding_id="finding-news-contradict-001",
+    agent_name="news_media",
+    claim_id="claim-judge-002",
+    evidence_type="news_contradiction",
+    summary="Investigative journalism reports regulatory action against the company for emissions violations, "
+    "contradicting the claimed 30% reduction.",
+    details={
+        "source_tier": 1,
+        "contradiction_type": "direct",
+        "confidence": 0.92,
+    },
+    supports_claim=False,
+    confidence="high",
+    iteration=1,
+)
+
+FINDING_DATA_METRICS_CONTRADICTING = AgentFinding(
+    finding_id="finding-dm-contradict-001",
+    agent_name="data_metrics",
+    claim_id="claim-judge-002",
+    evidence_type="mathematical_inconsistency",
+    summary="Mathematical analysis shows reported figures are inconsistent with claimed reduction percentage.",
+    details={
+        "check_name": "yoy_percentage",
+        "result": "fail",
+        "discrepancy_percent": 15.3,
+    },
+    supports_claim=False,
+    confidence="high",
+    iteration=1,
+)
+
+FINDING_LEGAL_WEAK = AgentFinding(
+    finding_id="finding-legal-weak-001",
+    agent_name="legal",
+    claim_id="claim-judge-003",
+    evidence_type="ifrs_compliance",
+    summary="Partial IFRS compliance - governance claim mentioned but lacks specific details.",
+    details={
+        "ifrs_mappings": [
+            {
+                "paragraph_id": "S2.6",
+                "compliance_status": "partially_addressed",
+            }
+        ],
+    },
+    supports_claim=True,
+    confidence="low",
+    iteration=1,
+)
+
+FINDING_ACADEMIC_INCONCLUSIVE = AgentFinding(
+    finding_id="finding-academic-inconclusive-001",
+    agent_name="academic",
+    claim_id="claim-judge-003",
+    evidence_type="research_support",
+    summary="Peer-reviewed research partially supports the claim but with caveats about methodology.",
+    details={
+        "research_consensus": "mixed",
+        "limitations": ["Limited sample size", "Methodology concerns"],
+    },
+    supports_claim=None,
+    confidence="medium",
+    iteration=1,
+)
+
+# Judge Agent Routing Assignments
+
+ROUTING_JUDGE_TRANSITION = RoutingAssignment(
+    claim_id="claim-judge-001",
+    assigned_agents=["legal", "academic", "news_media"],
+    reasoning="Strategic transition plan claim requiring multi-agent verification.",
+)
+
+ROUTING_JUDGE_EMISSIONS = RoutingAssignment(
+    claim_id="claim-judge-002",
+    assigned_agents=["legal", "data_metrics", "news_media"],
+    reasoning="Quantitative emissions claim requiring calculation and news verification.",
+)
+
+ROUTING_JUDGE_GOVERNANCE = RoutingAssignment(
+    claim_id="claim-judge-003",
+    assigned_agents=["legal"],
+    reasoning="Governance claim requiring legal compliance assessment.",
+)

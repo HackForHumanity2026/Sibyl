@@ -18,7 +18,7 @@ class Models:
 
     # Gemini models (use the latest available versions on OpenRouter)
     GEMINI_FLASH = "google/gemini-2.0-flash-001"
-    GEMINI_PRO = "google/gemini-1.5-pro-latest"
+    GEMINI_PRO = "google/gemini-2.5-pro"
     # Claude models
     CLAUDE_SONNET = "anthropic/claude-3.5-sonnet"
     CLAUDE_HAIKU = "anthropic/claude-3.5-haiku"  # Fast, cheap for classification tasks

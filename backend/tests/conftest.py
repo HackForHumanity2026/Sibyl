@@ -742,3 +742,127 @@ def sample_state_news_supply_chain():
     """State with supply chain claim for investigative news verification."""
     from tests.fixtures.sample_states import create_state_with_news_supply_chain_claim
     return create_state_with_news_supply_chain_claim()
+
+
+# ============================================================================
+# Judge Agent Mock Fixtures (FRD 11)
+# ============================================================================
+
+
+@pytest.fixture
+def mock_openrouter_judge(mocker):
+    """Mock OpenRouter for judge_agent LLM calls.
+    
+    Usage:
+        def test_example(mock_openrouter_judge):
+            mock_openrouter_judge('{"verdict": "verified", ...}')
+            result = await judge_evidence(state)
+    """
+    def _mock_completion(response_content: str):
+        mock_chat = AsyncMock(return_value=response_content)
+        mocker.patch(
+            "app.agents.judge_agent.openrouter_client.chat_completion",
+            mock_chat
+        )
+        return mock_chat
+    return _mock_completion
+
+
+@pytest.fixture
+def mock_openrouter_judge_sequence(mocker):
+    """Mock OpenRouter with sequence for judge_agent multiple LLM calls.
+    
+    Usage:
+        def test_example(mock_openrouter_judge_sequence):
+            mock_openrouter_judge_sequence([
+                '{"verdict": "verified", ...}',  # First claim
+                '{"verdict": "insufficient_evidence", ...}',  # Second claim
+            ])
+    """
+    def _mock_sequence(responses: list[str]):
+        mock_chat = AsyncMock(side_effect=responses)
+        mocker.patch(
+            "app.agents.judge_agent.openrouter_client.chat_completion",
+            mock_chat
+        )
+        return mock_chat
+    return _mock_sequence
+
+
+@pytest.fixture
+def mock_openrouter_judge_error(mocker):
+    """Mock OpenRouter to raise errors for judge_agent.
+    
+    Usage:
+        def test_example(mock_openrouter_judge_error):
+            mock_openrouter_judge_error(Exception("API timeout"))
+    """
+    def _mock_error(error: Exception):
+        mock_chat = AsyncMock(side_effect=error)
+        mocker.patch(
+            "app.agents.judge_agent.openrouter_client.chat_completion",
+            mock_chat
+        )
+        return mock_chat
+    return _mock_error
+
+
+# ============================================================================
+# Judge Agent Sample State Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_state_judge_verified():
+    """State with sufficient evidence for verified verdict."""
+    from tests.fixtures.sample_states import create_state_with_verified_evidence
+    return create_state_with_verified_evidence()
+
+
+@pytest.fixture
+def sample_state_judge_insufficient():
+    """State with insufficient evidence, needs reinvestigation."""
+    from tests.fixtures.sample_states import create_state_with_insufficient_evidence
+    return create_state_with_insufficient_evidence()
+
+
+@pytest.fixture
+def sample_state_judge_contradicting():
+    """State with contradicting evidence."""
+    from tests.fixtures.sample_states import create_state_with_contradicting_evidence
+    return create_state_with_contradicting_evidence()
+
+
+@pytest.fixture
+def sample_state_judge_no_evidence():
+    """State with no evidence from any agent."""
+    from tests.fixtures.sample_states import create_state_with_no_evidence
+    return create_state_with_no_evidence()
+
+
+@pytest.fixture
+def sample_state_judge_errored_agents():
+    """State where some agents errored."""
+    from tests.fixtures.sample_states import create_state_with_errored_agents
+    return create_state_with_errored_agents()
+
+
+@pytest.fixture
+def sample_state_judge_reinvestigation():
+    """State simulating second iteration."""
+    from tests.fixtures.sample_states import create_state_for_reinvestigation
+    return create_state_for_reinvestigation()
+
+
+@pytest.fixture
+def sample_state_judge_max_iterations():
+    """State at max iterations."""
+    from tests.fixtures.sample_states import create_state_at_max_iterations
+    return create_state_at_max_iterations()
+
+
+@pytest.fixture
+def sample_state_judge_multiple_claims():
+    """State with multiple claims requiring different verdicts."""
+    from tests.fixtures.sample_states import create_state_with_multiple_claims_mixed_verdicts
+    return create_state_with_multiple_claims_mixed_verdicts()

@@ -79,7 +79,24 @@ from tests.fixtures.sample_claims import (
     ROUTING_GEO_DEFORESTATION,
     ROUTING_GEO_SOLAR,
     ROUTING_NO_GEO,
+    # Judge Agent imports (FRD 11)
+    JUDGE_CLAIM_TRANSITION_PLAN,
+    JUDGE_CLAIM_EMISSIONS,
+    JUDGE_CLAIM_GOVERNANCE,
+    ROUTING_JUDGE_TRANSITION,
+    ROUTING_JUDGE_EMISSIONS,
+    ROUTING_JUDGE_GOVERNANCE,
+    FINDING_LEGAL_SUPPORTING,
+    FINDING_GEOGRAPHY_SUPPORTING,
+    FINDING_ACADEMIC_SUPPORTING,
+    FINDING_NEWS_SUPPORTING,
+    FINDING_DATA_METRICS_SUPPORTING,
+    FINDING_NEWS_CONTRADICTING,
+    FINDING_DATA_METRICS_CONTRADICTING,
+    FINDING_LEGAL_WEAK,
+    FINDING_ACADEMIC_INCONCLUSIVE,
 )
+from app.agents.state import AgentStatus
 
 
 def create_base_state(**overrides: Any) -> SibylState:
@@ -710,4 +727,271 @@ def create_state_with_no_geo_claims() -> SibylState:
     return create_base_state(
         claims=[GOVERNANCE_CLAIM],
         routing_plan=[ROUTING_NO_GEO],
+    )
+
+
+# ============================================================================
+# Judge Agent State Factories (FRD 11)
+# ============================================================================
+
+
+def create_state_with_verified_evidence() -> SibylState:
+    """Create a state with sufficient corroborating evidence from multiple agents.
+    
+    3+ agents with supporting findings, high confidence.
+    Expected verdict: verified
+    """
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN],
+        routing_plan=[ROUTING_JUDGE_TRANSITION],
+        findings=[
+            FINDING_LEGAL_SUPPORTING,
+            FINDING_GEOGRAPHY_SUPPORTING,
+            FINDING_ACADEMIC_SUPPORTING,
+            FINDING_NEWS_SUPPORTING,
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="completed"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+        },
+    )
+
+
+def create_state_with_insufficient_evidence() -> SibylState:
+    """Create a state with only one weak agent finding, needs re-investigation.
+    
+    Single agent finding, low confidence.
+    Expected verdict: insufficient_evidence with reinvestigation request
+    """
+    from app.agents.state import AgentFinding
+    
+    # Create a weak finding for this claim specifically
+    weak_finding = AgentFinding(
+        finding_id="finding-legal-insufficient-001",
+        agent_name="legal",
+        claim_id="claim-judge-001",
+        evidence_type="ifrs_compliance",
+        summary="Partial IFRS compliance - claim mentioned but lacks specific details.",
+        details={"ifrs_mappings": []},
+        supports_claim=True,
+        confidence="low",
+        iteration=1,
+    )
+    
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN],
+        routing_plan=[ROUTING_JUDGE_TRANSITION],
+        findings=[
+            weak_finding,
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="completed"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+        },
+    )
+
+
+def create_state_with_contradicting_evidence() -> SibylState:
+    """Create a state where agents contradict each other.
+    
+    Some agents support, others contradict.
+    Expected verdict: contradicted (if contradict ratio > 0.5)
+    """
+    return create_base_state(
+        claims=[JUDGE_CLAIM_EMISSIONS],
+        routing_plan=[ROUTING_JUDGE_EMISSIONS],
+        findings=[
+            FINDING_LEGAL_SUPPORTING,  # Supports (but for different claim)
+            FINDING_NEWS_CONTRADICTING,  # Contradicts
+            FINDING_DATA_METRICS_CONTRADICTING,  # Contradicts
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+            "data_metrics": AgentStatus(agent_name="data_metrics", status="completed"),
+        },
+    )
+
+
+def create_state_with_no_evidence() -> SibylState:
+    """Create a state with claims but no findings from any agent.
+    
+    Expected verdict: unverified
+    """
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN],
+        routing_plan=[ROUTING_JUDGE_TRANSITION],
+        findings=[],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="completed"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+        },
+    )
+
+
+def create_state_with_errored_agents() -> SibylState:
+    """Create a state where some agents errored, affecting completeness.
+    
+    agent_status shows "error" for geography.
+    """
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN],
+        routing_plan=[ROUTING_JUDGE_TRANSITION],
+        findings=[
+            FINDING_LEGAL_SUPPORTING,
+            FINDING_ACADEMIC_SUPPORTING,
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="error"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+        },
+    )
+
+
+def create_state_for_reinvestigation() -> SibylState:
+    """Create a state simulating second iteration with prior findings.
+    
+    iteration_count=1, has prior findings but needs more evidence.
+    """
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN],
+        routing_plan=[ROUTING_JUDGE_TRANSITION],
+        findings=[
+            FINDING_LEGAL_SUPPORTING,
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="completed"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+        },
+        iteration_count=1,
+    )
+
+
+def create_state_at_max_iterations() -> SibylState:
+    """Create a state at max iterations - should issue final verdicts.
+    
+    iteration_count=3, max_iterations=3, should not generate reinvestigation.
+    """
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN],
+        routing_plan=[ROUTING_JUDGE_TRANSITION],
+        findings=[
+            FINDING_LEGAL_SUPPORTING,
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="completed"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+        },
+        iteration_count=3,
+        max_iterations=3,
+    )
+
+
+def create_state_with_multiple_claims_mixed_verdicts() -> SibylState:
+    """Create a state with multiple claims requiring different verdicts.
+    
+    Claim 1: Verified (multiple supporting findings)
+    Claim 2: Contradicted (contradicting findings)
+    Claim 3: Insufficient (single weak finding)
+    """
+    from app.agents.state import AgentFinding
+    
+    # Adjust findings to have correct claim_ids
+    legal_supporting = AgentFinding(
+        finding_id="finding-legal-mixed-001",
+        agent_name="legal",
+        claim_id="claim-judge-001",
+        evidence_type="ifrs_compliance",
+        summary="Claim meets IFRS requirements.",
+        details={"ifrs_mappings": []},
+        supports_claim=True,
+        confidence="high",
+        iteration=1,
+    )
+    geo_supporting = AgentFinding(
+        finding_id="finding-geo-mixed-001",
+        agent_name="geography",
+        claim_id="claim-judge-001",
+        evidence_type="satellite_analysis",
+        summary="Satellite imagery confirms conditions.",
+        details={},
+        supports_claim=True,
+        confidence="high",
+        iteration=1,
+    )
+    academic_supporting = AgentFinding(
+        finding_id="finding-academic-mixed-001",
+        agent_name="academic",
+        claim_id="claim-judge-001",
+        evidence_type="methodology_validation",
+        summary="Methodology aligns with standards.",
+        details={},
+        supports_claim=True,
+        confidence="high",
+        iteration=1,
+    )
+    news_contradict = AgentFinding(
+        finding_id="finding-news-mixed-002",
+        agent_name="news_media",
+        claim_id="claim-judge-002",
+        evidence_type="news_contradiction",
+        summary="News reports contradict the emissions claim.",
+        details={"source_tier": 1},
+        supports_claim=False,
+        confidence="high",
+        iteration=1,
+    )
+    data_contradict = AgentFinding(
+        finding_id="finding-dm-mixed-002",
+        agent_name="data_metrics",
+        claim_id="claim-judge-002",
+        evidence_type="mathematical_inconsistency",
+        summary="Calculations show inconsistencies.",
+        details={},
+        supports_claim=False,
+        confidence="high",
+        iteration=1,
+    )
+    legal_weak = AgentFinding(
+        finding_id="finding-legal-mixed-003",
+        agent_name="legal",
+        claim_id="claim-judge-003",
+        evidence_type="ifrs_compliance",
+        summary="Partial compliance noted.",
+        details={},
+        supports_claim=True,
+        confidence="low",
+        iteration=1,
+    )
+    
+    return create_base_state(
+        claims=[JUDGE_CLAIM_TRANSITION_PLAN, JUDGE_CLAIM_EMISSIONS, JUDGE_CLAIM_GOVERNANCE],
+        routing_plan=[ROUTING_JUDGE_TRANSITION, ROUTING_JUDGE_EMISSIONS, ROUTING_JUDGE_GOVERNANCE],
+        findings=[
+            legal_supporting,
+            geo_supporting,
+            academic_supporting,
+            news_contradict,
+            data_contradict,
+            legal_weak,
+        ],
+        agent_status={
+            "legal": AgentStatus(agent_name="legal", status="completed"),
+            "geography": AgentStatus(agent_name="geography", status="completed"),
+            "academic": AgentStatus(agent_name="academic", status="completed"),
+            "news_media": AgentStatus(agent_name="news_media", status="completed"),
+            "data_metrics": AgentStatus(agent_name="data_metrics", status="completed"),
+        },
     )

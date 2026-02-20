@@ -87,6 +87,97 @@ class GapCoverageResult(BaseModel):
 
 
 # ============================================================================
+# LLM Response Normalization
+# ============================================================================
+
+
+def _normalize_sub_requirement(item: str | dict) -> dict:
+    """Normalize a sub-requirement to match SubRequirementAssessment schema."""
+    if isinstance(item, str):
+        return {
+            "requirement": item,
+            "addressed": True,
+            "evidence": None,
+            "gap_reason": None,
+        }
+    if isinstance(item, dict):
+        # Map common LLM field variations
+        return {
+            "requirement": item.get("requirement") or item.get("id") or item.get("text") or str(item),
+            "addressed": item.get("addressed", item.get("met", True)),
+            "evidence": item.get("evidence"),
+            "gap_reason": item.get("gap_reason") or item.get("gap"),
+        }
+    return {"requirement": str(item), "addressed": False, "evidence": None, "gap_reason": None}
+
+
+def _normalize_ifrs_mapping(mapping: dict) -> dict:
+    """Normalize an IFRS mapping to match IFRSMapping schema."""
+    # Normalize sub_requirements if present
+    sub_reqs = mapping.get("sub_requirements", [])
+    if isinstance(sub_reqs, list):
+        mapping["sub_requirements"] = [_normalize_sub_requirement(sr) for sr in sub_reqs]
+    
+    # Normalize compliance_status variations
+    status = mapping.get("compliance_status", "unclear")
+    status_map = {
+        "addressed": "fully_addressed",
+        "full": "fully_addressed",
+        "partial": "partially_addressed",
+        "not": "not_addressed",
+        "none": "not_addressed",
+        "missing": "not_addressed",
+    }
+    for key, value in status_map.items():
+        if key in str(status).lower():
+            mapping["compliance_status"] = value
+            break
+    
+    return mapping
+
+
+def _normalize_evidence_item(item: str | dict) -> str:
+    """Normalize an evidence item to a string."""
+    if isinstance(item, str):
+        return item
+    if isinstance(item, dict):
+        # Extract meaningful text from common LLM response structures
+        return item.get("text") or item.get("evidence") or item.get("content") or json.dumps(item)
+    return str(item)
+
+
+def _normalize_gap_item(item: str | dict) -> str:
+    """Normalize a gap item to a string."""
+    if isinstance(item, str):
+        return item
+    if isinstance(item, dict):
+        # Extract meaningful text from common LLM response structures
+        return item.get("gap") or item.get("description") or item.get("missing") or json.dumps(item)
+    return str(item)
+
+
+def _normalize_legal_assessment_response(data: dict) -> dict:
+    """Normalize LLM response to match LegalAssessmentResult schema."""
+    # Normalize ifrs_mappings
+    if "ifrs_mappings" in data and isinstance(data["ifrs_mappings"], list):
+        data["ifrs_mappings"] = [_normalize_ifrs_mapping(m) for m in data["ifrs_mappings"]]
+    
+    # Normalize evidence list
+    if "evidence" in data and isinstance(data["evidence"], list):
+        data["evidence"] = [_normalize_evidence_item(e) for e in data["evidence"]]
+    
+    # Normalize gaps list
+    if "gaps" in data and isinstance(data["gaps"], list):
+        data["gaps"] = [_normalize_gap_item(g) for g in data["gaps"]]
+    
+    # Ensure confidence has a valid value
+    if "confidence" not in data:
+        data["confidence"] = "medium"
+    
+    return data
+
+
+# ============================================================================
 # Constants and Prompts
 # ============================================================================
 
@@ -339,6 +430,7 @@ async def _assess_compliance(
             cleaned = cleaned.strip()
             
             result_data = json.loads(cleaned)
+            result_data = _normalize_legal_assessment_response(result_data)
             return LegalAssessmentResult(**result_data)
         except (json.JSONDecodeError, Exception) as e:
             logger.warning("Failed to parse LLM response as JSON: %s", e)

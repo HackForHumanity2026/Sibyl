@@ -221,6 +221,205 @@ class QuantitativeValidationResult(BaseModel):
 
 
 # ============================================================================
+# LLM Response Normalization
+# ============================================================================
+
+
+def _normalize_result_value(value: str) -> str:
+    """Normalize result values to match expected Literal values."""
+    value_lower = str(value).lower()
+    if value_lower in ("pass", "passed", "verified", "consistent", "valid", "true", "yes"):
+        return "pass"
+    if value_lower in ("fail", "failed", "invalid", "inconsistent", "false", "no"):
+        return "fail"
+    return "inconclusive"
+
+
+def _normalize_consistency_check(item: dict) -> dict:
+    """Normalize a consistency check to match ConsistencyCheckResult schema."""
+    return {
+        "check_name": item.get("check_name") or item.get("check") or item.get("name") or "unknown",
+        "claim_id": item.get("claim_id") or item.get("id") or "unknown",
+        "result": _normalize_result_value(item.get("result") or item.get("status") or "inconclusive"),
+        "details": item.get("details") if isinstance(item.get("details"), dict) else {},
+        "severity": item.get("severity") or "info",
+        "message": item.get("message") or item.get("description") or item.get("note") or "",
+    }
+
+
+def _normalize_unit_validation(data: dict | None) -> dict:
+    """Normalize unit validation to match UnitValidationResult schema."""
+    if not data or not isinstance(data, dict):
+        return {
+            "units_valid": True,
+            "methodology_aligned": True,
+            "conversion_factors_appropriate": True,
+            "issues": [],
+        }
+    return {
+        "units_valid": data.get("units_valid", data.get("valid", True)),
+        "methodology_aligned": data.get("methodology_aligned", data.get("aligned", True)),
+        "conversion_factors_appropriate": data.get("conversion_factors_appropriate", True),
+        "issues": data.get("issues", []) if isinstance(data.get("issues"), list) else [],
+    }
+
+
+def _normalize_benchmark_comparison(data: dict | None) -> dict | None:
+    """Normalize benchmark comparison to match BenchmarkComparison schema."""
+    if not data or not isinstance(data, dict):
+        return None
+    
+    # Check if it's a "not available" response
+    status = data.get("status", "")
+    if "unavailable" in str(status).lower() or "unable" in str(status).lower():
+        return None
+    
+    assessment = data.get("assessment", "inconclusive")
+    if assessment not in ("plausible", "outlier_high", "outlier_low", "inconclusive"):
+        assessment = "inconclusive"
+    
+    return {
+        "metric_name": data.get("metric_name") or data.get("metric") or "unknown",
+        "reported_value": float(data.get("reported_value", 0)),
+        "reported_unit": data.get("reported_unit") or data.get("unit") or "unknown",
+        "sector_average": data.get("sector_average"),
+        "sector_unit": data.get("sector_unit"),
+        "benchmark_source": data.get("benchmark_source") or data.get("source"),
+        "assessment": assessment,
+        "reasoning": data.get("reasoning") or data.get("note") or "",
+    }
+
+
+def _normalize_target_achievability(data: dict | None) -> dict | None:
+    """Normalize target achievability to match TargetAchievabilityResult schema."""
+    if not data or not isinstance(data, dict):
+        return None
+    
+    # Check if it's a "not applicable" response
+    status = data.get("status", "")
+    if "not_applicabl" in str(status).lower() or "n/a" in str(status).lower():
+        return None
+    
+    assessment = data.get("achievability_assessment") or data.get("assessment") or "inconclusive"
+    if assessment not in ("achievable", "challenging", "questionable", "inconclusive"):
+        assessment = "inconclusive"
+    
+    target_type = data.get("target_type") or "absolute_reduction"
+    if target_type not in ("absolute_reduction", "intensity_reduction", "net_zero"):
+        target_type = "absolute_reduction"
+    
+    return {
+        "claim_id": data.get("claim_id") or "unknown",
+        "target_type": target_type,
+        "baseline_year": data.get("baseline_year"),
+        "baseline_value": data.get("baseline_value"),
+        "target_year": data.get("target_year"),
+        "target_value": data.get("target_value"),
+        "target_percentage": data.get("target_percentage"),
+        "required_annual_reduction_rate": data.get("required_annual_reduction_rate"),
+        "achievability_assessment": assessment,
+        "interim_targets_consistent": data.get("interim_targets_consistent"),
+        "ifrs_s2_33_36_compliant": data.get("ifrs_s2_33_36_compliant", False),
+        "missing_ifrs_requirements": data.get("missing_ifrs_requirements", []),
+        "reasoning": data.get("reasoning") or "",
+    }
+
+
+def _normalize_historical_consistency(data: dict | None) -> dict | None:
+    """Normalize historical consistency to match HistoricalConsistencyResult schema."""
+    if not data or not isinstance(data, dict):
+        return None
+    
+    # Check if it's a "not available" response
+    status = data.get("status", "")
+    if "unavailable" in str(status).lower() or "unable" in str(status).lower():
+        return None
+    
+    assessment = data.get("assessment") or "inconclusive"
+    if assessment not in ("consistent", "inconsistent", "partially_consistent", "inconclusive"):
+        assessment = "inconclusive"
+    
+    return {
+        "claim_id": data.get("claim_id") or "unknown",
+        "current_year": data.get("current_year"),
+        "current_value": data.get("current_value"),
+        "prior_years": data.get("prior_years", []),
+        "yoy_change_consistent": data.get("yoy_change_consistent"),
+        "trend_consistent": data.get("trend_consistent"),
+        "methodology_changes": data.get("methodology_changes", []),
+        "unexplained_deviations": data.get("unexplained_deviations", []),
+        "assessment": assessment,
+        "reasoning": data.get("reasoning") or data.get("details") or "",
+    }
+
+
+def _normalize_ifrs_compliance(data: dict | None, claim_id: str = "unknown") -> dict:
+    """Normalize IFRS compliance to match IFRSComplianceResult schema."""
+    if not data or not isinstance(data, dict):
+        return {
+            "claim_id": claim_id,
+            "ifrs_paragraphs": [],
+            "compliance_status": "not_applicable",
+            "missing_requirements": [],
+            "compliance_details": {},
+            "reasoning": "No IFRS compliance data available",
+        }
+    
+    status = data.get("compliance_status") or data.get("status") or "not_applicable"
+    status_map = {
+        "compliant": "compliant",
+        "partial": "partially_compliant",
+        "partially": "partially_compliant",
+        "non": "non_compliant",
+        "not_compliant": "non_compliant",
+        "n/a": "not_applicable",
+    }
+    for key, value in status_map.items():
+        if key in str(status).lower():
+            status = value
+            break
+    if status not in ("compliant", "partially_compliant", "non_compliant", "not_applicable"):
+        status = "not_applicable"
+    
+    return {
+        "claim_id": data.get("claim_id") or claim_id,
+        "ifrs_paragraphs": data.get("ifrs_paragraphs", []),
+        "compliance_status": status,
+        "missing_requirements": data.get("missing_requirements", []),
+        "compliance_details": data.get("compliance_details", {}),
+        "reasoning": data.get("reasoning") or "",
+    }
+
+
+def _normalize_quantitative_validation_response(data: dict, claim_id: str = "unknown") -> dict:
+    """Normalize LLM response to match QuantitativeValidationResult schema."""
+    # Normalize consistency_checks
+    checks = data.get("consistency_checks", [])
+    if isinstance(checks, list):
+        data["consistency_checks"] = [_normalize_consistency_check(c) for c in checks if isinstance(c, dict)]
+    else:
+        data["consistency_checks"] = []
+    
+    # Normalize unit_validation
+    data["unit_validation"] = _normalize_unit_validation(data.get("unit_validation"))
+    
+    # Normalize optional fields
+    data["benchmark_comparison"] = _normalize_benchmark_comparison(data.get("benchmark_comparison"))
+    data["target_achievability"] = _normalize_target_achievability(data.get("target_achievability"))
+    data["historical_consistency"] = _normalize_historical_consistency(data.get("historical_consistency"))
+    data["ifrs_compliance"] = _normalize_ifrs_compliance(data.get("ifrs_compliance"), claim_id)
+    
+    # Ensure required fields
+    data["claim_id"] = data.get("claim_id") or claim_id
+    data["summary"] = data.get("summary") or "Validation completed"
+    data["confidence"] = data.get("confidence") or "medium"
+    if data["confidence"] not in ("high", "medium", "low"):
+        data["confidence"] = "medium"
+    
+    return data
+
+
+# ============================================================================
 # Constants and Prompts
 # ============================================================================
 
@@ -684,6 +883,7 @@ async def _validate_quantitative_claim(
                 cleaned = cleaned.strip()
 
                 result_data = json.loads(cleaned)
+                result_data = _normalize_quantitative_validation_response(result_data, claim.claim_id)
                 result_data["calculation_trace"] = calculation_trace
                 return QuantitativeValidationResult(**result_data)
 

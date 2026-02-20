@@ -1102,3 +1102,131 @@ def get_mock_geo_analysis_response(analysis_type: str = "reforestation") -> str:
         "deforestation": MOCK_GEO_SATELLITE_ANALYSIS_DEFORESTATION,
     }
     return json.dumps(responses.get(analysis_type, MOCK_GEO_SATELLITE_ANALYSIS_REFORESTATION))
+
+
+# ============================================================================
+# Judge Agent Mock Responses (FRD 11)
+# ============================================================================
+
+MOCK_JUDGE_VERDICT_VERIFIED = {
+    "verdict": "verified",
+    "reasoning": "Claim is VERIFIED. Multiple independent sources corroborate:\n"
+    "- Legal Agent: Claim meets S2.14(a)(iv) requirements with all sub-requirements addressed.\n"
+    "- Geography Agent: Satellite imagery confirms the stated location and conditions.\n"
+    "- Academic Agent: Methodology aligns with peer-reviewed standards.\n"
+    "Evidence is consistent, high-quality, and sufficient. No contradictions found.",
+    "confidence": "high",
+}
+
+MOCK_JUDGE_VERDICT_UNVERIFIED = {
+    "verdict": "unverified",
+    "reasoning": "Claim is UNVERIFIED. No external evidence found by any specialist agent:\n"
+    "- Legal Agent: No evidence found\n"
+    "- Geography Agent: No evidence found\n"
+    "- News Media Agent: No evidence found\n"
+    "The claim cannot be independently verified.",
+    "confidence": "high",
+}
+
+MOCK_JUDGE_VERDICT_CONTRADICTED = {
+    "verdict": "contradicted",
+    "reasoning": "Claim is CONTRADICTED. Evidence directly contradicts the claim:\n"
+    "- News Media Agent: Investigative journalism reports regulatory action against the company, "
+    "contradicting the claimed emissions reduction.\n"
+    "- Data Metrics Agent: Mathematical analysis shows reported figures are inconsistent.\n"
+    "Supporting evidence from: legal\n"
+    "The weight of contradicting evidence outweighs supporting evidence.",
+    "confidence": "high",
+}
+
+MOCK_JUDGE_VERDICT_INSUFFICIENT = {
+    "verdict": "insufficient_evidence",
+    "reasoning": "Claim has INSUFFICIENT EVIDENCE. Some evidence exists but is not sufficient:\n"
+    "- Only 1 source(s) found\n"
+    "- Missing agent perspectives: geography, news_media\n"
+    "Cannot reach a confident verdict with available evidence.",
+    "confidence": "medium",
+}
+
+MOCK_JUDGE_REINVESTIGATION_REQUEST = {
+    "claim_id": "claim-judge-001",
+    "target_agents": ["geography", "news_media"],
+    "evidence_gap": "Insufficient sources: only 1 agent(s) found evidence. Need multiple independent sources. "
+    "Missing agent perspectives: ['geography', 'news_media'] should have investigated but did not.",
+    "refined_queries": [
+        "Verify geographic claim: 'Our reforestation initiative restored 5,000 hectares...'. "
+        "Focus on satellite imagery analysis for the stated location and time period.",
+        "Search for recent news coverage (prioritize Tier 1-2 sources) about: 'Our reforestation initiative...'. "
+        "Look for corroboration or contradiction.",
+    ],
+    "required_evidence": "Satellite imagery showing the claimed location/condition with NDVI analysis "
+    "and temporal comparison if applicable. News coverage from Tier 1-2 sources (investigative journalism, "
+    "regulatory actions) corroborating or contradicting the claim.",
+}
+
+MOCK_JUDGE_FULL_RESPONSE_VERIFIED = {
+    "verdicts": [
+        {
+            "claim_id": "claim-judge-001",
+            "verdict": "verified",
+            "reasoning": "Multiple independent sources corroborate the claim.",
+            "ifrs_mapping": [{"paragraph": "S2.14(a)(iv)", "status": "compliant"}],
+            "confidence": "high",
+        }
+    ],
+    "reinvestigation_requests": [],
+}
+
+MOCK_JUDGE_FULL_RESPONSE_INSUFFICIENT = {
+    "verdicts": [
+        {
+            "claim_id": "claim-judge-001",
+            "verdict": "insufficient_evidence",
+            "reasoning": "Only one source found evidence.",
+            "ifrs_mapping": [{"paragraph": "S2.14(a)(iv)", "status": "pending"}],
+            "confidence": "medium",
+        }
+    ],
+    "reinvestigation_requests": [
+        {
+            "claim_id": "claim-judge-001",
+            "target_agents": ["geography", "news_media"],
+            "evidence_gap": "Need additional corroboration from multiple agents.",
+            "refined_queries": ["Search for satellite imagery...", "Search for news coverage..."],
+        }
+    ],
+}
+
+
+def get_mock_judge_verdict_response(verdict_type: str = "verified") -> str:
+    """Get a mock LLM response for Judge Agent verdict.
+    
+    Args:
+        verdict_type: One of "verified", "unverified", "contradicted", "insufficient"
+        
+    Returns:
+        JSON string of the mock response
+    """
+    responses = {
+        "verified": MOCK_JUDGE_VERDICT_VERIFIED,
+        "unverified": MOCK_JUDGE_VERDICT_UNVERIFIED,
+        "contradicted": MOCK_JUDGE_VERDICT_CONTRADICTED,
+        "insufficient": MOCK_JUDGE_VERDICT_INSUFFICIENT,
+    }
+    return json.dumps(responses.get(verdict_type, MOCK_JUDGE_VERDICT_VERIFIED))
+
+
+def get_mock_judge_full_response(scenario: str = "verified") -> str:
+    """Get a mock full Judge Agent response with verdicts and reinvestigation requests.
+    
+    Args:
+        scenario: One of "verified", "insufficient"
+        
+    Returns:
+        JSON string of the mock response
+    """
+    responses = {
+        "verified": MOCK_JUDGE_FULL_RESPONSE_VERIFIED,
+        "insufficient": MOCK_JUDGE_FULL_RESPONSE_INSUFFICIENT,
+    }
+    return json.dumps(responses.get(scenario, MOCK_JUDGE_FULL_RESPONSE_VERIFIED))
