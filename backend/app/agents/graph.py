@@ -10,6 +10,7 @@ import logging
 from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Send
 
 from app.agents.state import SibylState
 from app.core.config import settings
@@ -53,18 +54,17 @@ SPECIALIST_NODES = list(AGENT_TO_NODE.values())
 # =============================================================================
 
 
-def route_to_specialists(state: SibylState) -> list[str]:
+def route_to_specialists(state: SibylState) -> list[Send]:
     """Determine which specialist agents to invoke based on the routing plan.
     
-    Returns a list of node names for agents with assigned claims.
-    If no agents have assignments (e.g., re-investigation with only
-    InfoRequests), routes directly to judge_evidence.
+    Returns Send objects for parallel execution of specialist agents.
+    If no agents have assignments, routes directly to judge_evidence.
     
     Args:
         state: Current pipeline state with routing plan (TypedDict)
         
     Returns:
-        List of node names to route to
+        List of Send objects for parallel agent execution
     """
     active_agents = set()
     routing_plan = state.get("routing_plan", [])
@@ -79,10 +79,11 @@ def route_to_specialists(state: SibylState) -> list[str]:
     
     if not active_agents:
         logger.info("No active agents in routing plan, routing to judge")
-        return [JUDGE_EVIDENCE]
+        return [Send(JUDGE_EVIDENCE, state)]
     
-    logger.info("Routing to specialists: %s", list(active_agents))
-    return list(active_agents)
+    logger.info("Routing to %d specialists in parallel: %s", len(active_agents), list(active_agents))
+    # Return Send objects for parallel execution - each agent receives the full state
+    return [Send(node_name, state) for node_name in active_agents]
 
 
 def should_continue_or_compile(
@@ -167,18 +168,11 @@ def build_graph() -> StateGraph:
     graph.add_edge(START, EXTRACT_CLAIMS)
     graph.add_edge(EXTRACT_CLAIMS, ORCHESTRATE)
     
-    # Orchestrator fans out to specialists via conditional edges
+    # Orchestrator fans out to specialists via Send() for parallel execution
     graph.add_conditional_edges(
         ORCHESTRATE,
         route_to_specialists,
-        {
-            INVESTIGATE_GEOGRAPHY: INVESTIGATE_GEOGRAPHY,
-            INVESTIGATE_LEGAL: INVESTIGATE_LEGAL,
-            INVESTIGATE_NEWS: INVESTIGATE_NEWS,
-            INVESTIGATE_ACADEMIC: INVESTIGATE_ACADEMIC,
-            INVESTIGATE_DATA: INVESTIGATE_DATA,
-            JUDGE_EVIDENCE: JUDGE_EVIDENCE,  # Skip specialists if no assignments
-        },
+        # Path map not needed when using Send() - destinations are in Send objects
     )
     
     # All specialist nodes converge to judge_evidence

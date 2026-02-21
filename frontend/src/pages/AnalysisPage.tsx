@@ -11,10 +11,10 @@ import { getReportStatus, getPDFUrl } from "@/services/api";
 import {
   AnalysisLayout,
   ClaimsPanel,
-  DashboardPlaceholder,
   AgentReasoningPanel,
 } from "@/components/Analysis";
 import { PDFViewer } from "@/components/PDFViewer";
+import { DashboardGraph } from "@/components/Dashboard";
 import type { ReportStatusResponse } from "@/types/report";
 import type { Claim } from "@/types/claim";
 import "./AnalysisPage.css";
@@ -54,10 +54,10 @@ export function AnalysisPage() {
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("activity");
 
   // FRD 5: SSE connection for real-time agent events
+  // Note: SSE should not be enabled during error state (bug 21 fix)
   const isAnalyzing =
     analysisState === "starting" ||
-    analysisState === "analyzing" ||
-    analysisState === "error";
+    analysisState === "analyzing";
 
   const {
     events,
@@ -67,6 +67,7 @@ export function AnalysisPage() {
     completedAgents,
     erroredAgents,
     pipelineComplete,
+    error: sseError,
   } = useSSE(reportId, isAnalyzing);
 
   // Switch to claims tab when analysis completes
@@ -218,7 +219,7 @@ export function AnalysisPage() {
             onPriorityFilterChange={setPriorityFilter}
             claimsByType={claimsByType}
             claimsByPriority={claimsByPriority}
-            isLoading={analysisState !== "complete"}
+            isLoading={analysisState === "analyzing" && filteredClaims.length === 0}
           />
         )}
       </div>
@@ -289,7 +290,14 @@ export function AnalysisPage() {
               currentPage={currentPage}
             />
           }
-          centerPanel={<DashboardPlaceholder />}
+          centerPanel={
+            <DashboardGraph
+              isAnalyzing={isAnalyzing}
+              events={events}
+              isConnected={isConnected}
+              error={sseError}
+            />
+          }
           rightPanel={rightPanelContent}
         />
       </main>

@@ -18,14 +18,18 @@ The Geography Agent performs:
 - Re-investigation handling for Judge-requested deeper analysis
 """
 
+import asyncio
 import json
 import logging
 import math
 import re
 from datetime import datetime, timezone
+
+# Maximum concurrent claim processing (rate limiting)
+MAX_CONCURRENT_CLAIMS = 5
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.agents.state import (
     AgentFinding,
@@ -57,6 +61,19 @@ class ExtractedLocation(BaseModel):
     time_range: list[str] | None = None  # [start_date, end_date]
     area_description: str | None = None
     confidence: float = 0.0
+
+    @field_validator('time_range', mode='before')
+    @classmethod
+    def fix_time_range(cls, v):
+        """LLM sometimes returns [start, None] instead of valid strings."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            cleaned = [str(item) if item is not None else "" for item in v]
+            if all(item == "" for item in cleaned):
+                return None
+            return cleaned
+        return v
 
 
 class SatelliteAnalysisResult(BaseModel):
@@ -661,183 +678,208 @@ async def investigate_geography(state: SibylState) -> dict:
         )
     )
 
-    # 4. Process each assigned claim
-    for claim in assigned_claims:
-        try:
-            # Check for re-investigation
-            reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
+    # 4. Process claims in parallel with rate limiting
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
+    
+    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent]]:
+        """Process a single claim and return finding and events."""
+        claim_events: list[StreamEvent] = []
+        
+        async with semaphore:
+            try:
+                # Check for re-investigation
+                reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
 
-            # Step 4a: Extract location
-            events.append(
-                StreamEvent(
-                    event_type="agent_thinking",
-                    agent_name=agent_name,
-                    data={"message": f"Extracting location from claim {claim.claim_id}..."},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-
-            location = await _extract_location(claim)
-
-            if not location.location_name and not location.coordinates:
-                # Cannot investigate without location
-                finding = AgentFinding(
-                    finding_id=str(generate_uuid7()),
-                    agent_name=agent_name,
-                    claim_id=claim.claim_id,
-                    evidence_type="satellite_imagery",
-                    summary="Unable to extract geographic location from claim text.",
-                    details={"error": "no_location_found"},
-                    supports_claim=None,
-                    confidence="low",
-                    iteration=iteration_count + 1,
-                )
-                findings.append(finding)
-                continue
-
-            # Step 4b: Geocode if needed
-            if location.coordinates:
-                lat, lon = location.coordinates[0], location.coordinates[1]
-            elif location.location_name:
-                events.append(
+                # Step 4a: Extract location
+                claim_events.append(
                     StreamEvent(
                         event_type="agent_thinking",
                         agent_name=agent_name,
-                        data={"message": f"Geocoding '{location.location_name}'..."},
+                        data={"message": f"Extracting location from claim {claim.claim_id}..."},
                         timestamp=datetime.now(timezone.utc).isoformat(),
                     )
                 )
 
-                coords = await _geocode_location(location.location_name)
-                if coords is None:
+                location = await _extract_location(claim)
+
+                if not location.location_name and not location.coordinates:
+                    # Cannot investigate without location
                     finding = AgentFinding(
                         finding_id=str(generate_uuid7()),
                         agent_name=agent_name,
                         claim_id=claim.claim_id,
                         evidence_type="satellite_imagery",
-                        summary=f"Unable to geocode location: {location.location_name}",
-                        details={"error": "geocoding_failed", "location": location.location_name},
+                        summary="Unable to extract geographic location from claim text.",
+                        details={"error": "no_location_found"},
                         supports_claim=None,
                         confidence="low",
                         iteration=iteration_count + 1,
                     )
-                    findings.append(finding)
-                    continue
+                    return finding, claim_events
 
-                lat, lon = coords
-                location.coordinates = [lat, lon]
-            else:
-                continue
+                # Step 4b: Geocode if needed
+                if location.coordinates:
+                    lat, lon = location.coordinates[0], location.coordinates[1]
+                elif location.location_name:
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="agent_thinking",
+                            agent_name=agent_name,
+                            data={"message": f"Geocoding '{location.location_name}'..."},
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
 
-            # Step 4c: Determine time range
-            time_range = None
-            if location.time_range and len(location.time_range) == 2:
-                time_range = (location.time_range[0], location.time_range[1])
-            else:
-                time_range_extracted = _extract_time_range(claim.text)
-                if time_range_extracted:
-                    time_range = time_range_extracted
+                    coords = await _geocode_location(location.location_name)
+                    if coords is None:
+                        finding = AgentFinding(
+                            finding_id=str(generate_uuid7()),
+                            agent_name=agent_name,
+                            claim_id=claim.claim_id,
+                            evidence_type="satellite_imagery",
+                            summary=f"Unable to geocode location: {location.location_name}",
+                            details={"error": "geocoding_failed", "location": location.location_name},
+                            supports_claim=None,
+                            confidence="low",
+                            iteration=iteration_count + 1,
+                        )
+                        return finding, claim_events
 
-            # Step 4d: Parse area
-            area_hectares = _parse_area_hectares(location.area_description)
+                    lat, lon = coords
+                    location.coordinates = [lat, lon]
+                else:
+                    # No valid location - skip with empty finding
+                    finding = AgentFinding(
+                        finding_id=str(generate_uuid7()),
+                        agent_name=agent_name,
+                        claim_id=claim.claim_id,
+                        evidence_type="satellite_imagery",
+                        summary="No valid location data available for claim.",
+                        details={"error": "no_location_data"},
+                        supports_claim=None,
+                        confidence="low",
+                        iteration=iteration_count + 1,
+                    )
+                    return finding, claim_events
 
-            # Step 4e: Query satellite imagery
-            events.append(
-                StreamEvent(
-                    event_type="agent_thinking",
-                    agent_name=agent_name,
-                    data={"message": f"Querying MPC for Sentinel-2 imagery at ({lat:.4f}, {lon:.4f})..."},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                # Step 4c: Determine time range
+                time_range = None
+                if location.time_range and len(location.time_range) == 2:
+                    time_range = (location.time_range[0], location.time_range[1])
+                else:
+                    time_range_extracted = _extract_time_range(claim.text)
+                    if time_range_extracted:
+                        time_range = time_range_extracted
+
+                # Step 4d: Parse area
+                area_hectares = _parse_area_hectares(location.area_description)
+
+                # Step 4e: Query satellite imagery
+                claim_events.append(
+                    StreamEvent(
+                        event_type="agent_thinking",
+                        agent_name=agent_name,
+                        data={"message": f"Querying MPC for Sentinel-2 imagery at ({lat:.4f}, {lon:.4f})..."},
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
                 )
-            )
 
-            stac_items = await _query_satellite_imagery(
-                lat, lon, time_range, area_hectares
-            )
-
-            # Step 4f-g: NDVI / land cover / change detection
-            # (In MVP, these are derived from STAC metadata + Gemini analysis
-            # rather than downloading full GeoTIFF rasters)
-            ndvi_stats = None
-            change_metrics = None
-            land_cover = None
-
-            # Step 4h: Analyze with Gemini
-            events.append(
-                StreamEvent(
-                    event_type="agent_thinking",
-                    agent_name=agent_name,
-                    data={"message": "Analyzing satellite imagery data with Gemini 2.5 Pro..."},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                stac_items = await _query_satellite_imagery(
+                    lat, lon, time_range, area_hectares
                 )
-            )
 
-            analysis = await _analyze_with_gemini(
-                claim=claim,
-                location=location,
-                stac_items=stac_items,
-                ndvi_stats=ndvi_stats,
-                change_metrics=change_metrics,
-                land_cover=land_cover,
-            )
+                # Step 4f-g: NDVI / land cover / change detection
+                # (In MVP, these are derived from STAC metadata + Gemini analysis
+                # rather than downloading full GeoTIFF rasters)
+                ndvi_stats = None
+                change_metrics = None
+                land_cover = None
 
-            # Step 4i: Create finding
-            finding = _create_geography_finding(
-                claim=claim,
-                location=location,
-                analysis=analysis,
-                stac_items=stac_items,
-                ndvi_stats=ndvi_stats,
-                change_metrics=change_metrics,
-                land_cover=land_cover,
-                iteration=iteration_count + 1,
-            )
-            findings.append(finding)
+                # Step 4h: Analyze with Gemini
+                claim_events.append(
+                    StreamEvent(
+                        event_type="agent_thinking",
+                        agent_name=agent_name,
+                        data={"message": "Analyzing satellite imagery data with Gemini 2.5 Pro..."},
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
 
-            # Step 4j: Emit evidence found event
-            events.append(
-                StreamEvent(
-                    event_type="evidence_found",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "evidence_type": "satellite_imagery",
-                        "image_urls": finding.details.get("image_references", []),
-                        "location": {
-                            "name": location.location_name,
-                            "coordinates": location.coordinates,
+                analysis = await _analyze_with_gemini(
+                    claim=claim,
+                    location=location,
+                    stac_items=stac_items,
+                    ndvi_stats=ndvi_stats,
+                    change_metrics=change_metrics,
+                    land_cover=land_cover,
+                )
+
+                # Step 4i: Create finding
+                finding = _create_geography_finding(
+                    claim=claim,
+                    location=location,
+                    analysis=analysis,
+                    stac_items=stac_items,
+                    ndvi_stats=ndvi_stats,
+                    change_metrics=change_metrics,
+                    land_cover=land_cover,
+                    iteration=iteration_count + 1,
+                )
+
+                # Step 4j: Emit evidence found event
+                claim_events.append(
+                    StreamEvent(
+                        event_type="evidence_found",
+                        agent_name=agent_name,
+                        data={
+                            "claim_id": claim.claim_id,
+                            "evidence_type": "satellite_imagery",
+                            "image_urls": finding.details.get("image_references", []),
+                            "location": {
+                                "name": location.location_name,
+                                "coordinates": location.coordinates,
+                            },
+                            "imagery_count": len(stac_items),
+                            "supports_claim": analysis.supports_claim,
+                            "summary": analysis.reasoning[:200],
                         },
-                        "imagery_count": len(stac_items),
-                        "supports_claim": analysis.supports_claim,
-                        "summary": analysis.reasoning[:200],
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
                 )
-            )
+                
+                return finding, claim_events
 
-        except Exception as e:
-            logger.error("Error processing claim %s: %s", claim.claim_id, e)
-            error_finding = AgentFinding(
-                finding_id=str(generate_uuid7()),
-                agent_name=agent_name,
-                claim_id=claim.claim_id,
-                evidence_type="error",
-                summary=f"Error during satellite analysis: {str(e)}",
-                details={"error": str(e)},
-                supports_claim=None,
-                confidence="low",
-                iteration=iteration_count + 1,
-            )
-            findings.append(error_finding)
-
-            events.append(
-                StreamEvent(
-                    event_type="error",
+            except Exception as e:
+                logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                error_finding = AgentFinding(
+                    finding_id=str(generate_uuid7()),
                     agent_name=agent_name,
-                    data={"claim_id": claim.claim_id, "message": str(e)},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    claim_id=claim.claim_id,
+                    evidence_type="error",
+                    summary=f"Error during satellite analysis: {str(e)}",
+                    details={"error": str(e)},
+                    supports_claim=None,
+                    confidence="low",
+                    iteration=iteration_count + 1,
                 )
-            )
+
+                claim_events.append(
+                    StreamEvent(
+                        event_type="error",
+                        agent_name=agent_name,
+                        data={"claim_id": claim.claim_id, "message": str(e)},
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
+                return error_finding, claim_events
+    
+    # Run all claims in parallel
+    results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
+    
+    # Aggregate results
+    for finding, claim_events in results:
+        findings.append(finding)
+        events.extend(claim_events)
 
     # 5. Process InfoRequests
     info_responses: list[InfoResponse] = []

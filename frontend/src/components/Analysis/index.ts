@@ -8,7 +8,6 @@ export { ClaimsFilter } from "./ClaimsFilter";
 export { AnalysisProgress } from "./AnalysisProgress";
 export { AnalysisLayout } from "./AnalysisLayout";
 export { ClaimsPanel } from "./ClaimsPanel";
-export { DashboardPlaceholder } from "./DashboardPlaceholder";
 
 // FRD 5: Agent reasoning panel
 export { AgentReasoningPanel } from "./AgentReasoningPanel";

@@ -45,7 +45,7 @@ export interface UseAnalysisReturn {
 }
 
 const POLLING_INTERVAL_MS = 3000;
-const MAX_POLLS = 100;
+const MAX_POLLS = 300; // 15 minutes at 3-second intervals
 
 export function useAnalysis(): UseAnalysisReturn {
   // Core state
@@ -67,8 +67,9 @@ export function useAnalysis(): UseAnalysisReturn {
   // Polling refs — use refs for all mutable state the interval touches
   // so callback identities stay stable and don't trigger re-renders.
   const pollCountRef = useRef(0);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isPollingRef = useRef(false);
+  const claimsFetchedRef = useRef(false);
 
   // Stop polling — clear interval and reset refs
   const stopPolling = useCallback(() => {
@@ -103,6 +104,7 @@ export function useAnalysis(): UseAnalysisReturn {
 
       isPollingRef.current = true;
       pollCountRef.current = 0;
+      claimsFetchedRef.current = false;
 
       const poll = async () => {
         // Bail out if polling was stopped between ticks
@@ -116,9 +118,16 @@ export function useAnalysis(): UseAnalysisReturn {
           setClaimsByType(status.claims_by_type || {});
           setClaimsByPriority(status.claims_by_priority || {});
 
+          // Fetch claims as soon as they become available (not just on completion)
+          if (status.claims_count > 0 && !claimsFetchedRef.current) {
+            claimsFetchedRef.current = true;
+            await fetchClaims(reportId);
+          }
+
           if (status.status === "completed") {
             setAnalysisState("complete");
             stopPolling();
+            // Fetch claims one more time to ensure we have the latest
             await fetchClaims(reportId);
             return;
           }
@@ -139,7 +148,7 @@ export function useAnalysis(): UseAnalysisReturn {
         pollCountRef.current += 1;
         if (pollCountRef.current >= MAX_POLLS) {
           setAnalysisState("error");
-          setError("Analysis timed out after 5 minutes");
+          setError("Analysis timed out after 15 minutes");
           stopPolling();
         }
       };
@@ -154,7 +163,7 @@ export function useAnalysis(): UseAnalysisReturn {
   );
 
   // Start analysis — stable ref-based wrapper so the identity never changes
-  const startAnalysisRef = useRef<(reportId: string) => Promise<void>>();
+  const startAnalysisRef = useRef<(reportId: string) => Promise<void>>(undefined);
 
   startAnalysisRef.current = async (reportId: string) => {
     setError(null);

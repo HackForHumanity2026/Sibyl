@@ -17,13 +17,17 @@ The Data/Metrics Agent performs:
 Uses a calculator tool for guaranteed arithmetic accuracy via SimpleEval.
 """
 
+import asyncio
 import json
 import logging
 import re
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Maximum concurrent claim processing (rate limiting)
+MAX_CONCURRENT_CLAIMS = 5
 
 from app.agents.state import (
     AgentFinding,
@@ -135,6 +139,18 @@ class TargetAchievabilityResult(BaseModel):
     )
     reasoning: str = Field(description="Explanation of the assessment")
 
+    @field_validator('required_annual_reduction_rate', 'target_percentage', mode='before')
+    @classmethod
+    def parse_percentage_string(cls, v):
+        """LLM sometimes returns '12.73%' instead of 12.73."""
+        if isinstance(v, str):
+            cleaned = v.strip().rstrip('%')
+            try:
+                return float(cleaned)
+            except ValueError:
+                return None
+        return v
+
 
 class HistoricalConsistencyResult(BaseModel):
     """Assessment of historical consistency."""
@@ -161,6 +177,28 @@ class HistoricalConsistencyResult(BaseModel):
         "consistent", "inconsistent", "partially_consistent", "inconclusive"
     ] = Field(description="Overall consistency assessment")
     reasoning: str = Field(description="Explanation of the assessment")
+
+    @field_validator('methodology_changes', 'unexplained_deviations', mode='before')
+    @classmethod
+    def flatten_string_lists(cls, v):
+        """Flatten nested lists and convert non-strings to strings."""
+        if not isinstance(v, list):
+            return [str(v)] if v else []
+        result = []
+        for item in v:
+            if isinstance(item, list):
+                result.extend(str(x) for x in item)
+            else:
+                result.append(str(item))
+        return result
+
+    @field_validator('reasoning', mode='before')
+    @classmethod
+    def stringify_reasoning(cls, v):
+        """Convert list reasoning to string."""
+        if isinstance(v, list):
+            return "; ".join(str(x) for x in v)
+        return str(v) if v else ""
 
 
 class IFRSComplianceResult(BaseModel):
@@ -812,7 +850,7 @@ async def _validate_quantitative_claim(
         try:
             # Build request payload with tools
             payload = {
-                "model": Models.CLAUDE_SONNET,
+                "model": Models.GPT4O_MINI,
                 "messages": messages,
                 "temperature": 0.1,
                 "max_tokens": 8192,
@@ -1304,161 +1342,183 @@ async def investigate_data(state: SibylState) -> dict:
         )
     )
 
-    # Process each assigned claim
-    for claim in assigned_claims:
-        try:
-            # Check for re-investigation context
-            reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
+    # Process claims in parallel with rate limiting
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
+    
+    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent], list[InfoRequest], int, int]:
+        """Process a single claim and return finding, events, info requests, and check counts."""
+        claim_events: list[StreamEvent] = []
+        claim_info_requests: list[InfoRequest] = []
+        checks_passed = 0
+        checks_failed = 0
+        
+        async with semaphore:
+            try:
+                # Check for re-investigation context
+                reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
 
-            if reinvest_request:
-                events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                validation_result = await _perform_reinvestigation(
-                    claim, reinvest_request, report_id, state
-                )
-            else:
-                # Standard investigation
-                events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Validating {claim.claim_type} claim: retrieving IFRS paragraphs..."
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-
-                # Find related claims
-                related_claims = _find_related_claims(claim, claims)
-
-                # RAG retrieval
-                rag_results = await _retrieve_ifrs_metrics_paragraphs(claim, report_id)
-
-                # Check for benchmark responses from other agents
-                benchmark_data = _process_benchmark_responses(state, claim)
-
-                # Perform validation with calculator tool
-                validation_result = await _validate_quantitative_claim(
-                    claim=claim,
-                    related_claims=related_claims,
-                    benchmark_data=benchmark_data,
-                    historical_data=None,
-                    rag_results=rag_results,
-                )
-
-            # Emit consistency_check events for each check
-            for check in validation_result.consistency_checks:
-                if check.result == "pass":
-                    consistency_checks_passed += 1
-                elif check.result == "fail":
-                    consistency_checks_failed += 1
-
-                events.append(
-                    StreamEvent(
-                        event_type="consistency_check",
-                        agent_name=agent_name,
-                        data={
-                            "check_name": check.check_name,
-                            "claim_id": check.claim_id,
-                            "result": check.result,
-                            "severity": check.severity,
-                            "details": check.details,
-                            "message": check.message,
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-
-            # Create finding
-            finding = _create_quantitative_finding(
-                claim,
-                validation_result,
-                iteration_count,
-                benchmark_data if not reinvest_request else None,
-            )
-            findings.append(finding)
-
-            # Emit evidence found event
-            events.append(
-                StreamEvent(
-                    event_type="evidence_found",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "summary": validation_result.summary,
-                        "supports_claim": validation_result.supports_claim,
-                        "confidence": validation_result.confidence,
-                        "checks_passed": sum(
-                            1 for c in validation_result.consistency_checks
-                            if c.result == "pass"
-                        ),
-                        "checks_failed": sum(
-                            1 for c in validation_result.consistency_checks
-                            if c.result == "fail"
-                        ),
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-
-            # Check if cross-domain benchmark data is needed
-            if not reinvest_request:
-                benchmark_needed = _should_request_benchmark_data(claim)
-                if benchmark_needed and not benchmark_data:
-                    benchmark_target_agent, metric_type = benchmark_needed
-                    info_req = _create_benchmark_info_request(claim, metric_type)
-                    info_requests.append(info_req)
-
-                    events.append(
+                if reinvest_request:
+                    claim_events.append(
                         StreamEvent(
-                            event_type="info_request_posted",
+                            event_type="agent_thinking",
                             agent_name=agent_name,
                             data={
-                                "request_id": info_req.request_id,
-                                "description": info_req.description,
-                                "request_type": metric_type,
-                                "target_agent": benchmark_target_agent,
+                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                    validation_result = await _perform_reinvestigation(
+                        claim, reinvest_request, report_id, state
+                    )
+                    benchmark_data = None
+                else:
+                    # Standard investigation
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="agent_thinking",
+                            agent_name=agent_name,
+                            data={
+                                "message": f"Validating {claim.claim_type} claim: retrieving IFRS paragraphs..."
                             },
                             timestamp=datetime.now(timezone.utc).isoformat(),
                         )
                     )
 
-        except Exception as e:
-            logger.error("Error processing claim %s: %s", claim.claim_id, e)
-            # Create error finding
-            finding = AgentFinding(
-                finding_id=str(generate_uuid7()),
-                agent_name=agent_name,
-                claim_id=claim.claim_id,
-                evidence_type="quantitative_validation",
-                summary=f"Error during quantitative validation: {str(e)}",
-                details={"error": str(e)},
-                supports_claim=None,
-                confidence="low",
-                iteration=iteration_count + 1,
-            )
-            findings.append(finding)
+                    # Find related claims
+                    related_claims = _find_related_claims(claim, claims)
 
-            events.append(
-                StreamEvent(
-                    event_type="error",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "message": f"Validation error: {str(e)}",
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    # RAG retrieval
+                    rag_results = await _retrieve_ifrs_metrics_paragraphs(claim, report_id)
+
+                    # Check for benchmark responses from other agents
+                    benchmark_data = _process_benchmark_responses(state, claim)
+
+                    # Perform validation with calculator tool
+                    validation_result = await _validate_quantitative_claim(
+                        claim=claim,
+                        related_claims=related_claims,
+                        benchmark_data=benchmark_data,
+                        historical_data=None,
+                        rag_results=rag_results,
+                    )
+
+                # Emit consistency_check events for each check
+                for check in validation_result.consistency_checks:
+                    if check.result == "pass":
+                        checks_passed += 1
+                    elif check.result == "fail":
+                        checks_failed += 1
+
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="consistency_check",
+                            agent_name=agent_name,
+                            data={
+                                "check_name": check.check_name,
+                                "claim_id": check.claim_id,
+                                "result": check.result,
+                                "severity": check.severity,
+                                "details": check.details,
+                                "message": check.message,
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+
+                # Create finding
+                finding = _create_quantitative_finding(
+                    claim,
+                    validation_result,
+                    iteration_count,
+                    benchmark_data if not reinvest_request else None,
                 )
-            )
+
+                # Emit evidence found event
+                claim_events.append(
+                    StreamEvent(
+                        event_type="evidence_found",
+                        agent_name=agent_name,
+                        data={
+                            "claim_id": claim.claim_id,
+                            "summary": validation_result.summary,
+                            "supports_claim": validation_result.supports_claim,
+                            "confidence": validation_result.confidence,
+                            "checks_passed": sum(
+                                1 for c in validation_result.consistency_checks
+                                if c.result == "pass"
+                            ),
+                            "checks_failed": sum(
+                                1 for c in validation_result.consistency_checks
+                                if c.result == "fail"
+                            ),
+                        },
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
+
+                # Check if cross-domain benchmark data is needed
+                if not reinvest_request:
+                    benchmark_needed = _should_request_benchmark_data(claim)
+                    if benchmark_needed and not benchmark_data:
+                        benchmark_target_agent, metric_type = benchmark_needed
+                        info_req = _create_benchmark_info_request(claim, metric_type)
+                        claim_info_requests.append(info_req)
+
+                        claim_events.append(
+                            StreamEvent(
+                                event_type="info_request_posted",
+                                agent_name=agent_name,
+                                data={
+                                    "request_id": info_req.request_id,
+                                    "description": info_req.description,
+                                    "request_type": metric_type,
+                                    "target_agent": benchmark_target_agent,
+                                },
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            )
+                        )
+                
+                return finding, claim_events, claim_info_requests, checks_passed, checks_failed
+
+            except Exception as e:
+                logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                # Create error finding
+                finding = AgentFinding(
+                    finding_id=str(generate_uuid7()),
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="quantitative_validation",
+                    summary=f"Error during quantitative validation: {str(e)}",
+                    details={"error": str(e)},
+                    supports_claim=None,
+                    confidence="low",
+                    iteration=iteration_count + 1,
+                )
+
+                claim_events.append(
+                    StreamEvent(
+                        event_type="error",
+                        agent_name=agent_name,
+                        data={
+                            "claim_id": claim.claim_id,
+                            "message": f"Validation error: {str(e)}",
+                        },
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
+                return finding, claim_events, claim_info_requests, checks_passed, checks_failed
+    
+    # Run all claims in parallel
+    results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
+    
+    # Aggregate results
+    for finding, claim_events, claim_info_requests, checks_passed, checks_failed in results:
+        findings.append(finding)
+        events.extend(claim_events)
+        info_requests.extend(claim_info_requests)
+        consistency_checks_passed += checks_passed
+        consistency_checks_failed += checks_failed
 
     # Emit completion event
     events.append(

@@ -16,6 +16,7 @@ The Legal Agent performs:
 - Re-investigation handling for Judge-requested deeper analysis
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -23,7 +24,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+# Maximum concurrent claim processing (rate limiting)
+MAX_CONCURRENT_CLAIMS = 5
+
+from pydantic import BaseModel, Field, field_validator
 
 from app.agents.state import (
     AgentFinding,
@@ -76,6 +80,20 @@ class LegalAssessmentResult(BaseModel):
     gaps: list[str] = Field(default_factory=list, description="Identified compliance gaps")
     confidence: Literal["high", "medium", "low"] = Field(description="Assessment confidence level")
 
+    @field_validator('evidence', 'gaps', mode='before')
+    @classmethod
+    def flatten_string_lists(cls, v):
+        """Flatten nested lists and convert non-strings to strings."""
+        if not isinstance(v, list):
+            return [str(v)] if v else []
+        result = []
+        for item in v:
+            if isinstance(item, list):
+                result.extend(str(x) for x in item)
+            else:
+                result.append(str(item))
+        return result
+
 
 class GapCoverageResult(BaseModel):
     """Result of assessing whether report chunks cover an IFRS paragraph."""
@@ -84,6 +102,32 @@ class GapCoverageResult(BaseModel):
     coverage_status: Literal["fully_addressed", "partially_addressed", "fully_unaddressed"]
     missing_sub_requirements: list[str] = Field(default_factory=list)
     evidence_found: str | None = None
+
+    @field_validator('missing_sub_requirements', mode='before')
+    @classmethod
+    def flatten_sub_requirements(cls, v):
+        """Flatten nested lists and convert non-strings to strings."""
+        if not isinstance(v, list):
+            return [str(v)] if v else []
+        result = []
+        for item in v:
+            if isinstance(item, list):
+                result.extend(str(x) for x in item)
+            else:
+                result.append(str(item))
+        return result
+
+    @field_validator('evidence_found', mode='before')
+    @classmethod
+    def stringify_evidence(cls, v):
+        """Convert dict/list evidence to string."""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return json.dumps(v)
+        if isinstance(v, list):
+            return "; ".join(str(x) for x in v)
+        return str(v)
 
 
 # ============================================================================
@@ -410,7 +454,7 @@ async def _assess_compliance(
     
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.GPT4O_MINI,
             messages=[
                 {"role": "system", "content": LEGAL_AGENT_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -996,106 +1040,123 @@ async def investigate_legal(state: SibylState) -> dict:
         )
     )
 
-    # Process each assigned claim
-    for claim in assigned_claims:
-        try:
-            # Check for re-investigation context
-            reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
-            
-            if reinvest_request:
-                events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                assessment = await _perform_reinvestigation(claim, reinvest_request, report_id)
-            else:
-                # Standard investigation
-                events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Retrieving IFRS paragraphs for {claim.claim_type} claim..."
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
+    # Process claims in parallel with rate limiting
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
+    
+    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent], list[InfoRequest]]:
+        """Process a single claim and return finding, events, and info requests."""
+        claim_events: list[StreamEvent] = []
+        claim_info_requests: list[InfoRequest] = []
+        
+        async with semaphore:
+            try:
+                # Check for re-investigation context
+                reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
                 
-                # RAG retrieval
-                rag_results = await _retrieve_ifrs_paragraphs(claim, report_id)
-                
-                # Compliance assessment
-                assessment = await _assess_compliance(claim, rag_results)
-            
-            # Check for InfoResponses from other agents
-            info_resp_data = _process_info_responses(state, claim)
-            
-            # Create finding
-            finding = _create_compliance_finding(
-                claim,
-                assessment,
-                iteration_count,
-                info_resp_data if info_resp_data else None,
-            )
-            findings.append(finding)
-            
-            # Emit evidence found event
-            events.append(
-                StreamEvent(
-                    event_type="evidence_found",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "paragraph_ids": [m.paragraph_id for m in assessment.ifrs_mappings],
-                        "compliance_status": assessment.ifrs_mappings[0].compliance_status if assessment.ifrs_mappings else "unclear",
-                        "confidence": assessment.confidence,
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-            
-            # Check if cross-domain verification is needed
-            if not reinvest_request:  # Don't create new requests during re-investigation
-                verification_needed = _should_request_cross_domain_verification(claim, assessment)
-                if verification_needed:
-                    target_agent, description = verification_needed
-                    info_req = _create_info_request(claim, target_agent, description)
-                    info_requests.append(info_req)
-                    
-                    events.append(
+                if reinvest_request:
+                    claim_events.append(
                         StreamEvent(
-                            event_type="info_request_posted",
+                            event_type="agent_thinking",
                             agent_name=agent_name,
                             data={
-                                "request_id": info_req.request_id,
-                                "target_agent": target_agent,
-                                "description": description,
+                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                    assessment = await _perform_reinvestigation(claim, reinvest_request, report_id)
+                else:
+                    # Standard investigation
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="agent_thinking",
+                            agent_name=agent_name,
+                            data={
+                                "message": f"Retrieving IFRS paragraphs for {claim.claim_type} claim..."
                             },
                             timestamp=datetime.now(timezone.utc).isoformat(),
                         )
                     )
                     
-        except Exception as e:
-            logger.error("Error processing claim %s: %s", claim.claim_id, e)
-            # Create error finding
-            finding = AgentFinding(
-                finding_id=str(generate_uuid7()),
-                agent_name=agent_name,
-                claim_id=claim.claim_id,
-                evidence_type="ifrs_compliance",
-                summary=f"Error during compliance assessment: {str(e)}",
-                details={"error": str(e)},
-                supports_claim=None,
-                confidence="low",
-                iteration=iteration_count + 1,
-            )
-            findings.append(finding)
+                    # RAG retrieval
+                    rag_results = await _retrieve_ifrs_paragraphs(claim, report_id)
+                    
+                    # Compliance assessment
+                    assessment = await _assess_compliance(claim, rag_results)
+                
+                # Check for InfoResponses from other agents
+                info_resp_data = _process_info_responses(state, claim)
+                
+                # Create finding
+                finding = _create_compliance_finding(
+                    claim,
+                    assessment,
+                    iteration_count,
+                    info_resp_data if info_resp_data else None,
+                )
+                
+                # Emit evidence found event
+                claim_events.append(
+                    StreamEvent(
+                        event_type="evidence_found",
+                        agent_name=agent_name,
+                        data={
+                            "claim_id": claim.claim_id,
+                            "paragraph_ids": [m.paragraph_id for m in assessment.ifrs_mappings],
+                            "compliance_status": assessment.ifrs_mappings[0].compliance_status if assessment.ifrs_mappings else "unclear",
+                            "confidence": assessment.confidence,
+                        },
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
+                
+                # Check if cross-domain verification is needed
+                if not reinvest_request:  # Don't create new requests during re-investigation
+                    verification_needed = _should_request_cross_domain_verification(claim, assessment)
+                    if verification_needed:
+                        target_agent, description = verification_needed
+                        info_req = _create_info_request(claim, target_agent, description)
+                        claim_info_requests.append(info_req)
+                        
+                        claim_events.append(
+                            StreamEvent(
+                                event_type="info_request_posted",
+                                agent_name=agent_name,
+                                data={
+                                    "request_id": info_req.request_id,
+                                    "target_agent": target_agent,
+                                    "description": description,
+                                },
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            )
+                        )
+                
+                return finding, claim_events, claim_info_requests
+                        
+            except Exception as e:
+                logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                # Create error finding
+                finding = AgentFinding(
+                    finding_id=str(generate_uuid7()),
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="ifrs_compliance",
+                    summary=f"Error during compliance assessment: {str(e)}",
+                    details={"error": str(e)},
+                    supports_claim=None,
+                    confidence="low",
+                    iteration=iteration_count + 1,
+                )
+                return finding, claim_events, claim_info_requests
+    
+    # Run all claims in parallel
+    results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
+    
+    # Aggregate results
+    for finding, claim_events, claim_info_requests in results:
+        findings.append(finding)
+        events.extend(claim_events)
+        info_requests.extend(claim_info_requests)
 
     # Perform disclosure gap detection (only on first iteration to avoid duplicate gaps)
     if iteration_count == 0:

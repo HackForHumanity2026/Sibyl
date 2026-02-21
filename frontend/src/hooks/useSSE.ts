@@ -7,7 +7,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createSSEConnection,
   type StreamEvent,
-  type StreamEventType,
 } from "@/services/sse";
 
 export interface UseSSEReturn {
@@ -48,7 +47,7 @@ export function useSSE(
   const [pipelineComplete, setPipelineComplete] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Group events by agent
   const eventsByAgent: Record<string, StreamEvent[]> = {};

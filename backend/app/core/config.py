@@ -37,6 +37,7 @@ class Settings(BaseSettings):
 
     # Microsoft Planetary Computer (Geography Agent - FRD 10)
     MPC_STAC_URL: str = "https://planetarycomputer.microsoft.com/api/stac/v1"
+    MPC_SIGNING_URL: str = "https://planetarycomputer.microsoft.com/api/sas/v1/sign"
     MPC_COLLECTION: str = "sentinel-2-l2a"
 
     # Geocoding (Geography Agent)

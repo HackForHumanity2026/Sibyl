@@ -399,18 +399,18 @@ async def _extract_claims_from_chunk(chunk: DocumentChunk) -> list[ExtractedClai
 
     try:
         response = await openrouter_client.chat_completion(
-            model=Models.CLAUDE_SONNET,
+            model=Models.GPT4O_MINI,
             messages=[
                 {"role": "system", "content": CLAIMS_EXTRACTION_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
-                {"role": "assistant", "content": CLAIMS_EXTRACTION_PREFILL},
             ],
             temperature=0.0,
             max_tokens=16000,
+            response_format={"type": "json_object"},
         )
 
-        # Reconstruct full JSON by prepending the prefill
-        full_response = CLAIMS_EXTRACTION_PREFILL + response
+        # GPT-4o Mini returns complete JSON (no prefill needed)
+        full_response = response
 
         logger.warning(
             "Chunk %d response: %d chars, first 200: %s",

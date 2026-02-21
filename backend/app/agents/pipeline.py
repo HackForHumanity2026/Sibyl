@@ -16,12 +16,140 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.callbacks import SSECallbackHandler
 from app.agents.event_registry import get_event_queue, remove_event_queue
-from app.agents.graph import get_checkpointer, get_compiled_graph
-from app.agents.state import SibylState, StreamEvent
+from app.agents.graph import get_checkpointer, get_compiled_graph, EXTRACT_CLAIMS
+from app.agents.state import SibylState, StreamEvent, Claim as StateClaim
 from app.core.config import settings
 from app.models.report import Report
+from app.models.claim import Claim
+from app.core.database import generate_uuid7
 
 logger = logging.getLogger(__name__)
+
+
+async def _persist_claims(
+    report_id: str, 
+    state_claims: list[StateClaim], 
+    db: AsyncSession
+) -> int:
+    """Persist extracted claims to the database.
+    
+    Args:
+        report_id: The report's unique identifier
+        state_claims: List of claims from the pipeline state
+        db: Database session
+        
+    Returns:
+        Number of claims persisted
+    """
+    persisted_count = 0
+    
+    for sc in state_claims:
+        # Build IFRS paragraphs with metadata
+        ifrs_paragraphs = []
+        for pid in (sc.ifrs_paragraphs or []):
+            ifrs_paragraphs.append({
+                "paragraph_id": pid,
+                "pillar": "unknown",  # Will be enriched later
+                "relevance": "Preliminary mapping",
+            })
+        
+        claim = Claim(
+            id=generate_uuid7(),
+            report_id=UUID(report_id),
+            claim_text=sc.text,
+            claim_type=sc.claim_type,
+            source_page=sc.page_number,
+            source_location=sc.source_location or {},
+            ifrs_paragraphs=ifrs_paragraphs,
+            priority=sc.priority,
+            agent_reasoning=sc.agent_reasoning,
+        )
+        db.add(claim)
+        persisted_count += 1
+    
+    await db.commit()
+    logger.warning("Persisted %d claims for report %s", persisted_count, report_id)
+    return persisted_count
+
+
+async def _persist_findings(
+    report_id: str, 
+    findings: list, 
+    db: AsyncSession
+) -> int:
+    """Persist agent findings to the database.
+    
+    Args:
+        report_id: The report's unique identifier
+        findings: List of AgentFinding from the pipeline state
+        db: Database session
+        
+    Returns:
+        Number of findings persisted
+    """
+    from app.models.finding import Finding
+    from app.models.claim import Claim as ClaimModel
+    
+    persisted_count = 0
+    
+    for f in findings:
+        # Check if finding already exists (by finding_id)
+        finding_id = getattr(f, 'finding_id', None) or f.get('finding_id') if isinstance(f, dict) else None
+        if not finding_id:
+            continue
+            
+        # Get finding attributes (handle both object and dict)
+        if hasattr(f, 'agent_name'):
+            agent_name = f.agent_name
+            claim_id_str = f.claim_id
+            evidence_type = f.evidence_type
+            summary = f.summary
+            details = f.details
+            supports_claim = f.supports_claim
+            confidence = f.confidence
+            iteration = f.iteration
+        else:
+            agent_name = f.get('agent_name', 'unknown')
+            claim_id_str = f.get('claim_id')
+            evidence_type = f.get('evidence_type', 'unknown')
+            summary = f.get('summary', '')
+            details = f.get('details', {})
+            supports_claim = f.get('supports_claim')
+            confidence = f.get('confidence')
+            iteration = f.get('iteration', 1)
+        
+        # Resolve claim UUID from claim_id string
+        claim_uuid = None
+        if claim_id_str:
+            stmt = select(ClaimModel.id).where(
+                ClaimModel.report_id == UUID(report_id),
+                ClaimModel.claim_id == claim_id_str
+            )
+            result = await db.execute(stmt)
+            claim_row = result.first()
+            if claim_row:
+                claim_uuid = claim_row[0]
+        
+        finding = Finding(
+            id=generate_uuid7(),
+            report_id=UUID(report_id),
+            claim_id=claim_uuid,
+            agent_name=agent_name,
+            evidence_type=evidence_type,
+            summary=summary,
+            details=details,
+            supports_claim=supports_claim,
+            confidence=confidence,
+            iteration=iteration,
+        )
+        db.add(finding)
+        persisted_count += 1
+    
+    if persisted_count > 0:
+        await db.commit()
+        logger.warning("Persisted %d findings for report %s", persisted_count, report_id)
+    
+    return persisted_count
 
 
 async def load_report(report_id: str, db: AsyncSession) -> Report:
@@ -112,39 +240,68 @@ async def run_pipeline(report_id: str, db: AsyncSession) -> None:
     
     try:
         # Execute the pipeline
-        logger.info("Invoking pipeline graph for report: %s", report_id)
+        logger.warning("Invoking pipeline graph for report: %s", report_id)
+        logger.warning("Initial state keys: %s", list(initial_state.keys()))
         
-        # Run the graph
-        last_event_count = 0
+        iteration_count = 0
         
         async for event in compiled_graph.astream(initial_state, config=config):
-            # Extract the state from the event
-            # LangGraph astream yields dict with node outputs
+            iteration_count += 1
+            logger.warning("=== ASTREAM ITERATION %d ===", iteration_count)
+            logger.warning("Event keys: %s", list(event.keys()))
+            
+            # LangGraph astream yields dict with node outputs: {node_name: node_output}
             for node_name, node_output in event.items():
-                # Call callbacks manually since we're using astream
-                await callback_handler.on_node_start(node_name, initial_state)
+                logger.warning("Node completed: %s (output type: %s)", node_name, type(node_output).__name__)
                 
-                # Get the state from the node output
+                # Get events from this node's output (each node returns its OWN events list)
                 if hasattr(node_output, 'events'):
-                    state_events = node_output.events
+                    node_events = node_output.events
                 elif isinstance(node_output, dict) and 'events' in node_output:
-                    state_events = node_output.get('events', [])
+                    node_events = node_output.get('events', [])
                 else:
-                    state_events = []
+                    node_events = []
                 
-                # Push new events to the queue
-                for event_obj in state_events[last_event_count:]:
+                # Push ALL events from this node to the queue (no slicing - each node has its own list)
+                for event_obj in node_events:
                     try:
                         await event_queue.put(event_obj)
+                        logger.debug("Pushed event: %s from %s", event_obj.event_type, node_name)
                     except asyncio.QueueFull:
                         logger.warning("Event queue full, dropping event")
                 
-                if state_events:
-                    last_event_count = len(state_events)
+                logger.warning("Pushed %d events from node %s", len(node_events), node_name)
                 
-                logger.debug("Node %s completed", node_name)
+                # Log output contents for debugging
+                if isinstance(node_output, dict):
+                    logger.warning("Node %s output keys: %s", node_name, list(node_output.keys()))
+                    for key, value in node_output.items():
+                        if key != 'events':  # Don't log events again
+                            if isinstance(value, list):
+                                logger.warning("  %s: list of %d items", key, len(value))
+                            elif isinstance(value, dict):
+                                logger.warning("  %s: dict with keys %s", key, list(value.keys())[:5])
+                            else:
+                                logger.warning("  %s: %s", key, type(value).__name__)
+                
+                # Persist claims immediately after extraction (so they're saved even if pipeline is interrupted)
+                if node_name == EXTRACT_CLAIMS:
+                    if isinstance(node_output, dict) and 'claims' in node_output:
+                        extracted_claims = node_output.get('claims', [])
+                        if extracted_claims:
+                            logger.warning("Persisting %d claims immediately", len(extracted_claims))
+                            await _persist_claims(report_id, extracted_claims, db)
+                
+                # Persist findings immediately after each specialist agent completes
+                if node_name.startswith('investigate_'):
+                    if isinstance(node_output, dict) and 'findings' in node_output:
+                        new_findings = node_output.get('findings', [])
+                        if new_findings:
+                            logger.warning("Persisting %d findings from %s", len(new_findings), node_name)
+                            await _persist_findings(report_id, new_findings, db)
         
-        logger.info("Pipeline completed successfully for report: %s", report_id)
+        logger.warning("Pipeline astream completed for report: %s", report_id)
+        logger.warning("Pipeline completed successfully for report: %s", report_id)
         
         # Push sentinel to close SSE connection
         await event_queue.put(None)

@@ -13,12 +13,16 @@ The News/Media Agent performs:
 - Re-investigation handling for Judge-requested deeper analysis
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Maximum concurrent claim processing (rate limiting)
+MAX_CONCURRENT_CLAIMS = 5
 
 from app.agents.state import (
     AgentFinding,
@@ -67,6 +71,14 @@ class ContradictionAnalysis(BaseModel):
     )
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence in the analysis")
     explanation: str = Field(description="Explanation of the contradiction or lack thereof")
+
+    @field_validator('contradiction_type', mode='before')
+    @classmethod
+    def lowercase_contradiction_type(cls, v):
+        """LLM sometimes returns capitalized values like 'Timeline' instead of 'timeline'."""
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 
 class NewsMediaAssessmentResult(BaseModel):
@@ -952,223 +964,243 @@ async def investigate_news(state: SibylState) -> dict:
 
     total_contradictions = 0
 
-    # Process each assigned claim
-    for claim in assigned_claims:
-        try:
-            # Emit claim investigation event
-            events.append(
-                StreamEvent(
-                    event_type="claim_investigating",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "claim_text": claim.text[:200],
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-            
-            # Check for re-investigation context
-            reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
-            
-            if reinvest_request:
-                events.append(
+    # Process claims in parallel with rate limiting
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
+    
+    async def process_single_claim(claim: Claim) -> tuple[list[AgentFinding], list[StreamEvent], list[InfoRequest], int]:
+        """Process a single claim and return findings, events, info requests, and contradiction count."""
+        claim_findings: list[AgentFinding] = []
+        claim_events: list[StreamEvent] = []
+        claim_info_requests: list[InfoRequest] = []
+        claim_contradictions = 0
+        
+        async with semaphore:
+            try:
+                # Emit claim investigation event
+                claim_events.append(
                     StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                search_results = await _process_reinvestigation(
-                    claim, reinvest_request, company_name
-                )
-            else:
-                # Standard investigation
-                events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Constructing search queries for claim..."
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                
-                # Construct queries
-                queries = await _construct_search_queries(claim, company_name)
-                
-                # Execute searches
-                search_results = await _execute_web_searches(queries)
-                
-                # Emit search executed event
-                events.append(
-                    StreamEvent(
-                        event_type="search_executed",
+                        event_type="claim_investigating",
                         agent_name=agent_name,
                         data={
                             "claim_id": claim.claim_id,
-                            "queries": {
-                                "company_specific": queries.company_specific,
-                                "industry_wide": queries.industry_wide,
-                                "controversy": queries.controversy,
-                            },
-                            "results_count": len(search_results),
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-            
-            # Process each search result
-            source_findings: list[AgentFinding] = []
-            claim_contradictions = 0
-            
-            for source in search_results:
-                # Assign credibility tier
-                credibility = await _assign_credibility_tier(source)
-                
-                # Emit source evaluated event
-                events.append(
-                    StreamEvent(
-                        event_type="source_evaluated",
-                        agent_name=agent_name,
-                        data={
-                            "source_url": source.get("url", ""),
-                            "tier": credibility.tier,
-                            "domain": source.get("source_domain", ""),
+                            "claim_text": claim.text[:200],
                         },
                         timestamp=datetime.now(timezone.utc).isoformat(),
                     )
                 )
                 
-                # Detect contradiction
-                contradiction = await _detect_contradiction(claim, source)
+                # Check for re-investigation context
+                reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
                 
-                if contradiction.contradicts:
-                    claim_contradictions += 1
-                    total_contradictions += 1
-                    
-                    # Emit contradiction detected event
-                    events.append(
+                if reinvest_request:
+                    claim_events.append(
                         StreamEvent(
-                            event_type="contradiction_detected",
+                            event_type="agent_thinking",
+                            agent_name=agent_name,
+                            data={
+                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                    search_results = await _process_reinvestigation(
+                        claim, reinvest_request, company_name
+                    )
+                else:
+                    # Standard investigation
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="agent_thinking",
+                            agent_name=agent_name,
+                            data={
+                                "message": f"Constructing search queries for claim..."
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                    
+                    # Construct queries
+                    queries = await _construct_search_queries(claim, company_name)
+                    
+                    # Execute searches
+                    search_results = await _execute_web_searches(queries)
+                    
+                    # Emit search executed event
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="search_executed",
                             agent_name=agent_name,
                             data={
                                 "claim_id": claim.claim_id,
-                                "source_url": source.get("url", ""),
-                                "contradiction_type": contradiction.contradiction_type,
-                                "tier": credibility.tier,
+                                "queries": {
+                                    "company_specific": queries.company_specific,
+                                    "industry_wide": queries.industry_wide,
+                                    "controversy": queries.controversy,
+                                },
+                                "results_count": len(search_results),
                             },
                             timestamp=datetime.now(timezone.utc).isoformat(),
                         )
                     )
                 
-                # Generate relevance summary
-                relevance_summary = await _generate_relevance_summary(claim, source)
+                # Process each search result
+                source_findings: list[AgentFinding] = []
                 
-                # Create finding for this source
-                source_finding = _create_source_finding(
-                    claim=claim,
-                    source=source,
-                    tier=credibility.tier,
-                    contradiction=contradiction,
-                    relevance_summary=relevance_summary,
+                for source in search_results:
+                    # Assign credibility tier
+                    credibility = await _assign_credibility_tier(source)
+                    
+                    # Emit source evaluated event
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="source_evaluated",
+                            agent_name=agent_name,
+                            data={
+                                "source_url": source.get("url", ""),
+                                "tier": credibility.tier,
+                                "domain": source.get("source_domain", ""),
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                    
+                    # Detect contradiction
+                    contradiction = await _detect_contradiction(claim, source)
+                    
+                    if contradiction.contradicts:
+                        claim_contradictions += 1
+                        
+                        # Emit contradiction detected event
+                        claim_events.append(
+                            StreamEvent(
+                                event_type="contradiction_detected",
+                                agent_name=agent_name,
+                                data={
+                                    "claim_id": claim.claim_id,
+                                    "source_url": source.get("url", ""),
+                                    "contradiction_type": contradiction.contradiction_type,
+                                    "tier": credibility.tier,
+                                },
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            )
+                        )
+                    
+                    # Generate relevance summary
+                    relevance_summary = await _generate_relevance_summary(claim, source)
+                    
+                    # Create finding for this source
+                    source_finding = _create_source_finding(
+                        claim=claim,
+                        source=source,
+                        tier=credibility.tier,
+                        contradiction=contradiction,
+                        relevance_summary=relevance_summary,
+                        iteration=iteration_count + 1,
+                    )
+                    source_findings.append(source_finding)
+                    claim_findings.append(source_finding)
+                
+                # Create summary finding for this claim
+                if source_findings:
+                    summary_finding = _create_summary_finding(
+                        claim=claim,
+                        source_findings=source_findings,
+                        iteration=iteration_count + 1,
+                    )
+                    claim_findings.append(summary_finding)
+                    
+                    # Emit evidence found event
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="evidence_found",
+                            agent_name=agent_name,
+                            data={
+                                "claim_id": claim.claim_id,
+                                "findings_count": len(source_findings),
+                                "contradictions_count": claim_contradictions,
+                                "supports_claim": summary_finding.supports_claim,
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                
+                # Check if cross-domain verification is needed
+                if not reinvest_request:
+                    cross_domain = _should_request_cross_domain(claim, search_results)
+                    if cross_domain:
+                        target_agent, description = cross_domain
+                        info_req = InfoRequest(
+                            request_id=str(generate_uuid7()),
+                            requesting_agent=agent_name,
+                            description=description,
+                            context={
+                                "claim_id": claim.claim_id,
+                                "claim_text": claim.text[:200],
+                                "target_agent": target_agent,
+                            },
+                            status="pending",
+                        )
+                        claim_info_requests.append(info_req)
+                        
+                        claim_events.append(
+                            StreamEvent(
+                                event_type="info_request_posted",
+                                agent_name=agent_name,
+                                data={
+                                    "request_id": info_req.request_id,
+                                    "target_agent": target_agent,
+                                    "description": description,
+                                },
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            )
+                        )
+                
+                # Check for InfoResponses from other agents
+                info_resp_data = _process_info_responses(state, claim)
+                if info_resp_data and source_findings:
+                    # Incorporate into the last finding
+                    source_findings[-1].details["cross_domain_evidence"] = info_resp_data
+                
+                return claim_findings, claim_events, claim_info_requests, claim_contradictions
+                    
+            except Exception as e:
+                logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                # Create error finding
+                error_finding = AgentFinding(
+                    finding_id=str(generate_uuid7()),
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="error",
+                    summary=f"Error during news investigation: {str(e)}",
+                    details={"error": str(e)},
+                    supports_claim=None,
+                    confidence="low",
                     iteration=iteration_count + 1,
                 )
-                source_findings.append(source_finding)
-                findings.append(source_finding)
-            
-            # Create summary finding for this claim
-            if source_findings:
-                summary_finding = _create_summary_finding(
-                    claim=claim,
-                    source_findings=source_findings,
-                    iteration=iteration_count + 1,
-                )
-                findings.append(summary_finding)
+                claim_findings.append(error_finding)
                 
-                # Emit evidence found event
-                events.append(
+                claim_events.append(
                     StreamEvent(
-                        event_type="evidence_found",
+                        event_type="error",
                         agent_name=agent_name,
                         data={
                             "claim_id": claim.claim_id,
-                            "findings_count": len(source_findings),
-                            "contradictions_count": claim_contradictions,
-                            "supports_claim": summary_finding.supports_claim,
+                            "message": str(e),
                         },
                         timestamp=datetime.now(timezone.utc).isoformat(),
                     )
                 )
-            
-            # Check if cross-domain verification is needed
-            if not reinvest_request:
-                cross_domain = _should_request_cross_domain(claim, search_results)
-                if cross_domain:
-                    target_agent, description = cross_domain
-                    info_req = InfoRequest(
-                        request_id=str(generate_uuid7()),
-                        requesting_agent=agent_name,
-                        description=description,
-                        context={
-                            "claim_id": claim.claim_id,
-                            "claim_text": claim.text[:200],
-                            "target_agent": target_agent,
-                        },
-                        status="pending",
-                    )
-                    info_requests.append(info_req)
-                    
-                    events.append(
-                        StreamEvent(
-                            event_type="info_request_posted",
-                            agent_name=agent_name,
-                            data={
-                                "request_id": info_req.request_id,
-                                "target_agent": target_agent,
-                                "description": description,
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
-            
-            # Check for InfoResponses from other agents
-            info_resp_data = _process_info_responses(state, claim)
-            if info_resp_data and source_findings:
-                # Incorporate into the last finding
-                source_findings[-1].details["cross_domain_evidence"] = info_resp_data
-                
-        except Exception as e:
-            logger.error("Error processing claim %s: %s", claim.claim_id, e)
-            # Create error finding
-            error_finding = AgentFinding(
-                finding_id=str(generate_uuid7()),
-                agent_name=agent_name,
-                claim_id=claim.claim_id,
-                evidence_type="error",
-                summary=f"Error during news investigation: {str(e)}",
-                details={"error": str(e)},
-                supports_claim=None,
-                confidence="low",
-                iteration=iteration_count + 1,
-            )
-            findings.append(error_finding)
-            
-            events.append(
-                StreamEvent(
-                    event_type="error",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "message": str(e),
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
+                return claim_findings, claim_events, claim_info_requests, claim_contradictions
+    
+    # Run all claims in parallel
+    results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
+    
+    # Aggregate results
+    for claim_findings, claim_events, claim_info_requests, claim_contradictions in results:
+        findings.extend(claim_findings)
+        events.extend(claim_events)
+        info_requests.extend(claim_info_requests)
+        total_contradictions += claim_contradictions
 
     # Emit completion event
     events.append(

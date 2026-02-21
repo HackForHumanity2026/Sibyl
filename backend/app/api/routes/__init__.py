@@ -10,6 +10,7 @@ from app.api.routes.report import router as report_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.rag import router as rag_router
+from app.api.routes.satellite import router as satellite_router
 
 api_router = APIRouter()
 
@@ -21,3 +22,4 @@ api_router.include_router(report_router, prefix="/report", tags=["report"])
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(chat_router, prefix="/chat", tags=["chat"])
 api_router.include_router(rag_router, prefix="/rag", tags=["RAG Pipeline"])
+api_router.include_router(satellite_router, prefix="/satellite", tags=["satellite"])

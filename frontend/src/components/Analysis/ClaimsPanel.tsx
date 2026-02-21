@@ -3,7 +3,7 @@
  * Implements FRD 4 Section 7 (Cross-Panel Interactions).
  */
 
-import { useEffect, useRef, useCallback, type RefObject } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { Claim, ClaimType, ClaimPriority } from "@/types/claim";
 import { ClaimCard } from "./ClaimCard";
 import { ClaimsFilter } from "./ClaimsFilter";

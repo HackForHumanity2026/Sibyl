@@ -152,6 +152,23 @@ export async function getClaim(reportId: string, claimId: string): Promise<Claim
 }
 
 // ============================================================================
+// Satellite API (FRD 12)
+// ============================================================================
+
+/**
+ * Get a signed URL for a satellite image from Microsoft Planetary Computer.
+ */
+export async function getSatelliteImageUrl(stacItemUrl: string): Promise<string> {
+  const response = await fetchAPI<{ url: string }>(
+    `/satellite/signed-url?stac_item_url=${encodeURIComponent(stacItemUrl)}`
+  );
+  if (typeof response?.url !== "string") {
+    throw new Error("Invalid response from satellite API: missing url field");
+  }
+  return response.url;
+}
+
+// ============================================================================
 // Future APIs (stubs)
 // ============================================================================
 

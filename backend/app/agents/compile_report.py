@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.state import SibylState, StreamEvent
@@ -180,7 +181,7 @@ async def _persist_results(state: SibylState, db: AsyncSession) -> None:
         )
         db.add(db_finding)
     
-    # Persist verdicts (using mapped claim IDs)
+    # Persist verdicts (using mapped claim IDs) with upsert to handle re-judging
     for verdict in verdicts:
         # Map state claim_id to the persisted DB claim UUID
         db_claim_id = claim_id_mapping.get(verdict.claim_id)
@@ -190,17 +191,29 @@ async def _persist_results(state: SibylState, db: AsyncSession) -> None:
             )
             continue
         
-        db_verdict = Verdict(
-            id=generate_uuid7(),
-            report_id=report_id,
-            claim_id=db_claim_id,
-            verdict=verdict.verdict,
-            reasoning=verdict.reasoning,
-            ifrs_mapping=verdict.ifrs_mapping,
-            evidence_summary=verdict.evidence_summary,
-            iteration_count=verdict.iteration_count,
+        # Use upsert to update existing verdicts on re-judging
+        verdict_data = {
+            "id": generate_uuid7(),
+            "report_id": report_id,
+            "claim_id": db_claim_id,
+            "verdict": verdict.verdict,
+            "reasoning": verdict.reasoning,
+            "ifrs_mapping": verdict.ifrs_mapping,
+            "evidence_summary": verdict.evidence_summary,
+            "iteration_count": verdict.iteration_count,
+        }
+        stmt = pg_insert(Verdict).values(**verdict_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["claim_id"],
+            set_={
+                "verdict": stmt.excluded.verdict,
+                "reasoning": stmt.excluded.reasoning,
+                "ifrs_mapping": stmt.excluded.ifrs_mapping,
+                "evidence_summary": stmt.excluded.evidence_summary,
+                "iteration_count": stmt.excluded.iteration_count,
+            }
         )
-        db.add(db_verdict)
+        await db.execute(stmt)
     
     # Update report status to completed
     stmt = (

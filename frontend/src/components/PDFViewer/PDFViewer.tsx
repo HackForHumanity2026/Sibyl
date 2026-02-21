@@ -29,7 +29,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 const BASE_PAGE_WIDTH = 700;
-const ZOOM_STEP = 25;
 const MIN_ZOOM = 50;
 const MAX_ZOOM = 300;
 

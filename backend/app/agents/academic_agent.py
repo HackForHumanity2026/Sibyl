@@ -16,12 +16,16 @@ The Academic/Research Agent performs:
 - Re-investigation handling for Judge-requested deeper analysis
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# Maximum concurrent claim processing (rate limiting)
+MAX_CONCURRENT_CLAIMS = 5
 
 from app.agents.state import (
     AgentFinding,
@@ -752,168 +756,185 @@ async def investigate_academic(state: SibylState) -> dict:
         )
     )
 
-    # 4. Process each assigned claim
-    for claim in assigned_claims:
-        try:
-            # Classify investigation type
-            investigation_type = _classify_investigation_type(claim)
+    # 4. Process claims in parallel with rate limiting
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
+    
+    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent], list[InfoRequest]]:
+        """Process a single claim and return finding, events, and info requests."""
+        claim_events: list[StreamEvent] = []
+        claim_info_requests: list[InfoRequest] = []
+        
+        async with semaphore:
+            try:
+                # Classify investigation type
+                investigation_type = _classify_investigation_type(claim)
 
-            events.append(
-                StreamEvent(
-                    event_type="agent_thinking",
-                    agent_name=agent_name,
-                    data={
-                        "message": f"Investigating claim {claim.claim_id} as {investigation_type}..."
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-
-            # Check for re-investigation context
-            reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
-
-            if reinvest_request:
-                events.append(
+                claim_events.append(
                     StreamEvent(
                         event_type="agent_thinking",
                         agent_name=agent_name,
                         data={
-                            "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                search_results = await _process_reinvestigation(
-                    claim, reinvest_request
-                )
-            else:
-                # Construct search queries
-                events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={
-                            "message": f"Constructing academic search queries ({investigation_type})..."
+                            "message": f"Investigating claim {claim.claim_id} as {investigation_type}..."
                         },
                         timestamp=datetime.now(timezone.utc).isoformat(),
                     )
                 )
 
-                queries = await _construct_academic_queries(
-                    claim, investigation_type
-                )
+                # Check for re-investigation context
+                reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
 
-                # Execute searches
-                search_results = await _execute_academic_searches(queries)
-
-                events.append(
-                    StreamEvent(
-                        event_type="search_executed",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "investigation_type": investigation_type,
-                            "queries": queries.queries,
-                            "results_count": len(search_results),
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-
-            # Analyze results with LLM
-            analysis = await _analyze_search_results(
-                claim, search_results, investigation_type
-            )
-
-            # Create finding
-            finding = _create_academic_finding(
-                claim=claim,
-                analysis=analysis,
-                search_results=search_results,
-                iteration=iteration_count + 1,
-            )
-            findings.append(finding)
-
-            # Emit evidence found event
-            events.append(
-                StreamEvent(
-                    event_type="evidence_found",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "evidence_type": analysis.investigation_type,
-                        "supports_claim": analysis.supports_claim,
-                        "confidence": analysis.confidence,
-                        "summary": analysis.summary[:200],
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-
-            # Check if cross-domain verification is needed
-            if not reinvest_request:
-                cross_domain = _should_request_cross_domain(
-                    claim, investigation_type, search_results
-                )
-                if cross_domain:
-                    target_agent, description = cross_domain
-                    info_req = InfoRequest(
-                        request_id=str(generate_uuid7()),
-                        requesting_agent=agent_name,
-                        description=description,
-                        context={
-                            "claim_id": claim.claim_id,
-                            "claim_text": claim.text[:200],
-                            "target_agent": target_agent,
-                        },
-                        status="pending",
-                    )
-                    info_requests.append(info_req)
-
-                    events.append(
+                if reinvest_request:
+                    claim_events.append(
                         StreamEvent(
-                            event_type="info_request_posted",
+                            event_type="agent_thinking",
                             agent_name=agent_name,
                             data={
-                                "request_id": info_req.request_id,
-                                "target_agent": target_agent,
-                                "description": description,
+                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+                    search_results = await _process_reinvestigation(
+                        claim, reinvest_request
+                    )
+                else:
+                    # Construct search queries
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="agent_thinking",
+                            agent_name=agent_name,
+                            data={
+                                "message": f"Constructing academic search queries ({investigation_type})..."
                             },
                             timestamp=datetime.now(timezone.utc).isoformat(),
                         )
                     )
 
-            # Check for InfoResponses from other agents
-            info_resp_data = _process_info_responses(state, claim)
-            if info_resp_data:
-                finding.details["cross_domain_evidence"] = info_resp_data
+                    queries = await _construct_academic_queries(
+                        claim, investigation_type
+                    )
 
-        except Exception as e:
-            logger.error("Error processing claim %s: %s", claim.claim_id, e)
-            error_finding = AgentFinding(
-                finding_id=str(generate_uuid7()),
-                agent_name=agent_name,
-                claim_id=claim.claim_id,
-                evidence_type="error",
-                summary=f"Error during academic investigation: {str(e)}",
-                details={"error": str(e)},
-                supports_claim=None,
-                confidence="low",
-                iteration=iteration_count + 1,
-            )
-            findings.append(error_finding)
+                    # Execute searches
+                    search_results = await _execute_academic_searches(queries)
 
-            events.append(
-                StreamEvent(
-                    event_type="error",
-                    agent_name=agent_name,
-                    data={
-                        "claim_id": claim.claim_id,
-                        "message": str(e),
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    claim_events.append(
+                        StreamEvent(
+                            event_type="search_executed",
+                            agent_name=agent_name,
+                            data={
+                                "claim_id": claim.claim_id,
+                                "investigation_type": investigation_type,
+                                "queries": queries.queries,
+                                "results_count": len(search_results),
+                            },
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
+
+                # Analyze results with LLM
+                analysis = await _analyze_search_results(
+                    claim, search_results, investigation_type
                 )
-            )
+
+                # Create finding
+                finding = _create_academic_finding(
+                    claim=claim,
+                    analysis=analysis,
+                    search_results=search_results,
+                    iteration=iteration_count + 1,
+                )
+
+                # Emit evidence found event
+                claim_events.append(
+                    StreamEvent(
+                        event_type="evidence_found",
+                        agent_name=agent_name,
+                        data={
+                            "claim_id": claim.claim_id,
+                            "evidence_type": analysis.investigation_type,
+                            "supports_claim": analysis.supports_claim,
+                            "confidence": analysis.confidence,
+                            "summary": analysis.summary[:200],
+                        },
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
+
+                # Check if cross-domain verification is needed
+                if not reinvest_request:
+                    cross_domain = _should_request_cross_domain(
+                        claim, investigation_type, search_results
+                    )
+                    if cross_domain:
+                        target_agent, description = cross_domain
+                        info_req = InfoRequest(
+                            request_id=str(generate_uuid7()),
+                            requesting_agent=agent_name,
+                            description=description,
+                            context={
+                                "claim_id": claim.claim_id,
+                                "claim_text": claim.text[:200],
+                                "target_agent": target_agent,
+                            },
+                            status="pending",
+                        )
+                        claim_info_requests.append(info_req)
+
+                        claim_events.append(
+                            StreamEvent(
+                                event_type="info_request_posted",
+                                agent_name=agent_name,
+                                data={
+                                    "request_id": info_req.request_id,
+                                    "target_agent": target_agent,
+                                    "description": description,
+                                },
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            )
+                        )
+
+                # Check for InfoResponses from other agents
+                info_resp_data = _process_info_responses(state, claim)
+                if info_resp_data:
+                    finding.details["cross_domain_evidence"] = info_resp_data
+                
+                return finding, claim_events, claim_info_requests
+
+            except Exception as e:
+                logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                error_finding = AgentFinding(
+                    finding_id=str(generate_uuid7()),
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="error",
+                    summary=f"Error during academic investigation: {str(e)}",
+                    details={"error": str(e)},
+                    supports_claim=None,
+                    confidence="low",
+                    iteration=iteration_count + 1,
+                )
+
+                claim_events.append(
+                    StreamEvent(
+                        event_type="error",
+                        agent_name=agent_name,
+                        data={
+                            "claim_id": claim.claim_id,
+                            "message": str(e),
+                        },
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    )
+                )
+                return error_finding, claim_events, claim_info_requests
+    
+    # Run all claims in parallel
+    results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
+    
+    # Aggregate results
+    for finding, claim_events, claim_info_requests in results:
+        findings.append(finding)
+        events.extend(claim_events)
+        info_requests.extend(claim_info_requests)
 
     # 9. Process pending InfoRequests addressed to academic agent
     pending_info_requests = state.get("info_requests", [])

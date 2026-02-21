@@ -23,6 +23,8 @@ class Models:
     CLAUDE_SONNET = "anthropic/claude-3.5-sonnet"
     CLAUDE_HAIKU = "anthropic/claude-3.5-haiku"  # Fast, cheap for classification tasks
     CLAUDE_OPUS = "anthropic/claude-3-opus"
+    # OpenAI models
+    GPT4O_MINI = "openai/gpt-4o-mini"  # Best JSON compliance, fast, cheap
     # Other models
     DEEPSEEK = "deepseek/deepseek-chat"
     EMBEDDING = "openai/text-embedding-3-small"
