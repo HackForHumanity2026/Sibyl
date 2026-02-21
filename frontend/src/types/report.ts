@@ -74,3 +74,13 @@ export interface ClaimWithVerdict {
   verdict: ClaimVerdict | null;
   findings: AgentFinding[];
 }
+
+// Re-export source of truth types for convenience
+export type {
+  SourceOfTruthReportResponse,
+  ClaimWithVerdictResponse,
+  PillarSectionResponse,
+  ReportSummaryResponse,
+  DisclosureGapResponse,
+  EvidenceChainEntry,
+} from "./sourceOfTruth";

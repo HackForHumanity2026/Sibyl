@@ -56,3 +56,4 @@ Thumbs.db
 # Logs
 *.log
 logs/
+test_climate_report.pdf

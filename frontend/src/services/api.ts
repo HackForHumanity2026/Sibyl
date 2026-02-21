@@ -169,18 +169,109 @@ export async function getSatelliteImageUrl(stacItemUrl: string): Promise<string>
 }
 
 // ============================================================================
-// Future APIs (stubs)
+// Source of Truth Report API (FRD 13)
 // ============================================================================
 
+import type {
+  SourceOfTruthReportResponse,
+  ClaimsListPaginatedResponse,
+  GapsListPaginatedResponse,
+  ReportSummaryResponse,
+  ReportFilters,
+} from "@/types/sourceOfTruth";
+
 /**
- * Get the Source of Truth report.
- * TODO: Implement in FRD 13
+ * Get the full Source of Truth report.
  */
-export async function getReport(
-  _reportId: string
-): Promise<{ report: unknown }> {
-  throw new Error("Not implemented - coming in FRD 13");
+export async function getSourceOfTruthReport(
+  reportId: string
+): Promise<SourceOfTruthReportResponse> {
+  return fetchAPI<SourceOfTruthReportResponse>(`/report/${reportId}`);
 }
+
+/**
+ * Get claims with filtering and pagination.
+ */
+export async function getReportClaims(
+  reportId: string,
+  filters?: ReportFilters,
+  page: number = 1,
+  pageSize: number = 50
+): Promise<ClaimsListPaginatedResponse> {
+  const searchParams = new URLSearchParams();
+  if (filters?.pillar) searchParams.set("pillar", filters.pillar);
+  if (filters?.verdict) searchParams.set("verdict", filters.verdict);
+  if (filters?.claimType) searchParams.set("claim_type", filters.claimType);
+  if (filters?.agent) searchParams.set("agent", filters.agent);
+  searchParams.set("page", String(page));
+  searchParams.set("page_size", String(pageSize));
+
+  const queryString = searchParams.toString();
+  return fetchAPI<ClaimsListPaginatedResponse>(
+    `/report/${reportId}/claims?${queryString}`
+  );
+}
+
+/**
+ * Get disclosure gaps with filtering and pagination.
+ */
+export async function getReportGaps(
+  reportId: string,
+  filters?: { pillar?: string; gapStatus?: string },
+  page: number = 1,
+  pageSize: number = 50
+): Promise<GapsListPaginatedResponse> {
+  const searchParams = new URLSearchParams();
+  if (filters?.pillar) searchParams.set("pillar", filters.pillar);
+  if (filters?.gapStatus) searchParams.set("gap_status", filters.gapStatus);
+  searchParams.set("page", String(page));
+  searchParams.set("page_size", String(pageSize));
+
+  const queryString = searchParams.toString();
+  return fetchAPI<GapsListPaginatedResponse>(
+    `/report/${reportId}/gaps?${queryString}`
+  );
+}
+
+/**
+ * Get report summary statistics only.
+ */
+export async function getReportSummary(
+  reportId: string
+): Promise<ReportSummaryResponse> {
+  return fetchAPI<ReportSummaryResponse>(`/report/${reportId}/summary`);
+}
+
+/**
+ * List all reports in the system.
+ */
+export async function listReports(): Promise<
+  Array<{
+    report_id: string;
+    filename: string;
+    status: string;
+    file_size_bytes: number;
+    page_count: number | null;
+    created_at: string;
+    updated_at: string;
+  }>
+> {
+  return fetchAPI<
+    Array<{
+      report_id: string;
+      filename: string;
+      status: string;
+      file_size_bytes: number;
+      page_count: number | null;
+      created_at: string;
+      updated_at: string;
+    }>
+  >(`/report/`);
+}
+
+// ============================================================================
+// Future APIs (stubs)
+// ============================================================================
 
 /**
  * Send a chat message to the chatbot.

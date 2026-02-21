@@ -1,13 +1,15 @@
 /**
  * Source of Truth report components.
- *
- * TODO: Implement in FRD 13:
- * - ComplianceReport - Main report view by pillars
- * - PillarSection - Section for each IFRS pillar
- * - ClaimCard - Individual claim with verdict and evidence
- * - EvidencePanel - Expandable evidence chain viewer
- * - FilterBar - Filter/search by pillar, status, paragraph
- * - DisclosureGapsPanel - Display of disclosure gaps
+ * Implements FRD 13.
  */
 
-export {};
+export { VerdictBadge } from "./VerdictBadge";
+export { IFRSParagraphTag } from "./IFRSParagraphTag";
+export { EvidencePanel } from "./EvidencePanel";
+export { ClaimCard } from "./ClaimCard";
+export { GapCard } from "./GapCard";
+export { DisclosureGapsSection } from "./DisclosureGapsSection";
+export { PillarSection } from "./PillarSection";
+export { FilterBar } from "./FilterBar";
+export { ComplianceSummary } from "./ComplianceSummary";
+export { S1S2MappingSidebar } from "./S1S2MappingSidebar";

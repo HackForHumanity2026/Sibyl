@@ -68,7 +68,7 @@ class ExtractedClaim(BaseModel):
 
     claim_text: str = Field(description="The verbatim or closely paraphrased claim text")
     claim_type: Literal[
-        "geographic", "quantitative", "legal_governance", "strategic", "environmental"
+        "geographic", "quantitative", "legal_governance", "strategic", "environmental", "risk_management"
     ] = Field(description="Category of the claim")
     source_page: int = Field(description="Page number where the claim appears")
     source_context: str = Field(
