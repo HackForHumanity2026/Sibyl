@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base, generate_uuid7
 
 if TYPE_CHECKING:
+    from app.models.chat import Conversation
     from app.models.claim import Claim
     from app.models.embedding import Embedding
     from app.models.finding import Finding
@@ -81,6 +82,12 @@ class Report(Base):
         "Verdict",
         back_populates="report",
         cascade="all, delete-orphan",
+    )
+    conversation: Mapped["Conversation | None"] = relationship(
+        "Conversation",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     __table_args__ = (

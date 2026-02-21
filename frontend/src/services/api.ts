@@ -270,16 +270,23 @@ export async function listReports(): Promise<
 }
 
 // ============================================================================
-// Future APIs (stubs)
+// Chat API (FRD 14)
 // ============================================================================
 
+import type { ConversationHistoryResponse } from "@/types/chat";
+
 /**
- * Send a chat message to the chatbot.
- * TODO: Implement in FRD 14
+ * Get conversation history for a report.
  */
-export async function sendChatMessage(
-  _reportId: string,
-  _message: string
-): Promise<{ response: string }> {
-  throw new Error("Not implemented - coming in FRD 14");
+export async function getChatHistory(reportId: string): Promise<ConversationHistoryResponse> {
+  return fetchAPI<ConversationHistoryResponse>(`/chat/${reportId}/history`);
 }
+
+/**
+ * Send a chat message URL (for SSE streaming).
+ * Returns the URL to use with EventSource or fetch streaming.
+ */
+export function getChatMessageUrl(reportId: string): string {
+  return `${API_BASE}/chat/${reportId}/message`;
+}
+

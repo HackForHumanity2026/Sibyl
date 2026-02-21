@@ -20,5 +20,5 @@ export type { UseSSEReturn } from "./useSSE";
 export { useDashboard } from "./useDashboard";
 export type { UseDashboardReturn } from "./useDashboard";
 
-// TODO: Implement hooks in subsequent FRDs:
-// - useChat (FRD 14) - Chatbot conversation state
+export { useChat } from "./useChat";
+export type { UseChatReturn } from "./useChat";

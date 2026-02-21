@@ -3,7 +3,10 @@
 Provides a single interface for all LLM calls in Sibyl through the OpenRouter gateway.
 """
 
+import asyncio
+import json
 import logging
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -192,6 +195,83 @@ class OpenRouterClient:
         if last_exception:
             raise Exception(msg) from last_exception
         raise Exception(msg)
+
+    async def stream_chat_completion(
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> AsyncIterator[str]:
+        """
+        Stream a chat completion response from OpenRouter.
+
+        Yields individual text tokens as they arrive, enabling real-time display.
+        Uses Server-Sent Events (SSE) format from OpenRouter's streaming API.
+
+        Args:
+            model: OpenRouter model identifier (e.g., Models.GEMINI_FLASH)
+            messages: List of message dicts with 'role' and 'content' keys
+            temperature: Sampling temperature (0.0 = deterministic)
+            max_tokens: Maximum tokens in response (optional)
+
+        Yields:
+            str: Individual text tokens from the response
+
+        Raises:
+            httpx.HTTPStatusError: On HTTP errors
+            Exception: On connection errors
+        """
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "stream": True,
+        }
+
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+
+        logger.debug(
+            "OpenRouter streaming request: model=%s, messages=%d",
+            model,
+            len(messages),
+        )
+
+        async with self._client.stream("POST", "/chat/completions", json=payload) as response:
+            response.raise_for_status()
+
+            buffer = ""
+            async for chunk in response.aiter_text():
+                buffer += chunk
+                
+                # Process complete SSE lines
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    
+                    if not line:
+                        continue
+                    
+                    if line.startswith("data: "):
+                        data_str = line[6:]
+                        
+                        # Check for stream end
+                        if data_str == "[DONE]":
+                            logger.debug("OpenRouter stream completed")
+                            return
+                        
+                        try:
+                            data = json.loads(data_str)
+                            choices = data.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
+                        except json.JSONDecodeError:
+                            logger.warning("Failed to parse SSE data: %s", data_str[:100])
+                            continue
 
 
 # Singleton client instance
