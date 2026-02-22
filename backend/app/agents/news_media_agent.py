@@ -16,7 +16,6 @@ The News/Media Agent performs:
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -33,7 +32,17 @@ from app.agents.state import (
     ReinvestigationRequest,
     RoutingAssignment,
     SibylState,
-    StreamEvent,
+)
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_evidence_found,
+    emit_search_executed,
+    emit_source_evaluated,
+    emit_contradiction_detected,
+    emit_event,
+    emit_error,
 )
 from app.agents.tools.search_web import SearchAPIError, search_web_async
 from app.core.database import generate_uuid7
@@ -873,8 +882,7 @@ async def investigate_news(state: SibylState) -> dict:
 
     Reads: state.routing_plan, state.claims, state.info_requests,
            state.reinvestigation_requests, state.iteration_count
-    Writes: state.findings, state.agent_status, state.info_requests,
-            state.events
+    Writes: state.findings, state.agent_status, state.info_requests
 
     Responsibilities:
     1. Find claims assigned to this agent in the routing plan.
@@ -886,22 +894,14 @@ async def investigate_news(state: SibylState) -> dict:
     7. Handle InfoRequests and re-investigation requests.
 
     Returns:
-        Partial state update with findings, agent status, and events.
+        Partial state update with findings, agent status.
     """
     agent_name = "news_media"
-    events: list[StreamEvent] = []
     findings: list[AgentFinding] = []
     info_requests: list[InfoRequest] = []
 
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name=agent_name,
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend)
+    emit_agent_started(agent_name)
 
     # Find claims assigned to this agent
     routing_plan = state.get("routing_plan", [])
@@ -925,18 +925,7 @@ async def investigate_news(state: SibylState) -> dict:
 
     if not assigned_claims:
         # No claims assigned
-        events.append(
-            StreamEvent(
-                event_type="agent_completed",
-                agent_name=agent_name,
-                data={
-                    "claims_processed": 0,
-                    "findings_count": 0,
-                    "contradictions_count": 0,
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_completed(agent_name, claims_processed=0, findings_count=0)
         return {
             "findings": findings,
             "agent_status": {
@@ -947,77 +936,44 @@ async def investigate_news(state: SibylState) -> dict:
                     claims_completed=0,
                 )
             },
-            "events": events,
         }
 
     # Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name=agent_name,
-            data={
-                "message": f"Investigating {len(assigned_claims)} claims via public news sources..."
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_thinking(agent_name, f"Investigating {len(assigned_claims)} claims via public news sources...")
 
     total_contradictions = 0
 
     # Process claims in parallel with rate limiting
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
     
-    async def process_single_claim(claim: Claim) -> tuple[list[AgentFinding], list[StreamEvent], list[InfoRequest], int]:
-        """Process a single claim and return findings, events, info requests, and contradiction count."""
+    async def process_single_claim(claim: Claim) -> tuple[list[AgentFinding], list[InfoRequest], int]:
+        """Process a single claim and return findings, info requests, and contradiction count.
+        
+        Events are emitted directly via stream_utils (context propagates in Python 3.12).
+        """
         claim_findings: list[AgentFinding] = []
-        claim_events: list[StreamEvent] = []
         claim_info_requests: list[InfoRequest] = []
         claim_contradictions = 0
         
         async with semaphore:
             try:
                 # Emit claim investigation event
-                claim_events.append(
-                    StreamEvent(
-                        event_type="claim_investigating",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "claim_text": claim.text[:200],
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
+                emit_event("claim_investigating", agent_name, {
+                    "claim_id": claim.claim_id,
+                    "claim_text": claim.text[:200],
+                })
                 
                 # Check for re-investigation context
                 reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
                 
                 if reinvest_request:
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={
-                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}")
                     search_results = await _process_reinvestigation(
                         claim, reinvest_request, company_name
                     )
                 else:
                     # Standard investigation
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={
-                                "message": f"Constructing search queries for claim..."
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, "Constructing search queries for claim...")
                     
                     # Construct queries
                     queries = await _construct_search_queries(claim, company_name)
@@ -1026,21 +982,11 @@ async def investigate_news(state: SibylState) -> dict:
                     search_results = await _execute_web_searches(queries)
                     
                     # Emit search executed event
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="search_executed",
-                            agent_name=agent_name,
-                            data={
-                                "claim_id": claim.claim_id,
-                                "queries": {
-                                    "company_specific": queries.company_specific,
-                                    "industry_wide": queries.industry_wide,
-                                    "controversy": queries.controversy,
-                                },
-                                "results_count": len(search_results),
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
+                    emit_search_executed(
+                        agent_name=agent_name,
+                        query=queries.company_specific,
+                        results_count=len(search_results),
+                        source="web",
                     )
                 
                 # Process each search result
@@ -1051,17 +997,11 @@ async def investigate_news(state: SibylState) -> dict:
                     credibility = await _assign_credibility_tier(source)
                     
                     # Emit source evaluated event
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="source_evaluated",
-                            agent_name=agent_name,
-                            data={
-                                "source_url": source.get("url", ""),
-                                "tier": credibility.tier,
-                                "domain": source.get("source_domain", ""),
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
+                    emit_source_evaluated(
+                        agent_name=agent_name,
+                        source_name=source.get("source_domain", ""),
+                        credibility_tier=credibility.tier,
+                        url=source.get("url"),
                     )
                     
                     # Detect contradiction
@@ -1071,18 +1011,12 @@ async def investigate_news(state: SibylState) -> dict:
                         claim_contradictions += 1
                         
                         # Emit contradiction detected event
-                        claim_events.append(
-                            StreamEvent(
-                                event_type="contradiction_detected",
-                                agent_name=agent_name,
-                                data={
-                                    "claim_id": claim.claim_id,
-                                    "source_url": source.get("url", ""),
-                                    "contradiction_type": contradiction.contradiction_type,
-                                    "tier": credibility.tier,
-                                },
-                                timestamp=datetime.now(timezone.utc).isoformat(),
-                            )
+                        emit_contradiction_detected(
+                            agent_name=agent_name,
+                            claim_id=claim.claim_id,
+                            source1=source.get("source_domain", "source"),
+                            source2="claim",
+                            description=contradiction.explanation[:200] if contradiction.explanation else "",
                         )
                     
                     # Generate relevance summary
@@ -1110,18 +1044,13 @@ async def investigate_news(state: SibylState) -> dict:
                     claim_findings.append(summary_finding)
                     
                     # Emit evidence found event
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="evidence_found",
-                            agent_name=agent_name,
-                            data={
-                                "claim_id": claim.claim_id,
-                                "findings_count": len(source_findings),
-                                "contradictions_count": claim_contradictions,
-                                "supports_claim": summary_finding.supports_claim,
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
+                    emit_evidence_found(
+                        agent_name=agent_name,
+                        claim_id=claim.claim_id,
+                        evidence_type="news_investigation_summary",
+                        summary=summary_finding.summary[:200] if summary_finding.summary else "",
+                        supports_claim=summary_finding.supports_claim,
+                        confidence=summary_finding.confidence,
                     )
                 
                 # Check if cross-domain verification is needed
@@ -1142,18 +1071,11 @@ async def investigate_news(state: SibylState) -> dict:
                         )
                         claim_info_requests.append(info_req)
                         
-                        claim_events.append(
-                            StreamEvent(
-                                event_type="info_request_posted",
-                                agent_name=agent_name,
-                                data={
-                                    "request_id": info_req.request_id,
-                                    "target_agent": target_agent,
-                                    "description": description,
-                                },
-                                timestamp=datetime.now(timezone.utc).isoformat(),
-                            )
-                        )
+                        emit_event("info_request_posted", agent_name, {
+                            "request_id": info_req.request_id,
+                            "target_agent": target_agent,
+                            "description": description,
+                        })
                 
                 # Check for InfoResponses from other agents
                 info_resp_data = _process_info_responses(state, claim)
@@ -1161,10 +1083,11 @@ async def investigate_news(state: SibylState) -> dict:
                     # Incorporate into the last finding
                     source_findings[-1].details["cross_domain_evidence"] = info_resp_data
                 
-                return claim_findings, claim_events, claim_info_requests, claim_contradictions
+                return claim_findings, claim_info_requests, claim_contradictions
                     
             except Exception as e:
                 logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                emit_error(agent_name, f"Claim {claim.claim_id}: {str(e)}")
                 # Create error finding
                 error_finding = AgentFinding(
                     finding_id=str(generate_uuid7()),
@@ -1178,43 +1101,19 @@ async def investigate_news(state: SibylState) -> dict:
                     iteration=iteration_count + 1,
                 )
                 claim_findings.append(error_finding)
-                
-                claim_events.append(
-                    StreamEvent(
-                        event_type="error",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "message": str(e),
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                return claim_findings, claim_events, claim_info_requests, claim_contradictions
+                return claim_findings, claim_info_requests, claim_contradictions
     
     # Run all claims in parallel
     results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
     
     # Aggregate results
-    for claim_findings, claim_events, claim_info_requests, claim_contradictions in results:
+    for claim_findings, claim_info_requests, claim_contradictions in results:
         findings.extend(claim_findings)
-        events.extend(claim_events)
         info_requests.extend(claim_info_requests)
         total_contradictions += claim_contradictions
 
     # Emit completion event
-    events.append(
-        StreamEvent(
-            event_type="agent_completed",
-            agent_name=agent_name,
-            data={
-                "claims_processed": len(assigned_claims),
-                "findings_count": len(findings),
-                "contradictions_count": total_contradictions,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_completed(agent_name, claims_processed=len(assigned_claims), findings_count=len(findings))
 
     # Return partial state update
     result: dict = {
@@ -1227,7 +1126,6 @@ async def investigate_news(state: SibylState) -> dict:
                 claims_completed=len(assigned_claims),
             )
         },
-        "events": events,
     }
     
     if info_requests:

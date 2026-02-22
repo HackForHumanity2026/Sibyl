@@ -13,7 +13,6 @@ The Orchestrator is the supervisory node that:
 
 import json
 import logging
-from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +20,14 @@ from app.agents.state import (
     AgentStatus,
     RoutingAssignment,
     SibylState,
-    StreamEvent,
+)
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_claim_routed,
+    emit_reinvestigation,
+    emit_info_request_routed,
 )
 from app.core.database import generate_uuid7
 from app.services.openrouter_client import Models, openrouter_client
@@ -361,10 +367,8 @@ async def orchestrate(state: SibylState) -> dict:
         state: Current pipeline state with claims and agent status
         
     Returns:
-        Partial state update with routing plan, agent status, and events
+        Partial state update with routing plan, agent status
     """
-    events: list[StreamEvent] = []
-    
     # Get state values using dict access
     claims = state.get("claims", [])
     current_routing_plan = state.get("routing_plan", [])
@@ -373,15 +377,8 @@ async def orchestrate(state: SibylState) -> dict:
     reinvestigation_requests = state.get("reinvestigation_requests", [])
     iteration_count = state.get("iteration_count", 0)
     
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name="orchestrator",
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend)
+    emit_agent_started("orchestrator")
     
     # Determine operating mode
     is_initial_routing = (
@@ -400,55 +397,25 @@ async def orchestrate(state: SibylState) -> dict:
         # Initial routing mode
         # =====================================================================
         
-        events.append(
-            StreamEvent(
-                event_type="agent_thinking",
-                agent_name="orchestrator",
-                data={
-                    "message": f"Analyzing {len(claims)} claims for routing..."
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_thinking("orchestrator", f"Analyzing {len(claims)} claims for routing...")
         
         # Try LLM routing first
         llm_assignments = await _route_with_llm(claims)
         
         if llm_assignments:
             routing_plan = llm_assignments
-            events.append(
-                StreamEvent(
-                    event_type="agent_thinking",
-                    agent_name="orchestrator",
-                    data={"message": "Created routing plan using LLM analysis"},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
+            emit_agent_thinking("orchestrator", "Created routing plan using LLM analysis")
         else:
             # Fallback to rule-based routing
             routing_plan = _apply_default_routing(claims)
-            events.append(
-                StreamEvent(
-                    event_type="agent_thinking",
-                    agent_name="orchestrator",
-                    data={"message": "Using default routing rules (LLM unavailable)"},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
+            emit_agent_thinking("orchestrator", "Using default routing rules (LLM unavailable)")
         
         # Emit claim_routed events
         for assignment in routing_plan:
-            events.append(
-                StreamEvent(
-                    event_type="claim_routed",
-                    agent_name="orchestrator",
-                    data={
-                        "claim_id": assignment.claim_id,
-                        "assigned_agents": assignment.assigned_agents,
-                        "reasoning": assignment.reasoning,
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
+            emit_claim_routed(
+                claim_id=assignment.claim_id,
+                assigned_agents=assignment.assigned_agents,
+                reasoning=assignment.reasoning,
             )
         
         # Initialize agent status for all agents in the routing plan
@@ -470,16 +437,7 @@ async def orchestrate(state: SibylState) -> dict:
         
         new_iteration_count = iteration_count + 1
         
-        events.append(
-            StreamEvent(
-                event_type="agent_thinking",
-                agent_name="orchestrator",
-                data={
-                    "message": f"Processing re-investigation requests (cycle {new_iteration_count})"
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_thinking("orchestrator", f"Processing re-investigation requests (cycle {new_iteration_count})")
         
         # Process reinvestigation requests
         for request in reinvestigation_requests:
@@ -492,18 +450,11 @@ async def orchestrate(state: SibylState) -> dict:
             routing_plan.append(assignment)
             
             # Emit reinvestigation event
-            events.append(
-                StreamEvent(
-                    event_type="reinvestigation",
-                    agent_name="orchestrator",
-                    data={
-                        "claim_id": request.claim_id,
-                        "target_agents": request.target_agents,
-                        "cycle": new_iteration_count,
-                        "evidence_gap": request.evidence_gap,
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
+            emit_reinvestigation(
+                claim_id=request.claim_id,
+                target_agents=request.target_agents,
+                cycle=new_iteration_count,
+                evidence_gap=request.evidence_gap,
             )
             
             # Update agent status for re-activated agents
@@ -529,17 +480,11 @@ async def orchestrate(state: SibylState) -> dict:
             "target_agents" in request.context and
             request.context.get("_event_emitted") is not True
         ):
-            events.append(
-                StreamEvent(
-                    event_type="info_request_routed",
-                    agent_name="orchestrator",
-                    data={
-                        "requesting_agent": request.requesting_agent,
-                        "target_agents": request.context["target_agents"],
-                        "description": request.description[:200],
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
+            emit_info_request_routed(
+                request_id=request.request_id,
+                requesting_agent=request.requesting_agent,
+                target_agents=request.context["target_agents"],
+                description=request.description[:200],
             )
             request.context["_event_emitted"] = True
     
@@ -554,18 +499,7 @@ async def orchestrate(state: SibylState) -> dict:
             agent_workload[agent_name] = count
     
     # Emit completion event
-    events.append(
-        StreamEvent(
-            event_type="agent_completed",
-            agent_name="orchestrator",
-            data={
-                "routing_plan_size": len(routing_plan),
-                "agent_workload": agent_workload,
-                "iteration": new_iteration_count,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_completed("orchestrator", claims_processed=len(routing_plan))
     
     # Return only NEW items - the reducer will merge them
     # NOTE: routing_plan is new assignments only; the reducer will concatenate
@@ -575,5 +509,4 @@ async def orchestrate(state: SibylState) -> dict:
         "info_requests": updated_info_requests,
         "iteration_count": new_iteration_count,
         "reinvestigation_requests": [],  # Clear processed requests
-        "events": events,
     }

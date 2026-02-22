@@ -14,7 +14,6 @@ import logging
 import math
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -23,7 +22,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.state import Claim as StateClaim
-from app.agents.state import SibylState, StreamEvent
+from app.agents.state import SibylState
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_error,
+)
 from app.core.database import generate_uuid7
 from app.models.claim import Claim
 from app.models.report import Report
@@ -736,29 +741,13 @@ async def extract_claims(state: SibylState) -> dict:
         state: Current pipeline state with document content
 
     Returns:
-        Partial state update with extracted claims and events
+        Partial state update with extracted claims
     """
-    events: list[StreamEvent] = []
-
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name="claims",
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend via stream_utils)
+    emit_agent_started("claims")
 
     # Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name="claims",
-            data={"message": "Analyzing document structure..."},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_thinking("claims", "Analyzing document structure...")
 
     try:
         # ================================================================
@@ -775,16 +764,7 @@ async def extract_claims(state: SibylState) -> dict:
         )
 
         # Emit thinking event
-        events.append(
-            StreamEvent(
-                event_type="agent_thinking",
-                agent_name="claims",
-                data={
-                    "message": f"Processing {len(chunks)} document chunks concurrently..."
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_thinking("claims", f"Processing {len(chunks)} document chunks concurrently...")
 
         # ================================================================
         # Phase 2: Process chunks concurrently (Map phase)
@@ -820,16 +800,7 @@ async def extract_claims(state: SibylState) -> dict:
         )
 
         # Emit thinking event
-        events.append(
-            StreamEvent(
-                event_type="agent_thinking",
-                agent_name="claims",
-                data={
-                    "message": f"Extracted {len(all_claims)} raw claims. Deduplicating with LLM assistance..."
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_thinking("claims", f"Extracted {len(all_claims)} raw claims. Deduplicating with LLM assistance...")
 
         # ================================================================
         # Phase 4: Deduplicate claims (Reduce phase)
@@ -843,16 +814,7 @@ async def extract_claims(state: SibylState) -> dict:
         )
 
         # Emit thinking event
-        events.append(
-            StreamEvent(
-                event_type="agent_thinking",
-                agent_name="claims",
-                data={
-                    "message": f"Identified {len(unique_claims)} unique claims."
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_thinking("claims", f"Identified {len(unique_claims)} unique claims.")
 
         # ================================================================
         # Phase 5: Convert to state format
@@ -893,34 +855,14 @@ async def extract_claims(state: SibylState) -> dict:
         )
 
         # Emit completion event
-        events.append(
-            StreamEvent(
-                event_type="agent_completed",
-                agent_name="claims",
-                data={
-                    "claim_count": len(state_claims),
-                    "by_type": by_type,
-                    "by_priority": by_priority,
-                    "chunks_processed": len(chunks),
-                    "pages_covered": len(pages_covered),
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_completed("claims", claims_processed=len(state_claims))
 
-        return {"claims": state_claims, "events": events}
+        return {"claims": state_claims}
 
     except Exception as e:
         logger.exception("Error during claims extraction")
-        events.append(
-            StreamEvent(
-                event_type="error",
-                agent_name="claims",
-                data={"message": str(e)},
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
-        return {"claims": [], "events": events}
+        emit_error("claims", str(e))
+        return {"claims": []}
 
 
 def _parse_lenient_response(response: str) -> ClaimsExtractionResult:

@@ -39,7 +39,13 @@ from app.agents.state import (
     InfoResponse,
     ReinvestigationRequest,
     SibylState,
-    StreamEvent,
+)
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_evidence_found,
+    emit_error,
 )
 from app.core.config import settings
 from app.core.database import generate_uuid7
@@ -595,8 +601,7 @@ async def investigate_geography(state: SibylState) -> dict:
 
     Reads: state.routing_plan, state.claims, state.info_requests,
            state.reinvestigation_requests, state.iteration_count
-    Writes: state.findings, state.agent_status, state.info_responses,
-            state.events
+    Writes: state.findings, state.agent_status, state.info_responses
 
     Responsibilities:
     1. Extract location information from routed geographic claims.
@@ -608,22 +613,14 @@ async def investigate_geography(state: SibylState) -> dict:
     7. Handle InfoRequests from other agents.
 
     Returns:
-        Partial state update with findings, agent status, and events.
+        Partial state update with findings, agent status.
     """
     agent_name = "geography"
-    events: list[StreamEvent] = []
     findings: list[AgentFinding] = []
     info_requests: list[InfoRequest] = []
 
-    # 1. Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name=agent_name,
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # 1. Emit start event (immediately sent to frontend)
+    emit_agent_started(agent_name)
 
     # 2. Find claims assigned to this agent
     routing_plan = state.get("routing_plan", [])
@@ -645,14 +642,7 @@ async def investigate_geography(state: SibylState) -> dict:
     )
 
     if not assigned_claims:
-        events.append(
-            StreamEvent(
-                event_type="agent_completed",
-                agent_name=agent_name,
-                data={"claims_processed": 0, "findings_count": 0},
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_completed(agent_name, claims_processed=0, findings_count=0)
         return {
             "findings": findings,
             "agent_status": {
@@ -663,42 +653,26 @@ async def investigate_geography(state: SibylState) -> dict:
                     claims_completed=0,
                 )
             },
-            "events": events,
         }
 
     # 3. Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name=agent_name,
-            data={
-                "message": f"Analyzing {len(assigned_claims)} geographic claims using satellite imagery..."
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_thinking(agent_name, f"Analyzing {len(assigned_claims)} geographic claims using satellite imagery...")
 
     # 4. Process claims in parallel with rate limiting
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
     
-    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent]]:
-        """Process a single claim and return finding and events."""
-        claim_events: list[StreamEvent] = []
+    async def process_single_claim(claim: Claim) -> AgentFinding:
+        """Process a single claim and return finding.
         
+        Events are emitted directly via stream_utils (context propagates in Python 3.12).
+        """
         async with semaphore:
             try:
                 # Check for re-investigation
                 reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
 
                 # Step 4a: Extract location
-                claim_events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={"message": f"Extracting location from claim {claim.claim_id}..."},
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
+                emit_agent_thinking(agent_name, f"Extracting location from claim {claim.claim_id}...")
 
                 location = await _extract_location(claim)
 
@@ -715,20 +689,13 @@ async def investigate_geography(state: SibylState) -> dict:
                         confidence="low",
                         iteration=iteration_count + 1,
                     )
-                    return finding, claim_events
+                    return finding
 
                 # Step 4b: Geocode if needed
                 if location.coordinates:
                     lat, lon = location.coordinates[0], location.coordinates[1]
                 elif location.location_name:
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={"message": f"Geocoding '{location.location_name}'..."},
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, f"Geocoding '{location.location_name}'...")
 
                     coords = await _geocode_location(location.location_name)
                     if coords is None:
@@ -743,7 +710,7 @@ async def investigate_geography(state: SibylState) -> dict:
                             confidence="low",
                             iteration=iteration_count + 1,
                         )
-                        return finding, claim_events
+                        return finding
 
                     lat, lon = coords
                     location.coordinates = [lat, lon]
@@ -760,7 +727,7 @@ async def investigate_geography(state: SibylState) -> dict:
                         confidence="low",
                         iteration=iteration_count + 1,
                     )
-                    return finding, claim_events
+                    return finding
 
                 # Step 4c: Determine time range
                 time_range = None
@@ -775,14 +742,7 @@ async def investigate_geography(state: SibylState) -> dict:
                 area_hectares = _parse_area_hectares(location.area_description)
 
                 # Step 4e: Query satellite imagery
-                claim_events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={"message": f"Querying MPC for Sentinel-2 imagery at ({lat:.4f}, {lon:.4f})..."},
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
+                emit_agent_thinking(agent_name, f"Querying MPC for Sentinel-2 imagery at ({lat:.4f}, {lon:.4f})...")
 
                 stac_items = await _query_satellite_imagery(
                     lat, lon, time_range, area_hectares
@@ -796,14 +756,7 @@ async def investigate_geography(state: SibylState) -> dict:
                 land_cover = None
 
                 # Step 4h: Analyze with Gemini
-                claim_events.append(
-                    StreamEvent(
-                        event_type="agent_thinking",
-                        agent_name=agent_name,
-                        data={"message": "Analyzing satellite imagery data with Gemini 2.5 Pro..."},
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
+                emit_agent_thinking(agent_name, "Analyzing satellite imagery data with Gemini 2.5 Pro...")
 
                 analysis = await _analyze_with_gemini(
                     claim=claim,
@@ -827,27 +780,16 @@ async def investigate_geography(state: SibylState) -> dict:
                 )
 
                 # Step 4j: Emit evidence found event
-                claim_events.append(
-                    StreamEvent(
-                        event_type="evidence_found",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "evidence_type": "satellite_imagery",
-                            "image_urls": finding.details.get("image_references", []),
-                            "location": {
-                                "name": location.location_name,
-                                "coordinates": location.coordinates,
-                            },
-                            "imagery_count": len(stac_items),
-                            "supports_claim": analysis.supports_claim,
-                            "summary": analysis.reasoning[:200],
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
+                emit_evidence_found(
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="satellite_imagery",
+                    summary=analysis.reasoning[:200] if analysis.reasoning else "Satellite analysis completed",
+                    supports_claim=analysis.supports_claim,
+                    confidence=finding.confidence,
                 )
                 
-                return finding, claim_events
+                return finding
 
             except Exception as e:
                 logger.error("Error processing claim %s: %s", claim.claim_id, e)
@@ -863,23 +805,15 @@ async def investigate_geography(state: SibylState) -> dict:
                     iteration=iteration_count + 1,
                 )
 
-                claim_events.append(
-                    StreamEvent(
-                        event_type="error",
-                        agent_name=agent_name,
-                        data={"claim_id": claim.claim_id, "message": str(e)},
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                return error_finding, claim_events
+                emit_error(agent_name, f"Claim {claim.claim_id}: {str(e)}")
+                return error_finding
     
     # Run all claims in parallel
     results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
     
     # Aggregate results
-    for finding, claim_events in results:
+    for finding in results:
         findings.append(finding)
-        events.extend(claim_events)
 
     # 5. Process InfoRequests
     info_responses: list[InfoResponse] = []
@@ -900,17 +834,7 @@ async def investigate_geography(state: SibylState) -> dict:
             info_responses.append(info_resp)
 
     # 6. Emit completion event
-    events.append(
-        StreamEvent(
-            event_type="agent_completed",
-            agent_name=agent_name,
-            data={
-                "claims_processed": len(assigned_claims),
-                "findings_count": len(findings),
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_completed(agent_name, claims_processed=len(assigned_claims), findings_count=len(findings))
 
     # 7. Return partial state
     result: dict = {
@@ -923,7 +847,6 @@ async def investigate_geography(state: SibylState) -> dict:
                 claims_completed=len(assigned_claims),
             )
         },
-        "events": events,
     }
 
     if info_requests:

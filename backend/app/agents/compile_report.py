@@ -9,14 +9,19 @@ This is the terminal node in the pipeline that:
 """
 
 import logging
-from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.state import SibylState, StreamEvent
+from app.agents.state import SibylState
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_pipeline_completed,
+    emit_error,
+)
 from app.core.database import generate_uuid7, get_db_session
 from app.models.claim import Claim as DBClaim
 from app.models.finding import Finding
@@ -47,7 +52,7 @@ async def compile_report(state: SibylState) -> dict:
     Returns:
         Empty partial state update (terminal node)
     """
-    events: list[StreamEvent] = []
+    agent_name = "compiler"
     
     # Get state values using dict access
     verdicts = state.get("verdicts", [])
@@ -55,27 +60,14 @@ async def compile_report(state: SibylState) -> dict:
     claims = state.get("claims", [])
     iteration_count = state.get("iteration_count", 0)
     
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name="compiler",
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend)
+    emit_agent_started(agent_name)
     
     # Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name="compiler",
-            data={
-                "message": f"Compiling report with {len(verdicts)} verdicts "
-                f"and {len(findings)} findings..."
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
+    emit_agent_thinking(
+        agent_name,
+        f"Compiling report with {len(verdicts)} verdicts "
+        f"and {len(findings)} findings..."
     )
     
     # Persist to database
@@ -85,14 +77,7 @@ async def compile_report(state: SibylState) -> dict:
             break
     except Exception as e:
         logger.exception("Failed to persist results: %s", e)
-        events.append(
-            StreamEvent(
-                event_type="error",
-                agent_name="compiler",
-                data={"message": f"Failed to persist results: {e}"},
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_error(agent_name, f"Failed to persist results: {e}")
     
     # Compute summary statistics
     verdict_counts: dict[str, int] = {}
@@ -104,26 +89,14 @@ async def compile_report(state: SibylState) -> dict:
         agent_findings[f.agent_name] = agent_findings.get(f.agent_name, 0) + 1
     
     # Emit pipeline_completed event
-    events.append(
-        StreamEvent(
-            event_type="pipeline_completed",
-            agent_name=None,
-            data={
-                "total_claims": len(claims),
-                "total_findings": len(findings),
-                "total_verdicts": len(verdicts),
-                "iterations": iteration_count,
-                "verdict_breakdown": verdict_counts,
-                "findings_by_agent": agent_findings,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
+    emit_pipeline_completed(
+        total_claims=len(claims),
+        total_verdicts=len(verdicts),
+        iterations=iteration_count,
     )
     
-    # Return only NEW events - the reducer will merge them
-    return {
-        "events": events,
-    }
+    # Return empty state - events are streamed directly
+    return {}
 
 
 async def _persist_results(state: SibylState, db: AsyncSession) -> None:

@@ -14,7 +14,6 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.callbacks import SSECallbackHandler
 from app.agents.event_registry import get_event_queue, remove_event_queue
 from app.agents.graph import get_checkpointer, get_compiled_graph, EXTRACT_CLAIMS
 from app.agents.state import SibylState, StreamEvent, Claim as StateClaim
@@ -219,7 +218,6 @@ async def run_pipeline(report_id: str, db: AsyncSession) -> None:
     
     # Set up SSE streaming
     event_queue = get_event_queue(report_id)
-    callback_handler = SSECallbackHandler(event_queue)
     
     # Compile graph with checkpointer
     try:
@@ -239,69 +237,64 @@ async def run_pipeline(report_id: str, db: AsyncSession) -> None:
     }
     
     try:
-        # Execute the pipeline
+        # Execute the pipeline with real-time streaming
+        # stream_mode=["updates", "custom"] enables:
+        # - "updates": State updates after each node completes
+        # - "custom": Real-time events from get_stream_writer() calls within nodes
         logger.warning("Invoking pipeline graph for report: %s", report_id)
         logger.warning("Initial state keys: %s", list(initial_state.keys()))
         
-        iteration_count = 0
+        node_count = 0
         
-        async for event in compiled_graph.astream(initial_state, config=config):
-            iteration_count += 1
-            logger.warning("=== ASTREAM ITERATION %d ===", iteration_count)
-            logger.warning("Event keys: %s", list(event.keys()))
-            
-            # LangGraph astream yields dict with node outputs: {node_name: node_output}
-            for node_name, node_output in event.items():
-                logger.warning("Node completed: %s (output type: %s)", node_name, type(node_output).__name__)
-                
-                # Get events from this node's output (each node returns its OWN events list)
-                if hasattr(node_output, 'events'):
-                    node_events = node_output.events
-                elif isinstance(node_output, dict) and 'events' in node_output:
-                    node_events = node_output.get('events', [])
-                else:
-                    node_events = []
-                
-                # Push ALL events from this node to the queue (no slicing - each node has its own list)
-                for event_obj in node_events:
+        async for stream_mode, chunk in compiled_graph.astream(
+            initial_state,
+            config=config,
+            stream_mode=["updates", "custom"],
+        ):
+            if stream_mode == "custom":
+                # Real-time events from get_stream_writer() - sent immediately during node execution
+                if isinstance(chunk, StreamEvent):
                     try:
-                        await event_queue.put(event_obj)
-                        logger.debug("Pushed event: %s from %s", event_obj.event_type, node_name)
+                        await event_queue.put(chunk)
+                        logger.debug("Pushed custom event: %s from %s", chunk.event_type, chunk.agent_name)
                     except asyncio.QueueFull:
-                        logger.warning("Event queue full, dropping event")
-                
-                logger.warning("Pushed %d events from node %s", len(node_events), node_name)
-                
-                # Log output contents for debugging
-                if isinstance(node_output, dict):
-                    logger.warning("Node %s output keys: %s", node_name, list(node_output.keys()))
-                    for key, value in node_output.items():
-                        if key != 'events':  # Don't log events again
-                            if isinstance(value, list):
-                                logger.warning("  %s: list of %d items", key, len(value))
-                            elif isinstance(value, dict):
-                                logger.warning("  %s: dict with keys %s", key, list(value.keys())[:5])
-                            else:
-                                logger.warning("  %s: %s", key, type(value).__name__)
-                
-                # Persist claims immediately after extraction (so they're saved even if pipeline is interrupted)
-                if node_name == EXTRACT_CLAIMS:
-                    if isinstance(node_output, dict) and 'claims' in node_output:
-                        extracted_claims = node_output.get('claims', [])
-                        if extracted_claims:
-                            logger.warning("Persisting %d claims immediately", len(extracted_claims))
-                            await _persist_claims(report_id, extracted_claims, db)
-                
-                # Persist findings immediately after each specialist agent completes
-                if node_name.startswith('investigate_'):
-                    if isinstance(node_output, dict) and 'findings' in node_output:
-                        new_findings = node_output.get('findings', [])
-                        if new_findings:
-                            logger.warning("Persisting %d findings from %s", len(new_findings), node_name)
-                            await _persist_findings(report_id, new_findings, db)
+                        logger.warning("Event queue full, dropping custom event")
+                elif isinstance(chunk, dict):
+                    # Handle dict-formatted events (convert to StreamEvent)
+                    try:
+                        event_obj = StreamEvent(**chunk)
+                        await event_queue.put(event_obj)
+                        logger.debug("Pushed custom dict event: %s", event_obj.event_type)
+                    except Exception as e:
+                        logger.warning("Invalid custom event dict: %s", e)
+            
+            elif stream_mode == "updates":
+                # State updates - node completed, extract info for persistence
+                for node_name, node_output in chunk.items():
+                    node_count += 1
+                    logger.warning("Node completed: %s (output type: %s)", node_name, type(node_output).__name__)
+                    
+                    # Log output contents for debugging
+                    if isinstance(node_output, dict):
+                        logger.debug("Node %s output keys: %s", node_name, list(node_output.keys()))
+                    
+                    # Persist claims immediately after extraction
+                    if node_name == EXTRACT_CLAIMS:
+                        if isinstance(node_output, dict) and 'claims' in node_output:
+                            extracted_claims = node_output.get('claims', [])
+                            if extracted_claims:
+                                logger.warning("Persisting %d claims immediately", len(extracted_claims))
+                                await _persist_claims(report_id, extracted_claims, db)
+                    
+                    # Persist findings immediately after each specialist agent completes
+                    if node_name.startswith('investigate_'):
+                        if isinstance(node_output, dict) and 'findings' in node_output:
+                            new_findings = node_output.get('findings', [])
+                            if new_findings:
+                                logger.warning("Persisting %d findings from %s", len(new_findings), node_name)
+                                await _persist_findings(report_id, new_findings, db)
         
-        logger.warning("Pipeline astream completed for report: %s", report_id)
-        logger.warning("Pipeline completed successfully for report: %s", report_id)
+        logger.warning("Pipeline completed for report %s (%d nodes)", report_id, node_count)
         
         # Push sentinel to close SSE connection
         await event_queue.put(None)
@@ -413,24 +406,32 @@ async def run_pipeline_skip_claims(
     }
     
     try:
-        # Execute starting from orchestrator
-        # Note: This requires customizing the graph entry point, 
-        # which is done by setting claims in initial state
-        # The extract_claims node will see claims already exist and skip
+        # Execute starting from orchestrator with real-time streaming
+        # Note: Claims are pre-populated in initial_state, extract_claims will skip
         
-        last_event_count = 0
-        
-        async for event in compiled_graph.astream(initial_state, config=config):
-            for node_name, node_output in event.items():
-                if isinstance(node_output, dict) and 'events' in node_output:
-                    state_events = node_output.get('events', [])
-                    for event_obj in state_events[last_event_count:]:
-                        try:
-                            await event_queue.put(event_obj)
-                        except asyncio.QueueFull:
-                            pass
-                    if state_events:
-                        last_event_count = len(state_events)
+        async for stream_mode, chunk in compiled_graph.astream(
+            initial_state,
+            config=config,
+            stream_mode=["updates", "custom"],
+        ):
+            if stream_mode == "custom":
+                # Real-time events from get_stream_writer()
+                if isinstance(chunk, StreamEvent):
+                    try:
+                        await event_queue.put(chunk)
+                    except asyncio.QueueFull:
+                        pass
+                elif isinstance(chunk, dict):
+                    try:
+                        event_obj = StreamEvent(**chunk)
+                        await event_queue.put(event_obj)
+                    except Exception:
+                        pass
+            
+            elif stream_mode == "updates":
+                # State updates - node completed
+                for node_name, node_output in chunk.items():
+                    logger.debug("Node completed (skip-claims): %s", node_name)
         
         await event_queue.put(None)
         

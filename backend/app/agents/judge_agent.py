@@ -13,7 +13,6 @@ The Judge Agent:
 
 import json
 import logging
-from datetime import datetime, timezone
 
 from app.agents.state import (
     AgentFinding,
@@ -22,7 +21,14 @@ from app.agents.state import (
     ClaimVerdict,
     ReinvestigationRequest,
     SibylState,
-    StreamEvent,
+)
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_evidence_evaluation,
+    emit_verdict_issued,
+    emit_reinvestigation_batch,
 )
 from app.services.openrouter_client import Models, openrouter_client
 
@@ -853,7 +859,7 @@ async def judge_evidence(state: SibylState) -> dict:
     Reads: state.findings, state.claims, state.agent_status,
            state.iteration_count, state.max_iterations
     Writes: state.verdicts, state.reinvestigation_requests,
-            state.iteration_count, state.events
+            state.iteration_count
     
     Responsibilities:
     1. Collect all findings for each claim from all specialist agents
@@ -868,10 +874,9 @@ async def judge_evidence(state: SibylState) -> dict:
         state: Current pipeline state with all agent findings
         
     Returns:
-        Partial state update with verdicts, reinvestigation_requests, iteration_count, events
+        Partial state update with verdicts, reinvestigation_requests, iteration_count
     """
     agent_name = "judge"
-    events: list[StreamEvent] = []
     
     # Get state values
     claims = state.get("claims", [])
@@ -880,27 +885,14 @@ async def judge_evidence(state: SibylState) -> dict:
     iteration_count = state.get("iteration_count", 0)
     max_iterations = state.get("max_iterations", 3)
     
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name=agent_name,
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend)
+    emit_agent_started(agent_name)
     
     # Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name=agent_name,
-            data={
-                "message": f"Evaluating evidence for {len(claims)} claims "
-                f"from {len(findings)} findings (iteration {iteration_count + 1}/{max_iterations})"
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
+    emit_agent_thinking(
+        agent_name,
+        f"Evaluating evidence for {len(claims)} claims "
+        f"from {len(findings)} findings (iteration {iteration_count + 1}/{max_iterations})"
     )
     
     # Group findings by claim_id
@@ -922,20 +914,14 @@ async def judge_evidence(state: SibylState) -> dict:
         evaluation = evaluate_evidence(claim, claim_findings, agent_status)
         
         # Emit evaluation event
-        events.append(
-            StreamEvent(
-                event_type="evidence_evaluation",
-                agent_name=agent_name,
-                data={
-                    "claim_id": claim.claim_id,
-                    "overall_score": evaluation["overall_score"],
-                    "sufficiency": evaluation["sufficiency"]["sufficiency"],
-                    "consistency": evaluation["consistency"]["consistency"],
-                    "quality": evaluation["quality"]["quality"],
-                    "completeness": evaluation["completeness"]["completeness"],
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
+        emit_evidence_evaluation(
+            agent_name=agent_name,
+            claim_id=claim.claim_id,
+            overall_score=evaluation["overall_score"],
+            sufficiency=evaluation["sufficiency"]["sufficiency"],
+            consistency=evaluation["consistency"]["consistency"],
+            quality=evaluation["quality"]["quality"],
+            completeness=evaluation["completeness"]["completeness"],
         )
         
         # Determine verdict (rule-based first)
@@ -980,20 +966,12 @@ async def judge_evidence(state: SibylState) -> dict:
         verdicts.append(verdict)
         
         # Emit verdict event
-        events.append(
-            StreamEvent(
-                event_type="verdict_issued",
-                agent_name=agent_name,
-                data={
-                    "claim_id": claim.claim_id,
-                    "verdict": verdict_str,
-                    "reasoning": reasoning[:300],
-                    "confidence": confidence,
-                    "ifrs_mapping": [m["paragraph"] for m in ifrs_mapping],
-                    "cycle_count": iteration_count + 1,
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
+        emit_verdict_issued(
+            agent_name=agent_name,
+            claim_id=claim.claim_id,
+            verdict=verdict_str,
+            confidence=confidence,
+            reasoning=reasoning[:300],
         )
         
         # Check if re-investigation needed
@@ -1011,45 +989,31 @@ async def judge_evidence(state: SibylState) -> dict:
         new_iteration_count = iteration_count + 1
         
         # Emit reinvestigation event
-        events.append(
-            StreamEvent(
-                event_type="reinvestigation",
-                agent_name=agent_name,
-                data={
-                    "claim_ids": [r.claim_id for r in reinvestigation_requests],
-                    "target_agents": list(set(
-                        agent for r in reinvestigation_requests
-                        for agent in r.target_agents
-                    )),
-                    "cycle": new_iteration_count,
-                    "evidence_gaps": [r.evidence_gap[:100] for r in reinvestigation_requests],
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
+        emit_reinvestigation_batch(
+            agent_name=agent_name,
+            claim_ids=[r.claim_id for r in reinvestigation_requests],
+            target_agents=list(set(
+                agent for r in reinvestigation_requests
+                for agent in r.target_agents
+            )),
+            cycle=new_iteration_count,
         )
     
     # Emit completion event
-    events.append(
-        StreamEvent(
-            event_type="agent_completed",
-            agent_name=agent_name,
-            data={
-                "claims_evaluated": len(verdicts),
-                "verdicts_issued": len(verdicts),
-                "verified_count": len([v for v in verdicts if v.verdict == "verified"]),
-                "contradicted_count": len([v for v in verdicts if v.verdict == "contradicted"]),
-                "unverified_count": len([v for v in verdicts if v.verdict == "unverified"]),
-                "insufficient_count": len([v for v in verdicts if v.verdict == "insufficient_evidence"]),
-                "reinvestigation_requests": len(reinvestigation_requests),
-                "iteration": new_iteration_count,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
+    emit_agent_completed(
+        agent_name,
+        claims_evaluated=len(verdicts),
+        verdicts_issued=len(verdicts),
+        verified_count=len([v for v in verdicts if v.verdict == "verified"]),
+        contradicted_count=len([v for v in verdicts if v.verdict == "contradicted"]),
+        unverified_count=len([v for v in verdicts if v.verdict == "unverified"]),
+        insufficient_count=len([v for v in verdicts if v.verdict == "insufficient_evidence"]),
+        reinvestigation_requests=len(reinvestigation_requests),
+        iteration=new_iteration_count,
     )
     
     return {
         "verdicts": verdicts,
         "reinvestigation_requests": reinvestigation_requests,
         "iteration_count": new_iteration_count,
-        "events": events,
     }

@@ -20,7 +20,6 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -36,7 +35,16 @@ from app.agents.state import (
     InfoRequest,
     ReinvestigationRequest,
     SibylState,
-    StreamEvent,
+)
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_evidence_found,
+    emit_disclosure_gap_found,
+    emit_ifrs_coverage_update,
+    emit_event,
+    emit_error,
 )
 from app.core.database import generate_uuid7
 from app.services.openrouter_client import Models, openrouter_client
@@ -950,7 +958,7 @@ async def investigate_legal(state: SibylState) -> dict:
 
     Reads: state.routing_plan, state.claims, state.report_id,
            state.info_responses, state.reinvestigation_requests
-    Writes: state.findings, state.events, state.info_requests, state.disclosure_gaps
+    Writes: state.findings, state.info_requests, state.disclosure_gaps
 
     Responsibilities:
     1. Identify claims assigned to the Legal Agent from routing_plan
@@ -962,23 +970,15 @@ async def investigate_legal(state: SibylState) -> dict:
     7. Participate in inter-agent communication when cross-domain context is needed
 
     Returns:
-        Partial state update with findings, events, and info_requests.
+        Partial state update with findings and info_requests.
     """
     agent_name = "legal"
-    events: list[StreamEvent] = []
     findings: list[AgentFinding] = []
     info_requests: list[InfoRequest] = []
     disclosure_gaps: list[dict] = []
 
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name=agent_name,
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend)
+    emit_agent_started(agent_name)
 
     # Find claims assigned to this agent
     routing_plan = state.get("routing_plan", [])
@@ -1003,18 +1003,7 @@ async def investigate_legal(state: SibylState) -> dict:
 
     if not assigned_claims:
         # No claims assigned to us
-        events.append(
-            StreamEvent(
-                event_type="agent_completed",
-                agent_name=agent_name,
-                data={
-                    "claims_processed": 0,
-                    "findings_count": 0,
-                    "gaps_found": 0,
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_completed(agent_name, claims_processed=0, findings_count=0)
         return {
             "findings": findings,
             "agent_status": {
@@ -1025,27 +1014,19 @@ async def investigate_legal(state: SibylState) -> dict:
                     claims_completed=0,
                 )
             },
-            "events": events,
         }
 
     # Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name=agent_name,
-            data={
-                "message": f"Investigating {len(assigned_claims)} claims against IFRS S1/S2 requirements..."
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_thinking(agent_name, f"Investigating {len(assigned_claims)} claims against IFRS S1/S2 requirements...")
 
     # Process claims in parallel with rate limiting
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
     
-    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent], list[InfoRequest]]:
-        """Process a single claim and return finding, events, and info requests."""
-        claim_events: list[StreamEvent] = []
+    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[InfoRequest]]:
+        """Process a single claim and return finding and info requests.
+        
+        Events are emitted directly via stream_utils (context propagates in Python 3.12).
+        """
         claim_info_requests: list[InfoRequest] = []
         
         async with semaphore:
@@ -1054,29 +1035,11 @@ async def investigate_legal(state: SibylState) -> dict:
                 reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
                 
                 if reinvest_request:
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={
-                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}")
                     assessment = await _perform_reinvestigation(claim, reinvest_request, report_id)
                 else:
                     # Standard investigation
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={
-                                "message": f"Retrieving IFRS paragraphs for {claim.claim_type} claim..."
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, f"Retrieving IFRS paragraphs for {claim.claim_type} claim...")
                     
                     # RAG retrieval
                     rag_results = await _retrieve_ifrs_paragraphs(claim, report_id)
@@ -1096,18 +1059,13 @@ async def investigate_legal(state: SibylState) -> dict:
                 )
                 
                 # Emit evidence found event
-                claim_events.append(
-                    StreamEvent(
-                        event_type="evidence_found",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "paragraph_ids": [m.paragraph_id for m in assessment.ifrs_mappings],
-                            "compliance_status": assessment.ifrs_mappings[0].compliance_status if assessment.ifrs_mappings else "unclear",
-                            "confidence": assessment.confidence,
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
+                emit_evidence_found(
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="ifrs_compliance",
+                    summary=finding.summary[:200] if finding.summary else "Compliance assessed",
+                    supports_claim=finding.supports_claim,
+                    confidence=finding.confidence,
                 )
                 
                 # Check if cross-domain verification is needed
@@ -1118,23 +1076,21 @@ async def investigate_legal(state: SibylState) -> dict:
                         info_req = _create_info_request(claim, target_agent, description)
                         claim_info_requests.append(info_req)
                         
-                        claim_events.append(
-                            StreamEvent(
-                                event_type="info_request_posted",
-                                agent_name=agent_name,
-                                data={
-                                    "request_id": info_req.request_id,
-                                    "target_agent": target_agent,
-                                    "description": description,
-                                },
-                                timestamp=datetime.now(timezone.utc).isoformat(),
-                            )
+                        emit_event(
+                            "info_request_posted",
+                            agent_name,
+                            {
+                                "request_id": info_req.request_id,
+                                "target_agent": target_agent,
+                                "description": description,
+                            },
                         )
                 
-                return finding, claim_events, claim_info_requests
+                return finding, claim_info_requests
                         
             except Exception as e:
                 logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                emit_error(agent_name, f"Claim {claim.claim_id}: {str(e)}")
                 # Create error finding
                 finding = AgentFinding(
                     finding_id=str(generate_uuid7()),
@@ -1147,59 +1103,36 @@ async def investigate_legal(state: SibylState) -> dict:
                     confidence="low",
                     iteration=iteration_count + 1,
                 )
-                return finding, claim_events, claim_info_requests
+                return finding, claim_info_requests
     
     # Run all claims in parallel
     results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
     
     # Aggregate results
-    for finding, claim_events, claim_info_requests in results:
+    for finding, claim_info_requests in results:
         findings.append(finding)
-        events.extend(claim_events)
         info_requests.extend(claim_info_requests)
 
     # Perform disclosure gap detection (only on first iteration to avoid duplicate gaps)
     if iteration_count == 0:
-        events.append(
-            StreamEvent(
-                event_type="agent_thinking",
-                agent_name=agent_name,
-                data={
-                    "message": "Performing disclosure gap detection against IFRS paragraph registry..."
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        )
+        emit_agent_thinking(agent_name, "Performing disclosure gap detection against IFRS paragraph registry...")
         
         try:
             gap_findings = await _detect_disclosure_gaps(state, findings)
             findings.extend(gap_findings)
             
             for gap in gap_findings:
-                events.append(
-                    StreamEvent(
-                        event_type="disclosure_gap_found",
-                        agent_name=agent_name,
-                        data={
-                            "paragraph_id": gap.details.get("paragraph_id"),
-                            "gap_status": gap.details.get("gap_status"),
-                            "pillar": gap.details.get("pillar"),
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
+                emit_disclosure_gap_found(
+                    agent_name=agent_name,
+                    gap_type=gap.details.get("gap_status", "unknown"),
+                    paragraph_id=gap.details.get("paragraph_id", ""),
+                    description=gap.summary[:200] if gap.summary else "",
                 )
                 disclosure_gaps.append(gap.details)
                 
         except Exception as e:
             logger.error("Gap detection failed: %s", e)
-            events.append(
-                StreamEvent(
-                    event_type="error",
-                    agent_name=agent_name,
-                    data={"message": f"Gap detection error: {str(e)}"},
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
-            )
+            emit_error(agent_name, f"Gap detection error: {str(e)}")
 
     # Emit IFRS coverage progress
     if findings:
@@ -1218,35 +1151,20 @@ async def investigate_legal(state: SibylState) -> dict:
                 pillar_counts[pillar]["gaps"] += 1
         
         for pillar, counts in pillar_counts.items():
-            events.append(
-                StreamEvent(
-                    event_type="ifrs_coverage_update",
-                    agent_name=agent_name,
-                    data={
-                        "pillar": pillar,
-                        "paragraphs_covered": counts["covered"],
-                        "paragraphs_gaps": counts["gaps"],
-                    },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                )
+            total_paras = counts["covered"] + counts["gaps"]
+            coverage_pct = (counts["covered"] / total_paras * 100) if total_paras > 0 else 0
+            emit_ifrs_coverage_update(
+                agent_name=agent_name,
+                total_paragraphs=total_paras,
+                covered_paragraphs=counts["covered"],
+                coverage_percentage=coverage_pct,
             )
 
     # Emit completion event
     gap_count = len([f for f in findings if f.evidence_type == "disclosure_gap"])
     compliance_count = len([f for f in findings if f.evidence_type == "ifrs_compliance"])
     
-    events.append(
-        StreamEvent(
-            event_type="agent_completed",
-            agent_name=agent_name,
-            data={
-                "claims_processed": len(assigned_claims),
-                "findings_count": compliance_count,
-                "gaps_found": gap_count,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_completed(agent_name, claims_processed=len(assigned_claims), findings_count=compliance_count)
 
     # Return partial state update
     result: dict = {
@@ -1259,7 +1177,6 @@ async def investigate_legal(state: SibylState) -> dict:
                 claims_completed=len(assigned_claims),
             )
         },
-        "events": events,
     }
     
     if info_requests:

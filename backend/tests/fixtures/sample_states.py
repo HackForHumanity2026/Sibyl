@@ -123,7 +123,6 @@ def create_base_state(**overrides: Any) -> SibylState:
         "iteration_count": 0,
         "max_iterations": 3,
         "disclosure_gaps": [],
-        "events": [],
     }
     base.update(overrides)
     return base

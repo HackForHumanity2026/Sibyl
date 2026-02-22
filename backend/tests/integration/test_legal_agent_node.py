@@ -81,7 +81,6 @@ class TestLegalNodeFullFlow:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         # Mock LLM to return compliance responses
@@ -147,7 +146,6 @@ class TestLegalNodeFullFlow:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         # Each claim gets its own LLM call
@@ -195,7 +193,6 @@ class TestLegalNodeGapDetection:
             "iteration_count": 0,  # Gap detection only on iteration 0
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())
@@ -241,7 +238,6 @@ class TestLegalNodeGapDetection:
             "iteration_count": 1,  # Not first iteration
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())
@@ -286,7 +282,6 @@ class TestLegalNodeStateUpdate:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())
@@ -346,7 +341,6 @@ class TestLegalNodeStateUpdate:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())
@@ -414,7 +408,6 @@ class TestLegalNodeReinvestigation:
             "iteration_count": 1,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_compliance_response("fully_addressed"))
@@ -481,7 +474,6 @@ class TestLegalNodeInterAgentCommunication:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())
@@ -552,7 +544,6 @@ class TestLegalNodeInterAgentCommunication:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())
@@ -596,7 +587,6 @@ class TestLegalNodeEdgeCases:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         result = await investigate_legal(state)
@@ -646,7 +636,6 @@ class TestLegalNodeEdgeCases:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         result = await investigate_legal(state)
@@ -697,7 +686,6 @@ class TestLegalNodeEdgeCases:
             "iteration_count": 0,
             "max_iterations": 3,
             "disclosure_gaps": [],
-            "events": [],
         }
         
         mock_openrouter(get_mock_governance_response())

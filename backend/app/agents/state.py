@@ -189,5 +189,5 @@ class SibylState(TypedDict, total=False):
     # --- Disclosure gaps (Legal Agent) ---
     disclosure_gaps: Annotated[list[dict], operator.add]
 
-    # --- Streaming (CONCURRENT WRITES from parallel agents) ---
-    events: Annotated[list[StreamEvent], operator.add]
+    # Note: Events are now streamed via get_stream_writer() instead of being
+    # accumulated in state. This avoids batching and enables real-time updates.

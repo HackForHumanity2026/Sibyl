@@ -21,7 +21,6 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -36,7 +35,15 @@ from app.agents.state import (
     InfoRequest,
     ReinvestigationRequest,
     SibylState,
-    StreamEvent,
+)
+from app.agents.stream_utils import (
+    emit_agent_started,
+    emit_agent_thinking,
+    emit_agent_completed,
+    emit_evidence_found,
+    emit_consistency_check,
+    emit_event,
+    emit_error,
 )
 from app.agents.tools.calculator import calculator, get_calculator_tool
 from app.core.database import generate_uuid7
@@ -1240,7 +1247,7 @@ async def investigate_data(state: SibylState) -> dict:
 
     Reads: state.routing_plan, state.claims, state.report_id,
            state.info_responses, state.reinvestigation_requests
-    Writes: state.findings, state.events, state.info_requests, state.agent_status
+    Writes: state.findings, state.info_requests, state.agent_status
 
     Processing steps:
     1. Emit agent_started StreamEvent
@@ -1261,22 +1268,14 @@ async def investigate_data(state: SibylState) -> dict:
     7. Return partial state update
 
     Returns:
-        Partial state update with findings, events, and info_requests.
+        Partial state update with findings and info_requests.
     """
     agent_name = "data_metrics"
-    events: list[StreamEvent] = []
     findings: list[AgentFinding] = []
     info_requests: list[InfoRequest] = []
 
-    # Emit start event
-    events.append(
-        StreamEvent(
-            event_type="agent_started",
-            agent_name=agent_name,
-            data={},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    # Emit start event (immediately sent to frontend)
+    emit_agent_started(agent_name)
 
     # Find claims assigned to this agent
     routing_plan = state.get("routing_plan", [])
@@ -1304,18 +1303,12 @@ async def investigate_data(state: SibylState) -> dict:
 
     if not assigned_claims:
         # No claims assigned to us
-        events.append(
-            StreamEvent(
-                event_type="agent_completed",
-                agent_name=agent_name,
-                data={
-                    "claims_processed": 0,
-                    "findings_count": 0,
-                    "consistency_checks_passed": 0,
-                    "consistency_checks_failed": 0,
-                },
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
+        emit_agent_completed(
+            agent_name,
+            claims_processed=0,
+            findings_count=0,
+            consistency_checks_passed=0,
+            consistency_checks_failed=0,
         )
         return {
             "findings": findings,
@@ -1327,27 +1320,19 @@ async def investigate_data(state: SibylState) -> dict:
                     claims_completed=0,
                 )
             },
-            "events": events,
         }
 
     # Emit thinking event
-    events.append(
-        StreamEvent(
-            event_type="agent_thinking",
-            agent_name=agent_name,
-            data={
-                "message": f"Processing {len(assigned_claims)} quantitative claims for consistency validation..."
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-    )
+    emit_agent_thinking(agent_name, f"Processing {len(assigned_claims)} quantitative claims for consistency validation...")
 
     # Process claims in parallel with rate limiting
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLAIMS)
     
-    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[StreamEvent], list[InfoRequest], int, int]:
-        """Process a single claim and return finding, events, info requests, and check counts."""
-        claim_events: list[StreamEvent] = []
+    async def process_single_claim(claim: Claim) -> tuple[AgentFinding, list[InfoRequest], int, int]:
+        """Process a single claim and return finding, info requests, and check counts.
+        
+        Events are emitted directly via stream_utils (context propagates in Python 3.12).
+        """
         claim_info_requests: list[InfoRequest] = []
         checks_passed = 0
         checks_failed = 0
@@ -1358,32 +1343,14 @@ async def investigate_data(state: SibylState) -> dict:
                 reinvest_request = _get_reinvestigation_context(state, claim.claim_id)
 
                 if reinvest_request:
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={
-                                "message": f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}"
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, f"Re-investigating claim {claim.claim_id}: {reinvest_request.evidence_gap}")
                     validation_result = await _perform_reinvestigation(
                         claim, reinvest_request, report_id, state
                     )
                     benchmark_data = None
                 else:
                     # Standard investigation
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="agent_thinking",
-                            agent_name=agent_name,
-                            data={
-                                "message": f"Validating {claim.claim_type} claim: retrieving IFRS paragraphs..."
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
+                    emit_agent_thinking(agent_name, f"Validating {claim.claim_type} claim: retrieving IFRS paragraphs...")
 
                     # Find related claims
                     related_claims = _find_related_claims(claim, claims)
@@ -1410,20 +1377,14 @@ async def investigate_data(state: SibylState) -> dict:
                     elif check.result == "fail":
                         checks_failed += 1
 
-                    claim_events.append(
-                        StreamEvent(
-                            event_type="consistency_check",
-                            agent_name=agent_name,
-                            data={
-                                "check_name": check.check_name,
-                                "claim_id": check.claim_id,
-                                "result": check.result,
-                                "severity": check.severity,
-                                "details": check.details,
-                                "message": check.message,
-                            },
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
+                    emit_consistency_check(
+                        agent_name=agent_name,
+                        check_name=check.check_name,
+                        claim_id=check.claim_id,
+                        result=check.result,
+                        severity=check.severity,
+                        details=check.details,
+                        message=check.message,
                     )
 
                 # Create finding
@@ -1435,26 +1396,13 @@ async def investigate_data(state: SibylState) -> dict:
                 )
 
                 # Emit evidence found event
-                claim_events.append(
-                    StreamEvent(
-                        event_type="evidence_found",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "summary": validation_result.summary,
-                            "supports_claim": validation_result.supports_claim,
-                            "confidence": validation_result.confidence,
-                            "checks_passed": sum(
-                                1 for c in validation_result.consistency_checks
-                                if c.result == "pass"
-                            ),
-                            "checks_failed": sum(
-                                1 for c in validation_result.consistency_checks
-                                if c.result == "fail"
-                            ),
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
+                emit_evidence_found(
+                    agent_name=agent_name,
+                    claim_id=claim.claim_id,
+                    evidence_type="quantitative_validation",
+                    summary=validation_result.summary,
+                    supports_claim=validation_result.supports_claim,
+                    confidence=validation_result.confidence,
                 )
 
                 # Check if cross-domain benchmark data is needed
@@ -1465,24 +1413,18 @@ async def investigate_data(state: SibylState) -> dict:
                         info_req = _create_benchmark_info_request(claim, metric_type)
                         claim_info_requests.append(info_req)
 
-                        claim_events.append(
-                            StreamEvent(
-                                event_type="info_request_posted",
-                                agent_name=agent_name,
-                                data={
-                                    "request_id": info_req.request_id,
-                                    "description": info_req.description,
-                                    "request_type": metric_type,
-                                    "target_agent": benchmark_target_agent,
-                                },
-                                timestamp=datetime.now(timezone.utc).isoformat(),
-                            )
-                        )
+                        emit_event("info_request_posted", agent_name, {
+                            "request_id": info_req.request_id,
+                            "description": info_req.description,
+                            "request_type": metric_type,
+                            "target_agent": benchmark_target_agent,
+                        })
                 
-                return finding, claim_events, claim_info_requests, checks_passed, checks_failed
+                return finding, claim_info_requests, checks_passed, checks_failed
 
             except Exception as e:
                 logger.error("Error processing claim %s: %s", claim.claim_id, e)
+                emit_error(agent_name, f"Claim {claim.claim_id}: {str(e)}")
                 # Create error finding
                 finding = AgentFinding(
                     finding_id=str(generate_uuid7()),
@@ -1495,44 +1437,25 @@ async def investigate_data(state: SibylState) -> dict:
                     confidence="low",
                     iteration=iteration_count + 1,
                 )
-
-                claim_events.append(
-                    StreamEvent(
-                        event_type="error",
-                        agent_name=agent_name,
-                        data={
-                            "claim_id": claim.claim_id,
-                            "message": f"Validation error: {str(e)}",
-                        },
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    )
-                )
-                return finding, claim_events, claim_info_requests, checks_passed, checks_failed
+                return finding, claim_info_requests, checks_passed, checks_failed
     
     # Run all claims in parallel
     results = await asyncio.gather(*[process_single_claim(c) for c in assigned_claims])
     
     # Aggregate results
-    for finding, claim_events, claim_info_requests, checks_passed, checks_failed in results:
+    for finding, claim_info_requests, checks_passed, checks_failed in results:
         findings.append(finding)
-        events.extend(claim_events)
         info_requests.extend(claim_info_requests)
         consistency_checks_passed += checks_passed
         consistency_checks_failed += checks_failed
 
     # Emit completion event
-    events.append(
-        StreamEvent(
-            event_type="agent_completed",
-            agent_name=agent_name,
-            data={
-                "claims_processed": len(assigned_claims),
-                "findings_count": len(findings),
-                "consistency_checks_passed": consistency_checks_passed,
-                "consistency_checks_failed": consistency_checks_failed,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
+    emit_agent_completed(
+        agent_name,
+        claims_processed=len(assigned_claims),
+        findings_count=len(findings),
+        consistency_checks_passed=consistency_checks_passed,
+        consistency_checks_failed=consistency_checks_failed,
     )
 
     # Build result
@@ -1546,7 +1469,6 @@ async def investigate_data(state: SibylState) -> dict:
                 claims_completed=len(assigned_claims),
             )
         },
-        "events": events,
     }
 
     if info_requests:
