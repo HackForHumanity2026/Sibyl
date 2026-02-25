@@ -111,7 +111,7 @@ export function ClaimsPanel({
         {claims.length} claim{claims.length !== 1 ? "s" : ""}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+      <div className="flex-1 overflow-y-auto divide-y divide-[#e0d4bf]">
         {claims.length === 0 ? (
           <div className="flex items-center justify-center py-8 text-xs text-[#8b7355]">
             No claims match the current filters.

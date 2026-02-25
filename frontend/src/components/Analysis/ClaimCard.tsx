@@ -1,6 +1,7 @@
 /**
  * ClaimCard - Displays a single claim in the Analysis ClaimsPanel.
  * Implements FRD 3 Section 7.3, enhanced in FRD 4.
+ * Design: flat divider row, no card borders/backgrounds.
  */
 
 import { useState, forwardRef, useCallback } from "react";
@@ -15,18 +16,10 @@ interface ClaimCardProps {
   isActive?: boolean;
 }
 
-const TYPE_LABELS: Record<ClaimType, string> = {
-  geographic: "Geographic",
-  quantitative: "Quantitative",
-  legal_governance: "Legal / Gov",
-  strategic: "Strategic",
-  environmental: "Environmental",
-};
-
-const PRIORITY_STYLES: Record<ClaimPriority, string> = {
-  high: "bg-rose-50 text-rose-700 border-rose-100",
-  medium: "bg-amber-50 text-amber-700 border-amber-100",
-  low: "bg-[#f5ecdb] text-[#6b5344] border-slate-100",
+const PRIORITY_DOT: Record<ClaimPriority, string> = {
+  high: "bg-rose-500",
+  medium: "bg-amber-400",
+  low: "bg-[#c8a97a]",
 };
 
 const TYPE_BAR_COLORS: Record<ClaimType, string> = {
@@ -59,80 +52,73 @@ export const ClaimCard = forwardRef<HTMLDivElement, ClaimCardProps>(
         ref={ref}
         onClick={onClick}
         className={cn(
-          "relative bg-[#fff6e9] border rounded-xl overflow-hidden cursor-pointer transition-all duration-150",
-          isActive
-            ? "border-slate-400 shadow-md ring-1 ring-slate-300"
-            : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+          "relative cursor-pointer transition-colors duration-100 py-3 px-4",
+          "hover:bg-[#f5ecdb]",
+          isActive && "bg-[#f5ecdb]"
         )}
       >
-        {/* Type colour bar */}
-        <div className={cn("absolute left-0 top-0 bottom-0 w-1", TYPE_BAR_COLORS[claim.claim_type])} />
+        {/* Active indicator — thin left bar */}
+        {isActive && (
+          <div className={cn("absolute left-0 top-2 bottom-2 w-0.5 rounded-r", TYPE_BAR_COLORS[claim.claim_type])} />
+        )}
 
-        <div className="pl-4 pr-3 py-3">
-          {/* Header row */}
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-xs font-semibold text-[#6b5344]">
-              {TYPE_LABELS[claim.claim_type]}
-            </span>
-            <span className={cn(
-              "inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border",
-              PRIORITY_STYLES[claim.priority]
-            )}>
-              {claim.priority}
-            </span>
+        {/* Meta row: priority dot · page link · IFRS tags */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <span
+            title={`Priority: ${claim.priority}`}
+            className={cn("w-2 h-2 rounded-full shrink-0", PRIORITY_DOT[claim.priority])}
+          />
 
-            {onGoToPage ? (
-              <button
-                onClick={handlePageClick}
-                className="ml-auto text-xs text-[#8b7355] hover:text-slate-700 transition-colors font-mono"
+          <div className="flex flex-wrap gap-1 flex-1">
+            {claim.ifrs_paragraphs.map((mapping, i) => (
+              <span
+                key={i}
+                title={mapping.relevance}
+                className="text-[10px] font-mono text-[#8b7355]"
               >
-                p.{claim.source_page} →
-              </button>
-            ) : (
-              <span className="ml-auto text-xs text-[#8b7355] font-mono">p.{claim.source_page}</span>
-            )}
+                {mapping.paragraph_id}
+              </span>
+            ))}
           </div>
 
-          {/* Claim text */}
-          <p className="text-sm text-slate-700 leading-relaxed">{claim.claim_text}</p>
-
-          {/* IFRS tags */}
-          {claim.ifrs_paragraphs.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {claim.ifrs_paragraphs.map((mapping, i) => (
-                <span
-                  key={i}
-                  title={mapping.relevance}
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-[#f5ecdb] text-[#8b7355] border border-slate-100"
-                >
-                  {mapping.paragraph_id}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Reasoning toggle */}
-          {claim.agent_reasoning && (
-            <div className="mt-2">
-              <button
-                onClick={toggleExpanded}
-                className="flex items-center gap-1 text-xs text-[#8b7355] hover:text-[#4a3c2e] transition-colors"
-                aria-expanded={isExpanded}
-              >
-                <span>{isExpanded ? "Hide reasoning" : "Show reasoning"}</span>
-                <ChevronDown
-                  size={12}
-                  className={cn("transition-transform duration-150", isExpanded && "rotate-180")}
-                />
-              </button>
-              {isExpanded && (
-                <p className="mt-2 text-xs text-[#6b5344] italic leading-relaxed border-l-2 border-slate-100 pl-2">
-                  {claim.agent_reasoning}
-                </p>
-              )}
-            </div>
+          {onGoToPage ? (
+            <button
+              onClick={handlePageClick}
+              className="text-xs text-[#8b7355] hover:text-[#4a3c2e] transition-colors font-mono shrink-0"
+            >
+              p.{claim.source_page} →
+            </button>
+          ) : (
+            <span className="text-xs text-[#8b7355] font-mono shrink-0">
+              p.{claim.source_page}
+            </span>
           )}
         </div>
+
+        {/* Claim text */}
+        <p className="text-sm text-[#4a3c2e] leading-relaxed">{claim.claim_text}</p>
+
+        {/* Reasoning toggle */}
+        {claim.agent_reasoning && (
+          <div className="mt-2">
+            <button
+              onClick={toggleExpanded}
+              className="flex items-center gap-1 text-xs text-[#8b7355] hover:text-[#4a3c2e] transition-colors"
+              aria-expanded={isExpanded}
+            >
+              <span>{isExpanded ? "Hide reasoning" : "Show reasoning"}</span>
+              <ChevronDown
+                size={11}
+                className={cn("transition-transform duration-150", isExpanded && "rotate-180")}
+              />
+            </button>
+            {isExpanded && (
+              <p className="mt-1.5 text-xs text-[#6b5344] italic leading-relaxed border-l-2 border-[#e0d4bf] pl-2.5">
+                {claim.agent_reasoning}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }

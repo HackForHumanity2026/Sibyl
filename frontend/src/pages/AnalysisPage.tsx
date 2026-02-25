@@ -206,6 +206,7 @@ export function AnalysisPage() {
             erroredAgents={erroredAgents}
             pipelineComplete={pipelineComplete}
             isConnected={isConnected}
+            reportId={reportId}
           />
         ) : (
           <ClaimsPanel

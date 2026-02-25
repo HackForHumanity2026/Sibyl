@@ -15,6 +15,7 @@ interface Agent {
   role: string;
   shortDesc: string;
   longDesc: string;
+  specialTool: string;
   capabilities: string[];
   bodyColor: string;
   eyeColor: string;
@@ -32,7 +33,8 @@ const AGENTS: Agent[] = [
     role: "Orchestrator",
     shortDesc: "Vera runs the whole investigation. She reads every claim, decides which agents to send it to, and waits for their findings before assembling the final verdict. Think of her as the editor-in-chief — nothing gets published without her sign-off.",
     longDesc:
-      "Vera is the conductor of the Agent Village. She receives each extracted claim, decides which specialist agents should investigate it, coordinates inter-agent information requests, and synthesises all findings into a final verdict. Nothing happens without Vera knowing about it.",
+      "Vera is the conductor of the Agent Collective. She receives each extracted claim, decides which specialist agents should investigate it, coordinates inter-agent information requests, and synthesises all findings into a final verdict. Nothing happens without Vera knowing about it.",
+    specialTool: "Multi-agent orchestration framework",
     capabilities: [
       "Claim routing & prioritisation",
       "Inter-agent communication",
@@ -54,11 +56,12 @@ const AGENTS: Agent[] = [
     shortDesc: "Rex is the first one in. He reads the entire report and pulls out every statement that can actually be checked — targets, commitments, governance claims, risk disclosures. Without Rex, there's nothing to investigate.",
     longDesc:
       "Rex tears through the sustainability report page by page, flagging every verifiable claim — commitments, metrics, governance statements, and risk declarations. He categorises each claim by type and importance before passing them to the investigation crew.",
+    specialTool: "Document parsing & claim detection pipeline",
     capabilities: [
-      "Claim detection & extraction",
       "Claim categorisation (5 types)",
       "IFRS paragraph pre-mapping",
       "Priority scoring",
+      "Source page attribution",
     ],
     bodyColor: "#fef9c3",
     eyeColor: "#854d0e",
@@ -75,11 +78,12 @@ const AGENTS: Agent[] = [
     shortDesc: "Lex is the compliance expert. She maps every claim to the exact IFRS S1/S2 paragraph it should satisfy, then checks which required disclosures are missing. If there's a gap between what the report says and what IFRS demands, Lex finds it.",
     longDesc:
       "Lex is the compliance specialist. She maps each claim to specific IFRS S1/S2 paragraphs, checks for disclosure gaps, and identifies whether required disclosures are fully addressed, partially addressed, or missing entirely. Her output powers the S1/S2 cross-mapping view.",
+    specialTool: "IFRS S1/S2 paragraph knowledge base",
     capabilities: [
-      "IFRS S1/S2 paragraph-level mapping",
       "Disclosure gap detection",
-      "Governance claim analysis (S2.5-7)",
-      "Strategy & risk compliance (S2.14, S2.24-26)",
+      "Governance claim analysis (S2.5–7)",
+      "Strategy & risk compliance (S2.14, S2.24–26)",
+      "Partial vs. unaddressed gap classification",
     ],
     bodyColor: "#dbeafe",
     eyeColor: "#1e3a8a",
@@ -96,11 +100,12 @@ const AGENTS: Agent[] = [
     shortDesc: "Nova checks if the numbers actually add up. She validates Scope 1/2/3 totals, tests whether reduction targets are mathematically achievable, and compares figures against industry benchmarks. Spotting a \"42% reduction by 2030\" that doesn't match the baseline is exactly her job.",
     longDesc:
       "Nova cross-checks every quantitative claim for mathematical consistency, methodology alignment, and benchmark plausibility. She validates Scope 1/2/3 totals, checks reduction targets against baselines and timelines, and flags any figures that don't add up.",
+    specialTool: "GHG quantitative validation engine",
     capabilities: [
       "Mathematical consistency checks",
       "GHG Protocol methodology validation",
       "Industry benchmark comparison",
-      "Target achievability analysis",
+      "Target achievability & timeline analysis",
     ],
     bodyColor: "#ccfbf1",
     eyeColor: "#134e4a",
@@ -117,11 +122,12 @@ const AGENTS: Agent[] = [
     shortDesc: "Echo searches public news, investigative journalism, and regulatory filings for anything that confirms or contradicts what the report claims. If a company says it hit a target but a regulator fined them that same year, Echo finds the story.",
     longDesc:
       "Echo searches public news, investigative journalism, press releases, and regulatory actions for evidence supporting or contradicting each claim. She ranks sources by credibility tier and flags any public record that contradicts the report's statements.",
+    specialTool: "Web search & live news retrieval",
     capabilities: [
-      "Web search & retrieval",
       "Four-tier source credibility ranking",
-      "Contradiction detection",
-      "Real-time news coverage analysis",
+      "Contradiction detection across public records",
+      "Regulatory filing & press release analysis",
+      "Real-time news coverage scanning",
     ],
     bodyColor: "#fee2e2",
     eyeColor: "#7f1d1d",
@@ -138,11 +144,12 @@ const AGENTS: Agent[] = [
     shortDesc: "Iris digs into academic databases and published research to check whether a claim aligns with scientific consensus. If a company cites a methodology or makes an environmental assertion, Iris finds out whether the science actually backs it up.",
     longDesc:
       "Iris queries academic databases and research repositories to find scientific consensus, published methodologies, and empirical evidence for or against the report's claims. She's particularly powerful for environmental targets and emissions methodology claims.",
+    specialTool: "Academic database & research repository search",
     capabilities: [
-      "Academic database search",
       "Scientific consensus assessment",
-      "Methodology verification",
+      "Emissions & environmental methodology verification",
       "Peer-reviewed evidence retrieval",
+      "Claim-to-literature alignment scoring",
     ],
     bodyColor: "#ede9fe",
     eyeColor: "#3b0764",
@@ -159,11 +166,12 @@ const AGENTS: Agent[] = [
     shortDesc: "Terra cross-checks location-based claims against satellite imagery and geographic databases. If a report says 23 facilities in Southeast Asia face physical climate risk, Terra checks whether those facilities and their exposure levels are real.",
     longDesc:
       "Terra validates location-based claims — physical risk exposures, facility counts, regional operations — against satellite imagery and geographic databases. She's the ground-truth layer for any claim that has a location.",
+    specialTool: "Satellite imagery & geographic database API",
     capabilities: [
-      "Satellite data cross-referencing",
       "Physical risk location mapping",
-      "Facility & asset verification",
-      "Regional data sourcing",
+      "Facility & asset count verification",
+      "Regional climate exposure data sourcing",
+      "Cross-referencing reported locations vs. real-world data",
     ],
     bodyColor: "#d1fae5",
     eyeColor: "#064e3b",
@@ -466,6 +474,14 @@ function AgentModal({ agent, onClose }: { agent: Agent; onClose: () => void }) {
 
           {/* Description */}
           <p className="text-sm text-[#4a3c2e] leading-relaxed mb-5">{agent.longDesc}</p>
+
+          {/* Special Tool */}
+          <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: agent.bodyColor }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: agent.markColor }}>
+              Special Tool
+            </p>
+            <p className="text-sm font-semibold text-slate-800">{agent.specialTool}</p>
+          </div>
 
           {/* Capabilities */}
           <div>

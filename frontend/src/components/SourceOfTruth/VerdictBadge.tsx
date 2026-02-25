@@ -1,5 +1,5 @@
 /**
- * VerdictBadge - Color-coded badge displaying verdict status.
+ * VerdictBadge - Plain text verdict label with a small icon. No pill background.
  * Implements FRD 13 Section 6.3.
  */
 
@@ -12,26 +12,26 @@ interface VerdictBadgeProps {
 
 const VERDICT_CONFIG: Record<
   VerdictStatus,
-  { label: string; className: string; Icon: React.ComponentType<{ size?: number }> }
+  { label: string; textClass: string; Icon: React.ComponentType<{ size?: number; className?: string }> }
 > = {
   verified: {
     label: "Verified",
-    className: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+    textClass: "text-emerald-700",
     Icon: CheckCircle2,
   },
   unverified: {
     label: "Unverified",
-    className: "bg-amber-50 text-amber-700 border border-amber-100",
+    textClass: "text-amber-600",
     Icon: HelpCircle,
   },
   contradicted: {
     label: "Contradicted",
-    className: "bg-rose-50 text-rose-700 border border-rose-100",
+    textClass: "text-rose-600",
     Icon: XCircle,
   },
   insufficient_evidence: {
     label: "Insufficient",
-    className: "bg-[#f5ecdb] text-[#4a3c2e] border border-slate-100",
+    textClass: "text-[#78695a]",
     Icon: AlertTriangle,
   },
 };
@@ -40,10 +40,8 @@ export function VerdictBadge({ verdict }: VerdictBadgeProps) {
   const config = VERDICT_CONFIG[verdict];
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${config.className}`}
-    >
-      <config.Icon size={12} />
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${config.textClass}`}>
+      <config.Icon size={11} />
       {config.label}
     </span>
   );

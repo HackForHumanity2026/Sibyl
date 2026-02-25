@@ -118,7 +118,6 @@ export function UploadZone({
           {isDragOver ? "Drop to upload" : "Drop a sustainability report PDF"}
         </p>
         <p className="text-sm text-[#8b7355] mb-3">or click to browse</p>
-        <p className="text-xs text-[#8b7355]">PDF files up to {maxSizeMB} MB</p>
       </div>
 
       {error && (

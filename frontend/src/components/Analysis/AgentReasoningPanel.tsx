@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, memo } from "react";
+import { useNavigate } from "react-router-dom";
 import type { StreamEvent } from "@/services/sse";
 import { formatAgentName, getAgentColor } from "@/services/sse";
 import { ReasoningMessage } from "./ReasoningMessage";
@@ -24,6 +25,8 @@ export interface AgentReasoningPanelProps {
   pipelineComplete: boolean;
   /** Whether the SSE is connected */
   isConnected: boolean;
+  /** Report ID to navigate to on completion */
+  reportId?: string;
 }
 
 /** Agent tab info */
@@ -56,7 +59,9 @@ export const AgentReasoningPanel = memo(function AgentReasoningPanel({
   erroredAgents,
   pipelineComplete,
   isConnected,
+  reportId,
 }: AgentReasoningPanelProps) {
+  const navigate = useNavigate();
   const [selectedAgent, setSelectedAgent] = useState<string>("all");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -241,21 +246,29 @@ export const AgentReasoningPanel = memo(function AgentReasoningPanel({
         )}
       </div>
 
-      {/* Connection status */}
+      {/* Connection status / pipeline complete */}
       <div className="agent-reasoning-panel__footer">
-        <span
-          className={`agent-reasoning-panel__status ${
-            isConnected
-              ? "agent-reasoning-panel__status--connected"
-              : "agent-reasoning-panel__status--disconnected"
-          }`}
-        >
-          <span className="agent-reasoning-panel__status-dot" />
-          {isConnected ? "Connected" : "Disconnected"}
-        </span>
-        {pipelineComplete && (
-          <span className="agent-reasoning-panel__complete">
-            Pipeline complete
+        {pipelineComplete ? (
+          <button
+            onClick={() => reportId && navigate(`/report/${reportId}`)}
+            disabled={!reportId}
+            className="agent-reasoning-panel__view-report-btn"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="agent-reasoning-panel__view-report-icon">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Pipeline complete — View Report
+          </button>
+        ) : (
+          <span
+            className={`agent-reasoning-panel__status ${
+              isConnected
+                ? "agent-reasoning-panel__status--connected"
+                : "agent-reasoning-panel__status--disconnected"
+            }`}
+          >
+            <span className="agent-reasoning-panel__status-dot" />
+            {isConnected ? "Connected" : "Disconnected"}
           </span>
         )}
       </div>
