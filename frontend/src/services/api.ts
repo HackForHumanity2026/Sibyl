@@ -178,6 +178,7 @@ import type {
   GapsListPaginatedResponse,
   ReportSummaryResponse,
   ReportFilters,
+  MockSeedResponse,
 } from "@/types/sourceOfTruth";
 
 /**
@@ -240,6 +241,29 @@ export async function getReportSummary(
   reportId: string
 ): Promise<ReportSummaryResponse> {
   return fetchAPI<ReportSummaryResponse>(`/report/${reportId}/summary`);
+}
+
+/**
+ * Create a mock report record (dev only).
+ */
+export async function createMockReport(): Promise<{
+  report_id: string;
+  message: string;
+}> {
+  return fetchAPI<{ report_id: string; message: string }>(`/report/mock`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Seed mock data into an existing report (dev only).
+ */
+export async function seedMockReport(
+  reportId: string
+): Promise<MockSeedResponse> {
+  return fetchAPI<MockSeedResponse>(`/report/${reportId}/seed-mock`, {
+    method: "POST",
+  });
 }
 
 /**

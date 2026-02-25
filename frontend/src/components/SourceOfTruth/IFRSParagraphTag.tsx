@@ -11,8 +11,8 @@ interface IFRSParagraphTagProps {
 export function IFRSParagraphTag({ paragraphId, relevance }: IFRSParagraphTagProps) {
   return (
     <span
-      className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-muted text-foreground border border-border"
-      title={relevance || undefined}
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-[#eddfc8] text-[#4a3c2e] font-semibold"
+      title={relevance ?? undefined}
     >
       {paragraphId}
     </span>

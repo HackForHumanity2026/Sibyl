@@ -19,23 +19,23 @@ export function ChatFab({ isOpen, onClick, disabled = false }: ChatFabProps) {
       disabled={disabled}
       className={cn(
         "fixed bottom-6 right-6 z-30",
-        "w-14 h-14 rounded-full",
+        "w-12 h-12 rounded-full",
         "flex items-center justify-center",
-        "shadow-lg hover:shadow-xl",
-        "transition-all duration-300 ease-in-out",
-        "transform hover:scale-105 active:scale-95",
+        "shadow-lg hover:shadow-xl border",
+        "transition-all duration-200 ease-in-out",
+        "hover:scale-105 active:scale-95",
         isOpen
-          ? "bg-gray-700 hover:bg-gray-600 rotate-90"
-          : "bg-blue-600 hover:bg-blue-700 rotate-0",
+          ? "bg-[#eddfc8] border-slate-200 text-slate-700 hover:bg-[#e4d3ba]"
+          : "bg-slate-900 border-slate-900 text-white hover:bg-slate-700",
         disabled && "opacity-50 cursor-not-allowed hover:scale-100"
       )}
       aria-label={isOpen ? "Close chat" : "Open chat"}
       aria-expanded={isOpen}
     >
       {isOpen ? (
-        <X className="w-6 h-6 text-white" />
+        <X className="w-5 h-5" />
       ) : (
-        <MessageSquare className="w-6 h-6 text-white" />
+        <MessageSquare className="w-5 h-5" />
       )}
     </button>
   );

@@ -867,7 +867,7 @@ Example `agent_thinking` messages:
 
 ### 11.3 IFRS Coverage Progress
 
-For the detective dashboard (FRD 12), the Legal Agent emits progress events showing IFRS coverage by pillar:
+For the detective dashboard (FRD 12), the Legal Agent emits progress events tracking IFRS paragraph coverage per pillar during investigation:
 
 ```python
 StreamEvent(
@@ -876,15 +876,13 @@ StreamEvent(
     data={
         "pillar": "governance",
         "paragraphs_covered": 12,
-        "paragraphs_total": 15,
         "paragraphs_gaps": 3,
-        "coverage_percentage": 80.0,
     },
     timestamp=datetime.utcnow().isoformat(),
 )
 ```
 
-This enables the dashboard to display IFRS coverage progress bars per pillar (green for covered, orange for partial, grey for gaps).
+This enables the dashboard to display live investigation progress as the Legal Agent works through each pillar.
 
 ---
 
@@ -947,7 +945,7 @@ FRD 6 is complete when ALL of the following are satisfied:
 | 15 | Findings are streamed via SSE | `StreamEvent` objects are emitted and received by the frontend |
 | 16 | Inter-agent communication works | Legal Agent posts InfoRequests and processes InfoResponses |
 | 17 | Re-investigation handling works | Legal Agent processes ReinvestigationRequests with refined queries |
-| 18 | IFRS coverage progress is tracked | Progress events show coverage by pillar (governance, strategy, risk management, metrics) |
+| 18 | IFRS investigation progress is tracked | Progress events emitted per pillar as Legal Agent investigates each claim batch |
 | 19 | Error handling is graceful | RAG failures, LLM errors, and gap detection errors are handled without crashing the pipeline |
 | 20 | Performance is acceptable | Legal Agent completes investigation of 50 claims in under 3 minutes |
 

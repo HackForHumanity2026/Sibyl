@@ -89,15 +89,15 @@ export function ClaimsPanel({
 
   if (isLoading) {
     return (
-      <div className="claims-panel claims-panel--loading">
-        <div className="claims-panel__loading-spinner" />
-        <p>Loading claims...</p>
+      <div className="flex flex-col items-center justify-center h-32 gap-2 text-[#8b7355]">
+        <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+        <p className="text-xs">Loading claims…</p>
       </div>
     );
   }
 
   return (
-    <div className="claims-panel" ref={containerRef}>
+    <div className="flex flex-col h-full overflow-hidden bg-[#fff6e9]" ref={containerRef}>
       <ClaimsFilter
         typeFilter={typeFilter}
         priorityFilter={priorityFilter}
@@ -107,14 +107,14 @@ export function ClaimsPanel({
         claimsByPriority={claimsByPriority}
       />
 
-      <div className="claims-panel__count">
-        {claims.length} claim{claims.length !== 1 ? "s" : ""} found
+      <div className="px-3 py-2 text-xs text-[#8b7355] font-medium border-b border-slate-100">
+        {claims.length} claim{claims.length !== 1 ? "s" : ""}
       </div>
 
-      <div className="claims-panel__list">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {claims.length === 0 ? (
-          <div className="claims-panel__empty">
-            <p>No claims match the current filters.</p>
+          <div className="flex items-center justify-center py-8 text-xs text-[#8b7355]">
+            No claims match the current filters.
           </div>
         ) : (
           claims.map((claim) => (

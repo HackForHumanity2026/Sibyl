@@ -76,7 +76,7 @@ Feature: Source of Truth Report
     Then   it reads all verdicts, findings, and disclosure gaps from state
     And    it organizes claims by IFRS pillar (Governance, Strategy, Risk Management, Metrics & Targets)
     And    it groups disclosure gaps by pillar
-    And    it computes summary statistics (total claims, verdicts by type, coverage by pillar)
+    And    it computes summary statistics (total claims, verdicts by type, disclosure gaps)
     And    it persists the compiled report to the database
     And    it sets the report status to "completed"
 
@@ -351,11 +351,6 @@ def compute_summary_statistics(
         "insufficient_evidence": sum(1 for v in verdicts if v.verdict == "insufficient_evidence"),
     }
 
-    coverage_by_pillar = {}
-    for pillar, claims_list in pillar_claims.items():
-        total_paragraphs = count_ifrs_paragraphs_in_pillar(pillar)
-        coverage_by_pillar[pillar] = (len(claims_list) / total_paragraphs * 100) if total_paragraphs > 0 else 0.0
-
     gaps_by_status = {
         "fully_unaddressed": sum(1 for g in gaps if g.details.get("gap_status") == "fully_unaddressed"),
         "partially_addressed": sum(1 for g in gaps if g.details.get("gap_status") == "partially_addressed"),
@@ -364,7 +359,6 @@ def compute_summary_statistics(
     return ReportSummary(
         total_claims=total_claims,
         verdicts_by_type=verdicts_by_type,
-        coverage_by_pillar=coverage_by_pillar,
         total_gaps=len(gaps),
         gaps_by_status=gaps_by_status,
     )
@@ -482,7 +476,6 @@ class ReportSummary(BaseModel):
 
     total_claims: int
     verdicts_by_type: dict[str, int]
-    coverage_by_pillar: dict[str, float]  # Percentage
     total_gaps: int
     gaps_by_status: dict[str, int]
 ```
@@ -512,12 +505,6 @@ Response 200:
       "unverified": 20,
       "contradicted": 5,
       "insufficient_evidence": 17
-    },
-    "coverage_by_pillar": {
-      "governance": 75.0,
-      "strategy": 82.5,
-      "risk_management": 68.0,
-      "metrics_targets": 90.0
     },
     "total_gaps": 23,
     "gaps_by_status": {
@@ -624,7 +611,6 @@ Response 200:
   "summary": {
     "total_claims": 87,
     "verdicts_by_type": {...},
-    "coverage_by_pillar": {...},
     "total_gaps": 23,
     "gaps_by_status": {...}
   },
@@ -1580,16 +1566,6 @@ export function ComplianceSummary({ summary }: ComplianceSummaryProps) {
             icon={XCircle}
             color="text-red-400"
           />
-
-          {/* Coverage by Pillar */}
-          {Object.entries(summary.coverage_by_pillar).map(([pillar, percentage]) => (
-            <StatCard
-              key={pillar}
-              label={PILLAR_LABELS[pillar]}
-              value={`${percentage.toFixed(1)}%`}
-              icon={TrendingUp}
-            />
-          ))}
 
           {/* Disclosure Gaps */}
           <StatCard

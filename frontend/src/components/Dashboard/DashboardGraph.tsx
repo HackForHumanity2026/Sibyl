@@ -205,14 +205,14 @@ function DashboardGraphInner({
         edgesReconnectable={false}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#2a2a2a" gap={16} />
+        <Background color="#e2e8f0" gap={20} />
         <Controls />
         <MiniMap
           nodeColor={(node) =>
             getAgentHexColor((node.data as AgentNodeData).agentName)
           }
-          maskColor="rgba(0, 0, 0, 0.6)"
-          style={{ background: "hsl(224, 20%, 12%)" }}
+          maskColor="rgba(248, 250, 252, 0.7)"
+          style={{ background: "#fff6e9" }}
         />
       </ReactFlow>
 

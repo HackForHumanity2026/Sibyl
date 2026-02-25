@@ -3,10 +3,13 @@
  * Implements FRD 13 Section 5.
  */
 
+import { Building2, Target, AlertTriangle, BarChart3 } from "lucide-react";
+import type { LucideProps } from "lucide-react";
 import type {
   ClaimWithVerdictResponse,
   DisclosureGapResponse,
   PillarSummaryResponse,
+  PillarIconName,
 } from "@/types/sourceOfTruth";
 import type { IFRSPillar } from "@/types/ifrs";
 import { PILLAR_INFO } from "@/types/sourceOfTruth";
@@ -21,6 +24,13 @@ interface PillarSectionProps {
   reportId: string;
 }
 
+const PILLAR_ICON_MAP: Record<PillarIconName, React.ComponentType<LucideProps>> = {
+  Building2,
+  Target,
+  AlertTriangle,
+  BarChart3,
+};
+
 export function PillarSection({
   pillar,
   claims,
@@ -29,80 +39,54 @@ export function PillarSection({
   reportId,
 }: PillarSectionProps) {
   const pillarInfo = PILLAR_INFO[pillar];
+  const PillarIcon = PILLAR_ICON_MAP[pillarInfo.icon];
 
-  // Don't render if no content
-  if (claims.length === 0 && gaps.length === 0) {
-    return null;
-  }
+  if (claims.length === 0 && gaps.length === 0) return null;
 
   return (
-    <section className="space-y-4">
-      {/* Pillar Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4 pb-2 border-b border-border">
+    <section className="border-t border-[#e0d4bf] pt-8">
+      {/* Pillar header */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{pillarInfo.icon}</span>
+          <div className="p-2 bg-[#eddfc8] rounded-lg">
+            <PillarIcon size={20} className="text-slate-700" />
+          </div>
           <div>
-            <h2 className="text-xl font-semibold text-foreground">
-              {pillarInfo.displayName}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {pillarInfo.description}
-            </p>
+            <h2 className="text-xl font-bold text-slate-800">{pillarInfo.displayName}</h2>
+            <p className="text-xs text-[#6b5344] mt-0.5">{pillarInfo.description}</p>
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Claims:</span>
-            <span className="font-medium text-foreground">
-              {summary.total_claims}
+        {/* Summary badges */}
+        <div className="flex gap-2">
+          {summary.total_claims > 0 && (
+            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">
+              Claims: {summary.total_claims}
             </span>
-          </div>
-          {summary.verified_claims > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-green-400">{summary.verified_claims}</span>
-            </div>
-          )}
-          {summary.contradicted_claims > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-red-400">{summary.contradicted_claims}</span>
-            </div>
-          )}
-          {(summary.unverified_claims > 0 ||
-            summary.insufficient_evidence_claims > 0) && (
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-yellow-500" />
-              <span className="text-yellow-400">
-                {summary.unverified_claims + summary.insufficient_evidence_claims}
-              </span>
-            </div>
           )}
           {summary.disclosure_gaps > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">Gaps:</span>
-              <span className="text-orange-400">{summary.disclosure_gaps}</span>
-            </div>
+            <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-100">
+              Gaps: {summary.disclosure_gaps}
+            </span>
+          )}
+          {summary.contradicted_claims > 0 && (
+            <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-100">
+              Contradicted: {summary.contradicted_claims}
+            </span>
           )}
         </div>
       </div>
 
-      {/* Claims List */}
+      {/* Claims */}
       {claims.length > 0 && (
-        <div className="space-y-4">
+        <div className="divide-y divide-[#e0d4bf] border-y border-[#e0d4bf] mb-6">
           {claims.map((claim) => (
-            <ClaimCard
-              key={claim.claim.claim_id}
-              claim={claim}
-              reportId={reportId}
-            />
+            <ClaimCard key={claim.claim.claim_id} claim={claim} reportId={reportId} />
           ))}
         </div>
       )}
 
-      {/* Disclosure Gaps */}
+      {/* Gaps */}
       <DisclosureGapsSection gaps={gaps} pillar={pillar} />
     </section>
   );

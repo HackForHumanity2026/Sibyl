@@ -4,12 +4,8 @@
  */
 
 import { useState } from "react";
-import type {
-  EvidenceChainEntry,
-  VerdictResponse,
-  AgentName,
-} from "@/types/sourceOfTruth";
-import { AGENT_COLORS } from "@/types/sourceOfTruth";
+import { CheckCircle2, XCircle } from "lucide-react";
+import type { EvidenceChainEntry, VerdictResponse, AgentName } from "@/types/sourceOfTruth";
 
 interface EvidencePanelProps {
   evidenceChain: EvidenceChainEntry[];
@@ -17,151 +13,106 @@ interface EvidencePanelProps {
 }
 
 const AGENT_DISPLAY_NAMES: Record<AgentName, string> = {
-  claims: "Claims Agent",
+  claims: "Claims",
   orchestrator: "Orchestrator",
-  geography: "Geography Agent",
-  legal: "Legal Agent",
-  news_media: "News & Media Agent",
-  academic: "Academic Agent",
-  data_metrics: "Data Metrics Agent",
-  judge: "Judge Agent",
+  geography: "Geography",
+  legal: "Legal",
+  news_media: "News & Media",
+  academic: "Academic",
+  data_metrics: "Data Metrics",
+  judge: "Judge",
 };
 
 const EVIDENCE_TYPE_LABELS: Record<string, string> = {
-  ifrs_compliance: "IFRS Compliance Analysis",
-  satellite_analysis: "Satellite Imagery Analysis",
+  ifrs_compliance: "IFRS Compliance",
+  satellite_analysis: "Satellite Imagery",
   news_corroboration: "News Corroboration",
   news_contradiction: "News Contradiction",
   methodology_validation: "Methodology Validation",
-  mathematical_consistency: "Mathematical Consistency Check",
-  mathematical_inconsistency: "Mathematical Inconsistency",
+  mathematical_consistency: "Math Consistency",
+  mathematical_inconsistency: "Math Inconsistency",
   research_support: "Research Support",
   disclosure_gap: "Disclosure Gap",
 };
 
 export function EvidencePanel({ evidenceChain, verdict }: EvidencePanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  if (evidenceChain.length === 0) {
-    return (
-      <div className="text-sm text-muted-foreground italic">
-        No evidence chain available.
-      </div>
-    );
-  }
+  if (evidenceChain.length === 0) return null;
 
   return (
-    <div className="border border-border rounded-md overflow-hidden">
-      {/* Toggle Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-2 bg-muted/50 hover:bg-muted transition-colors text-left"
-      >
-        <span className="text-sm font-medium text-foreground">
-          Evidence Chain ({evidenceChain.length} findings)
-        </span>
-        <span
-          className={`text-muted-foreground transition-transform ${
-            isExpanded ? "rotate-180" : ""
-          }`}
-        >
-          ▼
-        </span>
-      </button>
+    <div className="px-5 py-4 space-y-3">
+      {evidenceChain.map((entry) => {
+        const isOpen = expanded === entry.finding_id;
+        const label = EVIDENCE_TYPE_LABELS[entry.evidence_type] ?? entry.evidence_type;
+        const agentName = AGENT_DISPLAY_NAMES[entry.agent_name] ?? entry.agent_name;
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="p-4 space-y-4">
-          {/* Evidence Timeline */}
-          <div className="space-y-3">
-            {evidenceChain.map((entry) => {
-              const agentColor = AGENT_COLORS[entry.agent_name] || "#888888";
-              const evidenceLabel =
-                EVIDENCE_TYPE_LABELS[entry.evidence_type] || entry.evidence_type;
-
-              return (
-                <div
-                  key={entry.finding_id}
-                  className="relative pl-6 pb-3 border-l-2"
-                  style={{ borderColor: agentColor }}
-                >
-                  {/* Timeline dot */}
-                  <div
-                    className="absolute -left-[5px] top-0 w-2 h-2 rounded-full"
-                    style={{ backgroundColor: agentColor }}
-                  />
-
-                  {/* Finding content */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className="text-sm font-medium"
-                        style={{ color: agentColor }}
-                      >
-                        {AGENT_DISPLAY_NAMES[entry.agent_name]}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        • {evidenceLabel}
-                      </span>
-                      {entry.iteration > 1 && (
-                        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                          Iteration {entry.iteration}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-sm text-foreground">{entry.summary}</p>
-
-                    {/* Confidence and Support indicators */}
-                    <div className="flex items-center gap-3 text-xs">
-                      {entry.supports_claim !== null && (
-                        <span
-                          className={
-                            entry.supports_claim
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }
-                        >
-                          {entry.supports_claim ? "✓ Supports" : "✗ Contradicts"}
-                        </span>
-                      )}
-                      {entry.confidence && (
-                        <span className="text-muted-foreground">
-                          Confidence: {entry.confidence}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Reasoning if available */}
-                    {entry.reasoning && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">
-                        {entry.reasoning}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Final Verdict Section */}
-          {verdict && (
-            <div className="pt-3 border-t border-border">
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: AGENT_COLORS.judge }}
-                >
-                  Judge Agent Verdict
-                </span>
-              </div>
-              <p className="text-sm text-foreground">{verdict.reasoning}</p>
-              <div className="text-xs text-muted-foreground mt-1">
-                After {verdict.iteration_count} iteration
-                {verdict.iteration_count > 1 ? "s" : ""}
-              </div>
+        return (
+          <div key={entry.finding_id} className="flex gap-3">
+            {/* Timeline dot */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${
+                  entry.supports_claim === true
+                    ? "bg-emerald-500"
+                    : entry.supports_claim === false
+                    ? "bg-rose-500"
+                    : "bg-slate-300"
+                }`}
+              />
+              <div className="flex-1 w-px bg-[#eddfc8] mt-1" />
             </div>
-          )}
+
+            {/* Content */}
+            <div className="pb-3 flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-xs font-semibold text-slate-700">{agentName}</span>
+                <span className="text-xs text-[#8b7355]">{label}</span>
+                {entry.iteration > 1 && (
+                  <span className="text-xs text-[#8b7355] bg-[#eddfc8] px-1.5 py-0.5 rounded">
+                    iter {entry.iteration}
+                  </span>
+                )}
+                {entry.supports_claim !== null && (
+                  <span className={`flex items-center gap-0.5 text-xs ${
+                    entry.supports_claim ? "text-emerald-600" : "text-rose-600"
+                  }`}>
+                    {entry.supports_claim
+                      ? <CheckCircle2 size={11} />
+                      : <XCircle size={11} />}
+                    {entry.supports_claim ? "Supports" : "Contradicts"}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-[#4a3c2e] leading-relaxed">{entry.summary}</p>
+
+              {entry.reasoning && (
+                <button
+                  onClick={() => setExpanded(isOpen ? null : entry.finding_id)}
+                  className="text-xs text-[#8b7355] hover:text-[#4a3c2e] mt-1 transition-colors"
+                >
+                  {isOpen ? "Hide reasoning" : "Show reasoning"}
+                </button>
+              )}
+              {isOpen && entry.reasoning && (
+                <p className="text-xs text-[#8b7355] italic mt-1 leading-relaxed">
+                  {entry.reasoning}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Judge verdict */}
+      {verdict && (
+        <div className="pt-3 border-t border-slate-100">
+          <p className="text-xs font-semibold text-slate-700 mb-1">Judge Verdict</p>
+          <p className="text-xs text-[#4a3c2e] leading-relaxed">{verdict.reasoning}</p>
+          <p className="text-xs text-[#8b7355] mt-1">
+            After {verdict.iteration_count} iteration{verdict.iteration_count !== 1 ? "s" : ""}
+          </p>
         </div>
       )}
     </div>

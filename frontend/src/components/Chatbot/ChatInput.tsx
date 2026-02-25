@@ -16,12 +16,11 @@ interface ChatInputProps {
 export function ChatInput({
   onSend,
   disabled = false,
-  placeholder = "Ask about the report...",
+  placeholder = "Ask about the report…",
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize textarea
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -31,16 +30,14 @@ export function ChatInput({
   }, [value]);
 
   const handleSubmit = useCallback(() => {
-    const trimmedValue = value.trim();
-    if (!trimmedValue || disabled) return;
-
-    onSend(trimmedValue);
+    const trimmed = value.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
     setValue("");
   }, [value, disabled, onSend]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Submit on Enter (without Shift)
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
@@ -52,7 +49,7 @@ export function ChatInput({
   const canSend = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="flex items-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <div className="flex items-end gap-2 p-4 border-t border-slate-100 bg-[#fff6e9]">
       <textarea
         ref={textareaRef}
         value={value}
@@ -62,34 +59,30 @@ export function ChatInput({
         disabled={disabled}
         rows={1}
         className={cn(
-          "flex-1 resize-none rounded-xl px-4 py-2.5",
-          "border border-gray-300 dark:border-gray-600",
-          "bg-gray-50 dark:bg-gray-800",
-          "text-gray-900 dark:text-gray-100",
-          "placeholder:text-gray-500 dark:placeholder:text-gray-400",
-          "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+          "flex-1 resize-none rounded-xl px-3.5 py-2.5",
+          "border border-slate-200 bg-[#f5ecdb]",
+          "text-slate-900 text-sm leading-relaxed",
+          "placeholder:text-[#8b7355]",
+          "focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 focus:bg-[#fff6e9]",
           "disabled:opacity-50 disabled:cursor-not-allowed",
-          "text-sm leading-relaxed",
-          "max-h-36 overflow-y-auto"
+          "max-h-36 overflow-y-auto transition-all"
         )}
       />
       <button
         onClick={handleSubmit}
         disabled={!canSend}
         className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-full",
-          "flex items-center justify-center",
-          "transition-all duration-200",
+          "shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200",
           canSend
-            ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-            : "bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed"
+            ? "bg-slate-900 text-white hover:bg-slate-700 cursor-pointer"
+            : "bg-[#eddfc8] text-slate-300 cursor-not-allowed"
         )}
         aria-label="Send message"
       >
         {disabled ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <Send className="w-5 h-5" />
+          <Send className="w-4 h-4" />
         )}
       </button>
     </div>

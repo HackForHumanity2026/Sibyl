@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { DisclosureGapResponse } from "@/types/sourceOfTruth";
 import { GapCard } from "./GapCard";
 
@@ -12,61 +13,46 @@ interface DisclosureGapsSectionProps {
   pillar?: string;
 }
 
-export function DisclosureGapsSection({
-  gaps,
-}: DisclosureGapsSectionProps) {
+export function DisclosureGapsSection({ gaps }: DisclosureGapsSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  if (gaps.length === 0) {
-    return null;
-  }
+  if (gaps.length === 0) return null;
 
-  const fullyUnaddressed = gaps.filter(
-    (g) => g.gap_type === "fully_unaddressed"
-  ).length;
-  const partiallyAddressed = gaps.filter(
-    (g) => g.gap_type === "partially_addressed"
-  ).length;
+  const fullyUnaddressed = gaps.filter((g) => g.gap_type === "fully_unaddressed").length;
+  const partiallyAddressed = gaps.filter((g) => g.gap_type === "partially_addressed").length;
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div>
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+        className="w-full flex items-center justify-between py-3 hover:bg-[#f5ecdb] transition-colors text-left px-1 -mx-1"
       >
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-foreground">
-            Disclosure Gaps
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[#4a3c2e]">Disclosure Gaps</span>
+          <span className="text-xs text-[#8b7355]">
+            {gaps.length} gap{gaps.length !== 1 ? "s" : ""}
           </span>
-          <span className="text-xs text-muted-foreground">
-            ({gaps.length} gap{gaps.length !== 1 ? "s" : ""})
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
           {fullyUnaddressed > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded bg-gray-500/20 text-gray-400">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 font-medium">
               {fullyUnaddressed} unaddressed
             </span>
           )}
           {partiallyAddressed > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
               {partiallyAddressed} partial
             </span>
           )}
-          <span
-            className={`text-muted-foreground transition-transform ${
-              isExpanded ? "rotate-180" : ""
-            }`}
-          >
-            ▼
-          </span>
         </div>
+        <ChevronDown
+          size={14}
+          className={`text-[#8b7355] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+        />
       </button>
 
       {/* Content */}
       {isExpanded && (
-        <div className="p-4 space-y-3">
+        <div className="divide-y divide-[#e0d4bf] border-y border-[#e0d4bf]">
           {gaps.map((gap) => (
             <GapCard key={gap.gap_id} gap={gap} />
           ))}

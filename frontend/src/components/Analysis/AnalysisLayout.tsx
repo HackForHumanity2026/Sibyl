@@ -131,8 +131,8 @@ export function AnalysisLayout({
         className="analysis-layout__panel analysis-layout__panel--left"
         style={{ width: `${widths.left}%` }}
       >
-        <div className="analysis-layout__panel-header">
-          <h3 className="analysis-layout__panel-title">PDF Viewer</h3>
+        <div className="flex items-center px-4 py-2.5 border-b border-slate-100 bg-[#fff6e9]">
+          <h3 className="text-xs font-semibold text-[#6b5344] uppercase tracking-wide">PDF Viewer</h3>
         </div>
         <div className="analysis-layout__panel-content">{leftPanel}</div>
       </div>
@@ -151,8 +151,8 @@ export function AnalysisLayout({
         className="analysis-layout__panel analysis-layout__panel--center"
         style={{ width: `${widths.center}%` }}
       >
-        <div className="analysis-layout__panel-header">
-          <h3 className="analysis-layout__panel-title">Investigation Dashboard</h3>
+        <div className="flex items-center px-4 py-2.5 border-b border-slate-100 bg-[#fff6e9]">
+          <h3 className="text-xs font-semibold text-[#6b5344] uppercase tracking-wide">Investigation</h3>
         </div>
         <div className="analysis-layout__panel-content">{centerPanel}</div>
       </div>
@@ -171,8 +171,8 @@ export function AnalysisLayout({
         className="analysis-layout__panel analysis-layout__panel--right"
         style={{ width: `${widths.right}%` }}
       >
-        <div className="analysis-layout__panel-header">
-          <h3 className="analysis-layout__panel-title">Claims & Reasoning</h3>
+        <div className="flex items-center px-4 py-2.5 border-b border-slate-100 bg-[#fff6e9]">
+          <h3 className="text-xs font-semibold text-[#6b5344] uppercase tracking-wide">Claims & Reasoning</h3>
         </div>
         <div className="analysis-layout__panel-content">{rightPanel}</div>
       </div>

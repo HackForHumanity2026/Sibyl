@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Dark mode is opt-in only via .dark class — never applied by default */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -35,117 +36,174 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  /* Navbar tokens (mapped from former sidebar tokens) */
+  --color-navbar: var(--navbar);
+  --color-navbar-foreground: var(--navbar-foreground);
+  --color-navbar-border: var(--navbar-border);
 }
 
+/* ============================================================================
+   Light Theme (Default) — white/near-black, minimal palette
+   ============================================================================ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+
+  /* Surfaces */
+  --background: #fff6e9;
+  --foreground: #0f0f0f;
+  --card: #fff6e9;
+  --card-foreground: #0f0f0f;
+  --popover: #fff6e9;
+  --popover-foreground: #0f0f0f;
+
+  /* Brand / interactive */
+  --primary: #0f0f0f;
+  --primary-foreground: #ffffff;
+  --secondary: #eddfc8;
+  --secondary-foreground: #0f0f0f;
+
+  /* Muted / subdued — warm cream tone to complement #fff6e9 background */
+  --muted: #eddfc8;
+  --muted-foreground: #6b5344;
+
+  /* Accent (same as muted for minimal palette) */
+  --accent: #eddfc8;
+  --accent-foreground: #0f0f0f;
+
+  /* Semantic */
+  --destructive: #dc2626;
+  --border: #e0d4bf;
+  --input: #e0d4bf;
+  --ring: #a3a3a3;
+
+  /* Charts — kept as neutral fallbacks */
+  --chart-1: #737373;
+  --chart-2: #a3a3a3;
+  --chart-3: #d4d4d4;
+  --chart-4: #525252;
+  --chart-5: #404040;
+
+  /* Navbar tokens */
+  --navbar: #fff6e9;
+  --navbar-foreground: #0f0f0f;
+  --navbar-border: #e5e5e5;
+
+  /* Legacy sidebar tokens (kept for backward compat with any remaining sidebar refs) */
+  --sidebar: #fff6e9;
+  --sidebar-foreground: #0f0f0f;
+  --sidebar-primary: #0f0f0f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #0f0f0f;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #a3a3a3;
 }
 
+/* ============================================================================
+   Dark Theme — opt-in via .dark class only, never default
+   ============================================================================ */
 .dark {
-  /* Deep charcoal background - detective aesthetic */
-  --background: hsl(224 20% 10%);
+  --background: hsl(0 0% 7%);
   --foreground: hsl(0 0% 95%);
-  --card: hsl(224 18% 14%);
+  --card: hsl(0 0% 10%);
   --card-foreground: hsl(0 0% 95%);
-  --popover: hsl(224 18% 14%);
+  --popover: hsl(0 0% 10%);
   --popover-foreground: hsl(0 0% 95%);
-  /* Slate blue primary accent */
-  --primary: hsl(217 33% 55%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(224 16% 18%);
+  --primary: hsl(0 0% 95%);
+  --primary-foreground: hsl(0 0% 7%);
+  --secondary: hsl(0 0% 15%);
   --secondary-foreground: hsl(0 0% 95%);
-  --muted: hsl(224 16% 18%);
-  --muted-foreground: hsl(0 0% 64%);
-  --accent: hsl(217 33% 55%);
-  --accent-foreground: hsl(0 0% 100%);
-  /* Crimson red for destructive/Judge agent */
+  --muted: hsl(0 0% 15%);
+  --muted-foreground: hsl(0 0% 60%);
+  --accent: hsl(0 0% 15%);
+  --accent-foreground: hsl(0 0% 95%);
   --destructive: hsl(0 72% 51%);
-  --border: hsl(224 14% 20%);
-  --input: hsl(224 14% 22%);
-  --ring: hsl(217 33% 55%);
-  --chart-1: hsl(217 33% 55%);
-  --chart-2: hsl(142 40% 40%);
-  --chart-3: hsl(45 90% 50%);
-  --chart-4: hsl(271 50% 45%);
-  --chart-5: hsl(180 50% 40%);
-  --sidebar: hsl(224 18% 12%);
+  --border: hsl(0 0% 18%);
+  --input: hsl(0 0% 18%);
+  --ring: hsl(0 0% 40%);
+  --chart-1: hsl(0 0% 70%);
+  --chart-2: hsl(0 0% 55%);
+  --chart-3: hsl(0 0% 40%);
+  --chart-4: hsl(0 0% 25%);
+  --chart-5: hsl(0 0% 20%);
+  --navbar: hsl(0 0% 9%);
+  --navbar-foreground: hsl(0 0% 95%);
+  --navbar-border: hsl(0 0% 18%);
+  --sidebar: hsl(0 0% 9%);
   --sidebar-foreground: hsl(0 0% 95%);
-  --sidebar-primary: hsl(217 33% 55%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(224 16% 18%);
+  --sidebar-primary: hsl(0 0% 95%);
+  --sidebar-primary-foreground: hsl(0 0% 7%);
+  --sidebar-accent: hsl(0 0% 15%);
   --sidebar-accent-foreground: hsl(0 0% 95%);
-  --sidebar-border: hsl(224 14% 20%);
-  --sidebar-ring: hsl(217 33% 55%);
+  --sidebar-border: hsl(0 0% 18%);
+  --sidebar-ring: hsl(0 0% 40%);
+}
 
-  /* Agent color identity */
-  --agent-claims: hsl(217 33% 55%);       /* Slate blue */
-  --agent-orchestrator: hsl(0 0% 85%);    /* White/silver */
-  --agent-geography: hsl(142 40% 40%);    /* Forest green */
-  --agent-legal: hsl(271 50% 45%);        /* Deep purple */
-  --agent-news: hsl(45 90% 50%);          /* Amber/gold */
-  --agent-academic: hsl(180 50% 40%);     /* Teal */
-  --agent-data: hsl(16 80% 55%);          /* Coral/orange */
-  --agent-judge: hsl(0 72% 51%);          /* Crimson red */
+/* ============================================================================
+   Semantic colors for agent/claim types — used in Analysis page (FRD 3/4)
+   These are not primary brand colors; they exist only for data differentiation.
+   ============================================================================ */
+:root {
+  --agent-claims: hsl(217 33% 45%);
+  --agent-orchestrator: hsl(0 0% 40%);
+  --agent-geography: hsl(142 40% 35%);
+  --agent-legal: hsl(271 50% 40%);
+  --agent-news: hsl(45 90% 45%);
+  --agent-academic: hsl(180 50% 35%);
+  --agent-data: hsl(16 80% 50%);
+  --agent-judge: hsl(0 72% 45%);
 
-  /* Claim type colors (FRD 3) */
-  --claim-geographic: hsl(142 40% 35%);     /* Forest green */
-  --claim-quantitative: hsl(16 85% 60%);    /* Coral/orange */
-  --claim-legal: hsl(270 50% 40%);          /* Deep purple */
-  --claim-strategic: hsl(45 90% 50%);       /* Amber/gold */
-  --claim-environmental: hsl(175 50% 40%);  /* Teal */
+  --claim-geographic: hsl(142 40% 35%);
+  --claim-quantitative: hsl(16 85% 55%);
+  --claim-legal: hsl(270 50% 40%);
+  --claim-strategic: hsl(45 90% 45%);
+  --claim-environmental: hsl(175 50% 38%);
 
-  /* Priority colors */
-  --priority-high: hsl(0 72% 51%);          /* Red */
-  --priority-medium: hsl(45 90% 50%);       /* Amber */
-  --priority-low: hsl(0 0% 60%);            /* Gray */
+  --priority-high: hsl(0 72% 50%);
+  --priority-medium: hsl(45 90% 45%);
+  --priority-low: hsl(0 0% 55%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
+  html {
+    color-scheme: light;
   }
+  body {
+    @apply bg-[#fff6e9] text-slate-900 antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* ============================================================================
+   Design System Utilities
+   ============================================================================ */
+
+/* Glass card — the primary surface for all content panels */
+.glass-card {
+  @apply bg-[#fff6e9];
+}
+
+/* Subtle section dividers */
+.section-divider {
+  @apply border-t border-slate-100 my-6;
+}
+
+/* Progress bar container */
+.progress-bar-container {
+  @apply h-1.5 w-full bg-slate-100 rounded-full overflow-hidden;
+}
+
+/* Pill badge base */
+.badge {
+  @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+/* Page layout wrapper */
+.page-wrapper {
+  @apply max-w-5xl mx-auto px-6 py-10 w-full;
 }
 
 /* ============================================================================
@@ -772,7 +830,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--muted);
+  background: #f8fafc;
 }
 
 .pdf-viewer__scroll-container {
@@ -789,7 +847,7 @@
 .pdf-viewer__page-wrapper {
   position: relative;
   box-shadow: 0 2px 8px hsl(0 0% 0% / 0.15);
-  background: white;
+  background: #ffffff; /* PDF page itself stays true white */
   line-height: 0; /* prevent inline spacing beneath canvas */
 }
 

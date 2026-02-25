@@ -9,6 +9,21 @@ from typing import Literal
 
 
 # ============================================================================
+# Mock Data Types (Dev Only)
+# ============================================================================
+
+class MockSeedResponse(BaseModel):
+    """Response from mock data seeding."""
+
+    report_id: str
+    claims_created: int
+    findings_created: int
+    verdicts_created: int
+    gaps_created: int
+    message: str
+
+
+# ============================================================================
 # Evidence Chain Types
 # ============================================================================
 

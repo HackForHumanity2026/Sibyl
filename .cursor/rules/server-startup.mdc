@@ -22,8 +22,8 @@ docker-compose up -d
 ```
 
 This will start:
-- **PostgreSQL** (with pgvector) on port 5434
-- **Redis** on port 6379
+- **PostgreSQL** (with pgvector) on port 5435
+- **Redis** on port 6380
 - **Backend API** on port 8000
 - **Frontend** on port 5173
 
@@ -66,14 +66,52 @@ docker-compose down -v
 
 ## Troubleshooting
 
+### Adding New npm Packages (Frontend)
+
+The frontend uses a Docker anonymous volume to hold `node_modules` (see `docker-compose.yml` lines 56-57). This volume is created once and **persists across restarts** — so a plain `docker-compose up -d --build` will NOT install new packages because the old anonymous volume shadows the freshly built image.
+
+**Whenever a new npm package is added to `frontend/package.json`, use this sequence:**
+
+```bash
+cd /Users/abeerdas/Documents/GitHub/Sibyl
+
+# 1. Stop and fully remove the frontend container (destroys the stale anonymous volume)
+docker-compose stop frontend && docker-compose rm -f frontend
+
+# 2. Rebuild the image from scratch (no cache, runs npm install fresh)
+docker-compose build --no-cache frontend
+
+# 3. Start with --renew-anon-volumes so the volume is repopulated from the new image
+docker-compose up -d --renew-anon-volumes frontend
+```
+
+**Verify the package is installed:**
+```bash
+docker exec sibyl-frontend-1 ls /app/node_modules | grep <package-name>
+```
+
+**Why this happens:**
+- `docker-compose.yml` mounts `./frontend:/app` (live code sync) and shields `node_modules` with an anonymous volume `/app/node_modules`
+- The anonymous volume is populated from the image on first creation, then frozen
+- `--build` rebuilds the image but reuses the existing volume — the new `node_modules` never lands in the container
+- `--renew-anon-volumes` forces the volume to be recreated from the current image
+
+**Also ensure `frontend/.dockerignore` exists** (prevents local `node_modules` from overwriting the container's):
+```
+node_modules
+.env
+.env.local
+dist
+```
+
 ### Port Conflicts
 
 If you encounter "port already allocated" errors:
 
 1. Check what's using the port:
    ```bash
-   lsof -i :6379  # Redis
-   lsof -i :5434  # PostgreSQL
+   lsof -i :6380  # Redis
+   lsof -i :5435  # PostgreSQL
    lsof -i :8000  # Backend
    lsof -i :5173  # Frontend
    ```
@@ -85,8 +123,8 @@ If you encounter "port already allocated" errors:
    ```
 
 3. Common conflicts in this workspace:
-   - Port 5434: Often used by spicedb-db container
-   - Port 6379: Sometimes a standalone redis container is running
+   - Port 5435: PostgreSQL (changed from 5434 to avoid conflict with Spellbook's SpiceDB on 5434)
+   - Port 6380: Redis (changed from 6379 to avoid conflict with Spellbook's Redis on 6379)
 
 ### CORS Errors (File Upload Issues)
 
@@ -154,8 +192,8 @@ Once running, access the services at:
 | Frontend   | http://localhost:5173        |
 | Backend    | http://localhost:8000        |
 | API Docs   | http://localhost:8000/docs   |
-| PostgreSQL | localhost:5434               |
-| Redis      | localhost:6379               |
+| PostgreSQL | localhost:5435               |
+| Redis      | localhost:6380               |
 
 ## Development Mode (Alternative)
 

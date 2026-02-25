@@ -148,7 +148,6 @@ export interface ReportSummaryResponse {
   report_id: string;
   total_claims: number;
   verdicts_by_type: VerdictBreakdown;
-  coverage_by_pillar: Record<IFRSPillar, number>;
   gaps_by_status: Record<GapType, number>;
   pipeline_iterations: number;
   compiled_at: string;
@@ -198,6 +197,19 @@ export interface ReportFilters {
   agent?: AgentName;
   ifrsSearch?: string;
   gapStatus?: GapType;
+}
+
+// ============================================================================
+// Mock Data Types (Dev Only)
+// ============================================================================
+
+export interface MockSeedResponse {
+  report_id: string;
+  claims_created: number;
+  findings_created: number;
+  verdicts_created: number;
+  gaps_created: number;
+  message: string;
 }
 
 // ============================================================================
@@ -261,25 +273,27 @@ export const GAP_COLORS: Record<GapType, { bg: string; border: string }> = {
 // Pillar Display Information
 // ============================================================================
 
-export const PILLAR_INFO: Record<IFRSPillar, { displayName: string; icon: string; description: string }> = {
+export type PillarIconName = "Building2" | "Target" | "AlertTriangle" | "BarChart3";
+
+export const PILLAR_INFO: Record<IFRSPillar, { displayName: string; icon: PillarIconName; description: string }> = {
   governance: {
     displayName: "Governance",
-    icon: "🏛️",
+    icon: "Building2",
     description: "Board oversight, management roles, and accountability structures",
   },
   strategy: {
     displayName: "Strategy",
-    icon: "🎯",
+    icon: "Target",
     description: "Transition plans, resource allocation, and strategic decisions",
   },
   risk_management: {
     displayName: "Risk Management",
-    icon: "⚠️",
+    icon: "AlertTriangle",
     description: "Risk identification, assessment, and integration with ERM",
   },
   metrics_targets: {
     displayName: "Metrics & Targets",
-    icon: "📊",
+    icon: "BarChart3",
     description: "GHG emissions, climate targets, and performance metrics",
   },
 };

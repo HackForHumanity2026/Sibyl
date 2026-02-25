@@ -4,74 +4,77 @@
  */
 
 import type { DisclosureGapResponse } from "@/types/sourceOfTruth";
-import { GAP_COLORS } from "@/types/sourceOfTruth";
 import { IFRSParagraphTag } from "./IFRSParagraphTag";
 
 interface GapCardProps {
   gap: DisclosureGapResponse;
 }
 
-const SEVERITY_LABELS: Record<string, { label: string; color: string }> = {
-  high: { label: "High Severity", color: "text-red-400" },
-  medium: { label: "Medium Severity", color: "text-yellow-400" },
-  low: { label: "Low Severity", color: "text-gray-400" },
+const SEVERITY_CONFIG: Record<string, { label: string; className: string }> = {
+  high: { label: "High", className: "bg-rose-50 text-rose-700 border-rose-100" },
+  medium: { label: "Medium", className: "bg-amber-50 text-amber-700 border-amber-100" },
+  low: { label: "Low", className: "bg-[#f5ecdb] text-[#6b5344] border-slate-100" },
 };
 
 const GAP_TYPE_LABELS: Record<string, string> = {
-  fully_unaddressed: "Fully Unaddressed",
-  partially_addressed: "Partially Addressed",
+  fully_unaddressed: "Unaddressed",
+  partially_addressed: "Partial",
 };
 
 export function GapCard({ gap }: GapCardProps) {
-  const colors = GAP_COLORS[gap.gap_type];
-  const severity = SEVERITY_LABELS[gap.severity] || SEVERITY_LABELS.medium;
+  const severity = SEVERITY_CONFIG[gap.severity] ?? SEVERITY_CONFIG.medium;
 
   return (
-    <div
-      className={`rounded-lg border-l-4 ${colors.border} ${colors.bg} p-4 space-y-3`}
-    >
+    <div className="bg-[#fff6e9] p-4 space-y-3">
       {/* Header */}
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <IFRSParagraphTag paragraphId={gap.paragraph_id} />
-          <span className="text-xs text-muted-foreground">
-            {GAP_TYPE_LABELS[gap.gap_type]}
+          <span className="text-xs text-[#6b5344]">
+            {GAP_TYPE_LABELS[gap.gap_type] ?? gap.gap_type}
           </span>
-          <span className={`text-xs ${severity.color}`}>{severity.label}</span>
+          <span
+            title={severity.label}
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              gap.severity === "high"
+                ? "bg-rose-500"
+                : gap.severity === "medium"
+                ? "bg-amber-400"
+                : "bg-[#c8a97a]"
+            }`}
+          />
         </div>
         {gap.s1_counterpart && (
-          <span className="text-xs text-muted-foreground">
-            S1 counterpart: {gap.s1_counterpart}
+          <span className="text-xs text-[#8b7355] font-mono">
+            S1: {gap.s1_counterpart}
           </span>
         )}
       </div>
 
-      {/* Requirement Text */}
-      <p className="text-sm text-foreground">{gap.requirement_text}</p>
+      {/* Requirement text */}
+      <p className="text-sm text-slate-700 leading-relaxed">{gap.requirement_text}</p>
 
-      {/* Missing Requirements */}
+      {/* Missing requirements */}
       {gap.missing_requirements.length > 0 && (
         <div className="space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            Missing Requirements:
+          <span className="text-xs font-medium text-[#8b7355] uppercase tracking-wide">
+            Missing
           </span>
-          <ul className="list-disc list-inside text-xs text-foreground space-y-0.5">
-            {gap.missing_requirements.map((req, index) => (
-              <li key={index}>{req.replace(/_/g, " ")}</li>
+          <ul className="space-y-0.5">
+            {gap.missing_requirements.map((req, i) => (
+              <li key={i} className="text-xs text-[#4a3c2e] flex gap-2">
+                <span className="text-slate-300 shrink-0">–</span>
+                {req.replace(/_/g, " ")}
+              </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Materiality Context */}
+      {/* Materiality context */}
       {gap.materiality_context && (
-        <div className="pt-2 border-t border-border/50">
-          <span className="text-xs font-medium text-muted-foreground">
-            Why this matters:
-          </span>
-          <p className="text-xs text-foreground mt-1">
-            {gap.materiality_context}
-          </p>
+        <div className="pt-2 border-t border-slate-100">
+          <p className="text-xs text-[#8b7355] italic">{gap.materiality_context}</p>
         </div>
       )}
     </div>
