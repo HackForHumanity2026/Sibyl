@@ -7,23 +7,23 @@ import type { AgentName } from "@/types/agent";
 import type { NodePosition } from "@/types/dashboard";
 
 export const LAYOUT_CONFIG = {
-  claimsY: 50,
-  orchestratorY: 200,
-  specialistsY: 400,
-  judgeY: 600,
-  nodeSpacing: 150,
-  centerX: 400,
+  claimsY: 60,
+  orchestratorY: 310,
+  specialistsY: 610,
+  judgeY: 910,
+  nodeSpacing: 360,
+  centerX: 720,
 };
 
 export const AGENT_POSITIONS: Record<AgentName, NodePosition> = {
-  claims: { x: 400, y: LAYOUT_CONFIG.claimsY },
-  orchestrator: { x: 400, y: LAYOUT_CONFIG.orchestratorY },
-  geography: { x: 100, y: LAYOUT_CONFIG.specialistsY },
-  legal: { x: 250, y: LAYOUT_CONFIG.specialistsY },
-  news_media: { x: 400, y: LAYOUT_CONFIG.specialistsY },
-  academic: { x: 550, y: LAYOUT_CONFIG.specialistsY },
-  data_metrics: { x: 700, y: LAYOUT_CONFIG.specialistsY },
-  judge: { x: 400, y: LAYOUT_CONFIG.judgeY },
+  claims:        { x: 720, y: LAYOUT_CONFIG.claimsY },
+  orchestrator:  { x: 720, y: LAYOUT_CONFIG.orchestratorY },
+  geography:     { x:  -20, y: LAYOUT_CONFIG.specialistsY },
+  legal:         { x:  340, y: LAYOUT_CONFIG.specialistsY },
+  news_media:    { x:  700, y: LAYOUT_CONFIG.specialistsY },
+  academic:      { x: 1060, y: LAYOUT_CONFIG.specialistsY },
+  data_metrics:  { x: 1420, y: LAYOUT_CONFIG.specialistsY },
+  judge:         { x: 720,  y: LAYOUT_CONFIG.judgeY },
 };
 
 export const AGENT_DISPLAY_NAMES: Record<AgentName, string> = {

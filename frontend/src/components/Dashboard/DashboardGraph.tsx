@@ -7,8 +7,8 @@ import { Component, useCallback, useMemo, useState, type ReactNode } from "react
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlowProvider,
   type Node,
   type Edge,
@@ -106,8 +106,8 @@ const edgeTypes: EdgeTypes = {
 interface DashboardGraphInnerProps {
   nodes: Node<AgentNodeData>[];
   edges: Edge<ClaimEdgeData>[];
-  expandedNodeId: string | null;
-  setExpandedNodeId: (id: string | null) => void;
+  expandedNodeIds: Set<string>;
+  toggleNodeExpanded: (id: string) => void;
   selectedEdgeId: string | null;
   setSelectedEdgeId: (id: string | null) => void;
 }
@@ -115,25 +115,21 @@ interface DashboardGraphInnerProps {
 function DashboardGraphInner({
   nodes,
   edges,
-  expandedNodeId,
-  setExpandedNodeId,
+  expandedNodeIds,
+  toggleNodeExpanded,
   selectedEdgeId,
   setSelectedEdgeId,
 }: DashboardGraphInnerProps) {
   const [edgePopoverPosition, setEdgePopoverPosition] = useState({ x: 0, y: 0 });
 
-  // Update node data with expansion state (memoized to avoid unnecessary re-renders)
+  // Node expansion is already baked in via useDashboard — no remapping needed here
   const nodesWithExpansion = useMemo(
     () =>
       nodes.map((node) => ({
         ...node,
-        data: {
-          ...node.data,
-          expanded: expandedNodeId === node.id,
-        },
-        selected: expandedNodeId === node.id,
+        selected: expandedNodeIds.has(node.id),
       })),
-    [nodes, expandedNodeId]
+    [nodes, expandedNodeIds]
   );
 
   // Update edge data with selection state (memoized to avoid unnecessary re-renders)
@@ -148,19 +144,14 @@ function DashboardGraphInner({
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      if (expandedNodeId === node.id) {
-        setExpandedNodeId(null);
-      } else {
-        setExpandedNodeId(node.id);
-      }
+      toggleNodeExpanded(node.id);
       setSelectedEdgeId(null);
     },
-    [expandedNodeId, setExpandedNodeId, setSelectedEdgeId]
+    [toggleNodeExpanded, setSelectedEdgeId]
   );
 
   const handleEdgeClick = useCallback(
     (event: React.MouseEvent, edge: Edge) => {
-      // Get position relative to .dashboard-graph (the popover's positioned ancestor)
       const container = (event.target as HTMLElement).closest(".dashboard-graph");
       const rect = container?.getBoundingClientRect();
       if (rect) {
@@ -170,15 +161,13 @@ function DashboardGraphInner({
         });
       }
       setSelectedEdgeId(edge.id);
-      setExpandedNodeId(null);
     },
-    [setSelectedEdgeId, setExpandedNodeId]
+    [setSelectedEdgeId]
   );
 
   const handlePaneClick = useCallback(() => {
-    setExpandedNodeId(null);
     setSelectedEdgeId(null);
-  }, [setExpandedNodeId, setSelectedEdgeId]);
+  }, [setSelectedEdgeId]);
 
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
 
@@ -205,15 +194,13 @@ function DashboardGraphInner({
         edgesReconnectable={false}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#e2e8f0" gap={20} />
-        <Controls />
-        <MiniMap
-          nodeColor={(node) =>
-            getAgentHexColor((node.data as AgentNodeData).agentName)
-          }
-          maskColor="rgba(248, 250, 252, 0.7)"
-          style={{ background: "#fff6e9" }}
+        <Background
+          color="#e0d4bf"
+          gap={32}
+          variant={BackgroundVariant.Dots}
+          size={1.5}
         />
+        <Controls />
       </ReactFlow>
 
       {/* Edge popover */}
@@ -242,8 +229,8 @@ export function DashboardGraph({
   const {
     nodes,
     edges,
-    expandedNodeId,
-    setExpandedNodeId,
+    expandedNodeIds,
+    toggleNodeExpanded,
     selectedEdgeId,
     setSelectedEdgeId,
   } = useDashboard(events, isAnalyzing);
@@ -302,8 +289,8 @@ export function DashboardGraph({
           <DashboardGraphInner
             nodes={nodes}
             edges={edges}
-            expandedNodeId={expandedNodeId}
-            setExpandedNodeId={setExpandedNodeId}
+            expandedNodeIds={expandedNodeIds}
+            toggleNodeExpanded={toggleNodeExpanded}
             selectedEdgeId={selectedEdgeId}
             setSelectedEdgeId={setSelectedEdgeId}
           />

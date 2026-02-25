@@ -3,7 +3,7 @@
  * Implements FRD 12 Section 6.
  */
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { Node, Edge } from "@xyflow/react";
 import type { StreamEvent } from "@/services/sse";
 import type { AgentName, AgentFinding, EvidenceType } from "@/types/agent";
@@ -591,11 +591,14 @@ function updateAgentSpecificContent(
 // Hook
 // =============================================================================
 
+// All agents start expanded by default
+const ALL_AGENT_SET = new Set<string>(ALL_AGENTS);
+
 export interface UseDashboardReturn {
   nodes: Node<AgentNodeData>[];
   edges: Edge<ClaimEdgeData>[];
-  expandedNodeId: string | null;
-  setExpandedNodeId: (id: string | null) => void;
+  expandedNodeIds: Set<string>;
+  toggleNodeExpanded: (id: string) => void;
   selectedEdgeId: string | null;
   setSelectedEdgeId: (id: string | null) => void;
   isLoading: boolean;
@@ -606,8 +609,21 @@ export function useDashboard(
   isAnalyzing: boolean
 ): UseDashboardReturn {
   const [graphState, dispatch] = useReducer(graphReducer, undefined, createInitialState);
-  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
+  // All nodes start expanded; clicking individually toggles them
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set(ALL_AGENT_SET));
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
+  const toggleNodeExpanded = useCallback((id: string) => {
+    setExpandedNodeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   // Process new events
   useEffect(() => {
@@ -620,11 +636,11 @@ export function useDashboard(
     }
   }, [events, graphState.lastProcessedIndex]);
 
-  // Reset when starting new analysis
+  // Reset when starting new analysis (all nodes re-expand)
   useEffect(() => {
     if (isAnalyzing && events.length === 0) {
       dispatch({ type: "RESET" });
-      setExpandedNodeId(null);
+      setExpandedNodeIds(new Set(ALL_AGENT_SET));
       setSelectedEdgeId(null);
     }
   }, [isAnalyzing, events.length]);
@@ -645,18 +661,18 @@ export function useDashboard(
         position,
         data: {
           ...nodeData,
-          expanded: expandedNodeId === agentName,
+          expanded: expandedNodeIds.has(agentName),
         },
       });
     }
     return result;
-  }, [graphState.nodeDataMap, expandedNodeId]);
+  }, [graphState.nodeDataMap, expandedNodeIds]);
 
   return {
     nodes,
     edges: graphState.edges,
-    expandedNodeId,
-    setExpandedNodeId,
+    expandedNodeIds,
+    toggleNodeExpanded,
     selectedEdgeId,
     setSelectedEdgeId,
     isLoading: isAnalyzing && events.length === 0,

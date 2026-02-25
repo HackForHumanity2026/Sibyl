@@ -28,12 +28,12 @@ interface Agent {
 
 const AGENTS: Agent[] = [
   {
-    id: "vera",
-    name: "Vera",
+    id: "bron",
+    name: "Bron",
     role: "Orchestrator",
-    shortDesc: "Vera runs the whole investigation. She reads every claim, decides which agents to send it to, and waits for their findings before assembling the final verdict. Think of her as the editor-in-chief — nothing gets published without her sign-off.",
+    shortDesc: "Bron runs the whole investigation. She reads every claim, decides which agents to send it to, and waits for their findings before assembling the final verdict. Think of her as the editor-in-chief — nothing gets published without her sign-off.",
     longDesc:
-      "Vera is the conductor of the Agent Collective. She receives each extracted claim, decides which specialist agents should investigate it, coordinates inter-agent information requests, and synthesises all findings into a final verdict. Nothing happens without Vera knowing about it.",
+      "Bron is the conductor of the Agent Collective. She receives each extracted claim, decides which specialist agents should investigate it, coordinates inter-agent information requests, and synthesises all findings into a final verdict. Nothing happens without Bron knowing about it.",
     specialTool: "Multi-agent orchestration framework",
     capabilities: [
       "Claim routing & prioritisation",
@@ -50,12 +50,12 @@ const AGENTS: Agent[] = [
     mark: "crown",
   },
   {
-    id: "rex",
-    name: "Rex",
+    id: "menny",
+    name: "Menny",
     role: "Claims Extractor",
-    shortDesc: "Rex is the first one in. He reads the entire report and pulls out every statement that can actually be checked — targets, commitments, governance claims, risk disclosures. Without Rex, there's nothing to investigate.",
+    shortDesc: "Menny is the first one in. He reads the entire report and pulls out every statement that can actually be checked — targets, commitments, governance claims, risk disclosures. Without Menny, there's nothing to investigate.",
     longDesc:
-      "Rex tears through the sustainability report page by page, flagging every verifiable claim — commitments, metrics, governance statements, and risk declarations. He categorises each claim by type and importance before passing them to the investigation crew.",
+      "Menny tears through the sustainability report page by page, flagging every verifiable claim — commitments, metrics, governance statements, and risk declarations. He categorises each claim by type and importance before passing them to the investigation crew.",
     specialTool: "Document parsing & claim detection pipeline",
     capabilities: [
       "Claim categorisation (5 types)",
@@ -72,12 +72,12 @@ const AGENTS: Agent[] = [
     mark: "doc",
   },
   {
-    id: "lex",
-    name: "Lex",
+    id: "mike",
+    name: "Mike",
     role: "Legal Agent",
-    shortDesc: "Lex is the compliance expert. She maps every claim to the exact IFRS S1/S2 paragraph it should satisfy, then checks which required disclosures are missing. If there's a gap between what the report says and what IFRS demands, Lex finds it.",
+    shortDesc: "Mike is the compliance expert. He maps every claim to the exact IFRS S1/S2 paragraph it should satisfy, then checks which required disclosures are missing. If there's a gap between what the report says and what IFRS demands, Mike finds it.",
     longDesc:
-      "Lex is the compliance specialist. She maps each claim to specific IFRS S1/S2 paragraphs, checks for disclosure gaps, and identifies whether required disclosures are fully addressed, partially addressed, or missing entirely. Her output powers the S1/S2 cross-mapping view.",
+      "Mike is the compliance specialist. He maps each claim to specific IFRS S1/S2 paragraphs, checks for disclosure gaps, and identifies whether required disclosures are fully addressed, partially addressed, or missing entirely. His output powers the S1/S2 cross-mapping view.",
     specialTool: "IFRS S1/S2 paragraph knowledge base",
     capabilities: [
       "Disclosure gap detection",
@@ -94,12 +94,12 @@ const AGENTS: Agent[] = [
     mark: "scales",
   },
   {
-    id: "nova",
-    name: "Nova",
+    id: "rhea",
+    name: "Rhea",
     role: "Data & Metrics Agent",
-    shortDesc: "Nova checks if the numbers actually add up. She validates Scope 1/2/3 totals, tests whether reduction targets are mathematically achievable, and compares figures against industry benchmarks. Spotting a \"42% reduction by 2030\" that doesn't match the baseline is exactly her job.",
+    shortDesc: "Rhea checks if the numbers actually add up. She validates Scope 1/2/3 totals, tests whether reduction targets are mathematically achievable, and compares figures against industry benchmarks. Spotting a \"42% reduction by 2030\" that doesn't match the baseline is exactly her job.",
     longDesc:
-      "Nova cross-checks every quantitative claim for mathematical consistency, methodology alignment, and benchmark plausibility. She validates Scope 1/2/3 totals, checks reduction targets against baselines and timelines, and flags any figures that don't add up.",
+      "Rhea cross-checks every quantitative claim for mathematical consistency, methodology alignment, and benchmark plausibility. She validates Scope 1/2/3 totals, checks reduction targets against baselines and timelines, and flags any figures that don't add up.",
     specialTool: "GHG quantitative validation engine",
     capabilities: [
       "Mathematical consistency checks",
@@ -116,12 +116,12 @@ const AGENTS: Agent[] = [
     mark: "chart",
   },
   {
-    id: "echo",
-    name: "Echo",
+    id: "yahu",
+    name: "Yahu",
     role: "News & Media Agent",
-    shortDesc: "Echo searches public news, investigative journalism, and regulatory filings for anything that confirms or contradicts what the report claims. If a company says it hit a target but a regulator fined them that same year, Echo finds the story.",
+    shortDesc: "Yahu searches public news, investigative journalism, and regulatory filings for anything that confirms or contradicts what the report claims. If a company says it hit a target but a regulator fined them that same year, Yahu finds the story.",
     longDesc:
-      "Echo searches public news, investigative journalism, press releases, and regulatory actions for evidence supporting or contradicting each claim. She ranks sources by credibility tier and flags any public record that contradicts the report's statements.",
+      "Yahu searches public news, investigative journalism, press releases, and regulatory actions for evidence supporting or contradicting each claim. He ranks sources by credibility tier and flags any public record that contradicts the report's statements.",
     specialTool: "Web search & live news retrieval",
     capabilities: [
       "Four-tier source credibility ranking",
@@ -138,12 +138,12 @@ const AGENTS: Agent[] = [
     mark: "waves",
   },
   {
-    id: "iris",
-    name: "Iris",
+    id: "newton",
+    name: "Newton",
     role: "Academic Research Agent",
-    shortDesc: "Iris digs into academic databases and published research to check whether a claim aligns with scientific consensus. If a company cites a methodology or makes an environmental assertion, Iris finds out whether the science actually backs it up.",
+    shortDesc: "Newton digs into academic databases and published research to check whether a claim aligns with scientific consensus. If a company cites a methodology or makes an environmental assertion, Newton finds out whether the science actually backs it up.",
     longDesc:
-      "Iris queries academic databases and research repositories to find scientific consensus, published methodologies, and empirical evidence for or against the report's claims. She's particularly powerful for environmental targets and emissions methodology claims.",
+      "Newton queries academic databases and research repositories to find scientific consensus, published methodologies, and empirical evidence for or against the report's claims. He's particularly powerful for environmental targets and emissions methodology claims — a little Newton energy never hurts.",
     specialTool: "Academic database & research repository search",
     capabilities: [
       "Scientific consensus assessment",
@@ -160,12 +160,12 @@ const AGENTS: Agent[] = [
     mark: "book",
   },
   {
-    id: "terra",
-    name: "Terra",
+    id: "columbo",
+    name: "Columbo",
     role: "Geography Agent",
-    shortDesc: "Terra cross-checks location-based claims against satellite imagery and geographic databases. If a report says 23 facilities in Southeast Asia face physical climate risk, Terra checks whether those facilities and their exposure levels are real.",
+    shortDesc: "Columbo cross-checks location-based claims against satellite imagery and geographic databases. If a report says 23 facilities in Southeast Asia face physical climate risk, Columbo checks whether those facilities and their exposure levels are real.",
     longDesc:
-      "Terra validates location-based claims — physical risk exposures, facility counts, regional operations — against satellite imagery and geographic databases. She's the ground-truth layer for any claim that has a location.",
+      "Columbo validates location-based claims — physical risk exposures, facility counts, regional operations — against satellite imagery and geographic databases. Like his namesake, he always has just one more question — and that question is usually about whether that facility is actually where you said it was.",
     specialTool: "Satellite imagery & geographic database API",
     capabilities: [
       "Physical risk location mapping",

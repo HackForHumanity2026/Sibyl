@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { FileText } from "lucide-react";
+import { FileText, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function getIsActive(path: string, pathname: string): boolean {
@@ -21,23 +21,24 @@ export function Header() {
         Sibyl
       </NavLink>
 
-      {/* Left nav — primary pages */}
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Right slot — Analysis + Report */}
       <nav className="flex items-center gap-1">
         <NavLink
           to="/analysis"
           className={cn(
-            "px-3 py-1.5 text-sm transition-colors",
+            "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
             analysisActive
               ? "font-semibold text-foreground"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
+          <FlaskConical size={14} />
           Analysis
         </NavLink>
-      </nav>
 
-      {/* Right slot — Report link + future utilities */}
-      <div className="ml-auto flex items-center gap-1">
         <NavLink
           to="/report"
           className={cn(
@@ -50,7 +51,7 @@ export function Header() {
           <FileText size={14} />
           Report
         </NavLink>
-      </div>
+      </nav>
     </header>
   );
 }
