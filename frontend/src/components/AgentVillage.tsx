@@ -590,14 +590,14 @@ export function AgentVillage() {
 
   return (
     <>
-      <div className="relative z-10 w-full max-w-4xl mx-auto mt-16 mb-8 px-4">
+      <div className="relative z-10 w-full max-w-4xl mx-auto mt-[2vh] mb-[1vh] px-4">
         {/* Section label */}
-        <p className="text-center text-xs font-bold uppercase tracking-widest text-[#8b7355] mb-8">
+        <p className="text-center text-xs font-bold uppercase tracking-widest text-[#8b7355] mb-3 lg:mb-6">
           Meet the Village
         </p>
 
         {/* Avatars row */}
-        <div className="flex items-end justify-center gap-6 flex-wrap">
+        <div className="flex items-end justify-center gap-3 lg:gap-5 flex-wrap">
           {LANDING_AGENTS.map((agent) => (
             <div key={agent.id} className="relative flex flex-col items-center">
               <AnimatePresence>
@@ -620,7 +620,7 @@ export function AgentVillage() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-[#8b7355] mt-6">
+        <p className="text-center text-xs text-[#8b7355] mt-2 lg:mt-4">
           Click any agent to learn what they do
         </p>
       </div>

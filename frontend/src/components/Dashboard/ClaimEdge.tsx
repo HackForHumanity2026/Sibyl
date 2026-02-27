@@ -10,7 +10,6 @@ import { memo } from "react";
 import {
   BaseEdge,
   getBezierPath,
-  getStraightPath,
   EdgeLabelRenderer,
   type Position,
 } from "@xyflow/react";
@@ -18,10 +17,13 @@ import type { ClaimEdgeData } from "@/types/dashboard";
 import { ParticleAnimation } from "./ParticleAnimation";
 import { getAgentHexColor, isAgentName } from "./layout";
 
-// The Y position to swoop down to (below all specialist nodes)
-// Pentagon layout: centreY=350, radius=200 → lowest specialist ~550
-// Swoop to 750 to be safely below the message pool node and all specialists
-const REINVESTIGATION_SWOOP_Y = 750;
+const SPECIALIST_AGENTS = new Set([
+  "geography",
+  "legal",
+  "news_media",
+  "academic",
+  "data_metrics",
+]);
 
 interface ClaimEdgeProps {
   id: string;
@@ -34,7 +36,15 @@ interface ClaimEdgeProps {
   data?: ClaimEdgeData;
   selected?: boolean;
   source: string;
+  target: string;
 }
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+const AGENT_BORDER_RADIUS = 48;
 
 /**
  * Builds a custom SVG path for reinvestigation edges that swoops below
@@ -46,17 +56,149 @@ function buildSwoopPath(
   targetX: number,
   targetY: number
 ): [string, number, number] {
-  const swoopY = REINVESTIGATION_SWOOP_Y;
-  const midX = (sourceX + targetX) / 2;
+  const swoopY = Math.max(sourceY, targetY) + 210;
+  const control1X = sourceX + 60;
+  const control2X = targetX - 60;
+  const path = `M ${sourceX},${sourceY} C ${control1X},${swoopY} ${control2X},${swoopY} ${targetX},${targetY}`;
 
-  // Cubic bezier: exits source bottom, sweeps below all agents, enters target bottom
-  const path = `M ${sourceX},${sourceY} C ${sourceX},${swoopY} ${targetX},${swoopY} ${targetX},${targetY}`;
-
-  // Label at the midpoint of the swoop
-  const labelX = midX;
-  const labelY = swoopY + 20;
+  const [labelX, labelY] = cubicPoint(
+    { x: sourceX, y: sourceY },
+    { x: control1X, y: swoopY },
+    { x: control2X, y: swoopY },
+    { x: targetX, y: targetY },
+    0.5
+  );
 
   return [path, labelX, labelY];
+}
+
+function anchorToBorders(source: Point, target: Point, radius = AGENT_BORDER_RADIUS): [Point, Point] {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist < 0.001) {
+    return [source, target];
+  }
+
+  const ux = dx / dist;
+  const uy = dy / dist;
+
+  return [
+    { x: source.x + ux * radius, y: source.y + uy * radius },
+    { x: target.x - ux * radius, y: target.y - uy * radius },
+  ];
+}
+
+function quadraticPoint(p0: Point, p1: Point, p2: Point, t: number): [number, number] {
+  const mt = 1 - t;
+  const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
+  const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
+  return [x, y];
+}
+
+function cubicPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: number): [number, number] {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  const x = mt2 * mt * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t2 * t * p3.x;
+  const y = mt2 * mt * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t2 * t * p3.y;
+  return [x, y];
+}
+
+function buildCurvedPath(
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+  bend: number
+): [string, number, number] {
+  const p0 = { x: sourceX, y: sourceY };
+  const p2 = { x: targetX, y: targetY };
+  const mx = (p0.x + p2.x) / 2;
+  const my = (p0.y + p2.y) / 2;
+
+  const dx = p2.x - p0.x;
+  const dy = p2.y - p0.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const nx = -dy / dist;
+  const ny = dx / dist;
+
+  const p1 = {
+    x: mx + nx * bend,
+    y: my + ny * bend,
+  };
+
+  const path = `M ${p0.x},${p0.y} Q ${p1.x},${p1.y} ${p2.x},${p2.y}`;
+  const [labelX, labelY] = quadraticPoint(p0, p1, p2, 0.5);
+  return [path, labelX, labelY];
+}
+
+interface InteractionPoints {
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+}
+
+interface InteractionPositions {
+  sourcePosition: Position;
+  targetPosition: Position;
+}
+
+function buildInteractionPath(
+  edgeType: ClaimEdgeData["edgeType"],
+  source: string,
+  target: string,
+  points: InteractionPoints,
+  positions: InteractionPositions
+): [string, number, number] {
+  const { sourceX, sourceY, targetX, targetY } = points;
+  const { sourcePosition, targetPosition } = positions;
+
+  // React Flow already provides handle coordinates at node borders —
+  // use them directly without further projection.
+  const sx = sourceX;
+  const sy = sourceY;
+  const tx = targetX;
+  const ty = targetY;
+
+  if (edgeType === "reinvestigation") {
+    return buildSwoopPath(sx, sy, tx, ty);
+  }
+
+  if (source === "orchestrator" && SPECIALIST_AGENTS.has(target)) {
+    // Scale bend by distance so far targets arc wide around intermediate nodes
+    const dist = Math.hypot(tx - sx, ty - sy);
+    const bendMag = Math.max(90, dist * 0.38);
+    const isUpper = target === "legal" || target === "geography" || target === "news_media";
+    return buildCurvedPath(sx, sy, tx, ty, isUpper ? -bendMag : bendMag);
+  }
+
+  if (SPECIALIST_AGENTS.has(source) && target === "judge") {
+    const dist = Math.hypot(tx - sx, ty - sy);
+    const bendMag = Math.max(80, dist * 0.32);
+    const isUpper = source === "legal" || source === "geography" || source === "news_media";
+    return buildCurvedPath(sx, sy, tx, ty, isUpper ? -bendMag : bendMag);
+  }
+
+  if (SPECIALIST_AGENTS.has(source) && target === "orchestrator") {
+    const dist = Math.hypot(tx - sx, ty - sy);
+    const bendMag = Math.max(80, dist * 0.32);
+    const isUpper = source === "legal" || source === "geography" || source === "news_media";
+    return buildCurvedPath(sx, sy, tx, ty, isUpper ? -bendMag : bendMag);
+  }
+
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX: sx,
+    sourceY: sy,
+    sourcePosition,
+    targetX: tx,
+    targetY: ty,
+    targetPosition,
+    curvature: 0.28,
+  });
+  return [edgePath, labelX, labelY];
 }
 
 function ClaimEdgeComponent({
@@ -70,7 +212,8 @@ function ClaimEdgeComponent({
   data,
   selected,
   source,
-}: ClaimEdgeProps) {
+  target,
+}: Readonly<ClaimEdgeProps>) {
   const edgeType = data?.edgeType || "claim";
   const volume = data?.volume || "low";
   const label = data?.label;
@@ -93,34 +236,26 @@ function ClaimEdgeComponent({
     strokeDasharray = "4,4";
   }
 
-  // Use custom swoop path for reinvestigation edges,
-  // straight paths for claim/infoRequest (cleaner hub-and-spoke star),
-  // bezier for any other edge type.
+  // Use layout-aware curved paths to avoid clipping through avatars and preserve
+  // intuitive directional flow for common interaction pairs.
   let edgePath: string;
   let labelX: number;
   let labelY: number;
-
-  if (edgeType === "reinvestigation") {
-    // Attach from bottom of source (judge), swoop down, attach to bottom of target (orchestrator)
-    [edgePath, labelX, labelY] = buildSwoopPath(
-      sourceX,
-      sourceY + 50,   // exit bottom of judge node
-      targetX,
-      targetY + 50    // enter bottom of orchestrator node
-    );
-  } else if (edgeType === "claim" || edgeType === "infoRequest") {
-    // Straight lines look cleaner in a star/pentagon hub pattern
-    [edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY });
-  } else {
-    [edgePath, labelX, labelY] = getBezierPath({
+  [edgePath, labelX, labelY] = buildInteractionPath(
+    edgeType,
+    source,
+    target,
+    {
       sourceX,
       sourceY,
-      sourcePosition,
       targetX,
       targetY,
+    },
+    {
+      sourcePosition,
       targetPosition,
-    });
-  }
+    }
+  );
 
   const edgeClassName = `claim-edge claim-edge--${edgeType} ${
     selected ? "claim-edge--selected" : ""

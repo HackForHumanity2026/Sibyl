@@ -232,7 +232,7 @@ export function DocsPage() {
         style={{
           maxWidth: "700px",
           margin: "0 auto",
-          padding: "clamp(4rem, 12vh, 7rem) 2rem 4rem",
+          padding: "clamp(2rem, 5vh, 3.5rem) 2rem 4rem",
         }}
       >
         <motion.div

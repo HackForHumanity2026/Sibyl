@@ -200,19 +200,6 @@ export interface ReportFilters {
 }
 
 // ============================================================================
-// Mock Data Types (Dev Only)
-// ============================================================================
-
-export interface MockSeedResponse {
-  report_id: string;
-  claims_created: number;
-  findings_created: number;
-  verdicts_created: number;
-  gaps_created: number;
-  message: string;
-}
-
-// ============================================================================
 // Agent Color Mapping (FRD 13 Appendix D)
 // ============================================================================
 

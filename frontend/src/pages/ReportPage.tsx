@@ -7,10 +7,10 @@ import {
   S1S2MappingSidebar,
 } from "@/components/SourceOfTruth";
 import type { IFRSPillar } from "@/types/ifrs";
-import { Loader2, AlertCircle, FileText, Zap } from "lucide-react";
+import { Loader2, AlertCircle, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { listReports, createMockReport } from "@/services/api";
+import { listReports } from "@/services/api";
 
 const PILLAR_ORDER: IFRSPillar[] = [
   "governance",
@@ -32,8 +32,6 @@ export function ReportPage() {
     setFilters,
     clearFilters,
     refetch,
-    seedMock,
-    seedingMock,
   } = useReport(reportId);
 
   const [reportsList, setReportsList] = useState<
@@ -48,8 +46,6 @@ export function ReportPage() {
     }>
   >([]);
   const [loadingList, setLoadingList] = useState(false);
-  const [creatingMock, setCreatingMock] = useState(false);
-
   // Fetch reports list when no reportId is provided
   useEffect(() => {
     if (!reportId) {
@@ -60,19 +56,6 @@ export function ReportPage() {
         .finally(() => setLoadingList(false));
     }
   }, [reportId]);
-
-  const handleCreateAndSeedMock = async () => {
-    setCreatingMock(true);
-    try {
-      const { report_id } = await createMockReport();
-      // Redirect to the new mock report page (seeding happens via button there)
-      window.location.href = `/report/${report_id}`;
-    } catch (err) {
-      console.error("Failed to create mock report:", err);
-    } finally {
-      setCreatingMock(false);
-    }
-  };
 
   // No report ID — show reports list
   if (!reportId) {
@@ -85,7 +68,7 @@ export function ReportPage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "flex-start",
-          paddingTop: "clamp(4rem, 15vh, 8rem)",
+          paddingTop: "clamp(2rem, 5vh, 3.5rem)",
           paddingBottom: "4rem",
           background: "#fff6e9",
           overflowY: "auto",
@@ -98,40 +81,13 @@ export function ReportPage() {
           transition={{ duration: 0.5, ease: "easeOut" }}
           style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%", maxWidth: "560px", padding: "0 1.5rem" }}
         >
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: "1rem" }}>
-            <div>
-              <h1 style={{ fontSize: "2.75rem", fontWeight: 800, color: "#4a3c2e", margin: 0, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
-                Reports
-              </h1>
-              <p style={{ fontSize: "0.9375rem", color: "#8b7355", marginTop: "0.6rem" }}>
-                IFRS S1/S2 verified claims and disclosure gap analysis.
-              </p>
-            </div>
-            {import.meta.env.DEV && (
-              <button
-                onClick={handleCreateAndSeedMock}
-                disabled={creatingMock}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.375rem",
-                  padding: "0.4rem 0.875rem",
-                  background: "#f5ecdb",
-                  border: "1px solid #e0d4bf",
-                  color: "#4a3c2e",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  marginTop: "0.25rem",
-                  opacity: creatingMock ? 0.5 : 1,
-                }}
-              >
-                <Zap size={12} />
-                {creatingMock ? "Creating…" : "Mock Report"}
-              </button>
-            )}
+          <div>
+            <h1 style={{ fontSize: "2.75rem", fontWeight: 800, color: "#4a3c2e", margin: 0, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+              Reports
+            </h1>
+            <p style={{ fontSize: "0.9375rem", color: "#8b7355", marginTop: "0.6rem" }}>
+              IFRS S1/S2 verified claims and disclosure gap analysis.
+            </p>
           </div>
         </motion.div>
 
@@ -235,7 +191,7 @@ export function ReportPage() {
         <FileText className="w-10 h-10 text-[#c8a97a]" />
         <h2 className="text-lg font-semibold text-[#4a3c2e]">No Report Data</h2>
         <p className="text-sm text-[#6b5344] text-center max-w-sm">
-          Analysis hasn't completed yet. Refresh to check, or seed mock data to test.
+          Analysis hasn't completed yet. Refresh to check.
         </p>
         <div className="flex gap-3">
           <button
@@ -244,16 +200,6 @@ export function ReportPage() {
           >
             Refresh
           </button>
-          {import.meta.env.DEV && (
-            <button
-              onClick={seedMock}
-              disabled={seedingMock}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#fff6e9] border border-[#e0d4bf] text-[#4a3c2e] rounded-xl text-sm font-medium hover:bg-[#f5ecdb] transition-colors shadow-sm disabled:opacity-50"
-            >
-              <Zap size={14} />
-              {seedingMock ? "Seeding…" : "Seed Mock Data"}
-            </button>
-          )}
         </div>
       </div>
     );
@@ -261,23 +207,6 @@ export function ReportPage() {
 
   return (
     <div className="min-h-full flex flex-col">
-      {/* Dev banner */}
-      {import.meta.env.DEV && (
-        <div className="flex items-center justify-between px-6 py-2 bg-amber-50 border-b border-amber-100">
-          <span className="flex items-center gap-1.5 text-xs text-amber-600">
-            <Zap size={12} />
-            Development mode
-          </span>
-          <button
-            onClick={seedMock}
-            disabled={seedingMock}
-            className="px-3 py-1 bg-[#fff6e9] border border-amber-200 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-50 transition-colors disabled:opacity-50"
-          >
-            {seedingMock ? "Seeding…" : "Re-seed Mock Data"}
-          </button>
-        </div>
-      )}
-
       {/* Sticky Filter Bar */}
       <FilterBar
         filters={filters}

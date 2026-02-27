@@ -52,7 +52,7 @@ function Word({ text, className }: { text: string; className?: string }) {
 function HeroHeading() {
   return (
     <motion.h1
-      className="text-6xl font-bold text-[#4a3c2e] mb-5 tracking-tight leading-[1.15]"
+      className="text-4xl lg:text-5xl xl:text-6xl font-bold text-[#4a3c2e] mb-[1vh] tracking-tight leading-[1.15]"
       initial="hidden"
       animate="visible"
       variants={{
@@ -93,7 +93,7 @@ const PRE_LINK_WORDS = [
 function HeroSubheading() {
   return (
     <motion.p
-      className="text-lg text-[#4a3c2e] leading-relaxed max-w-xl mx-auto"
+      className="text-base lg:text-lg text-[#4a3c2e] leading-relaxed max-w-xl mx-auto"
       initial="hidden"
       animate="visible"
       variants={{
@@ -238,11 +238,11 @@ export function HomePage() {
   };
 
   return (
-    <div className="relative flex flex-col items-center min-h-full py-14 px-4 overflow-x-hidden overflow-y-auto" style={{ height: "100%" }}>
+    <div className="relative flex flex-col items-center justify-center h-full px-4 overflow-hidden">
       <LeafBackground />
 
       {/* Hero — word-by-word spring + blur entrance */}
-      <div className="relative z-10 text-center max-w-3xl mb-12 pt-6">
+      <div className="relative z-10 text-center max-w-3xl mb-[2vh]">
         <HeroHeading />
         <HeroSubheading />
       </div>

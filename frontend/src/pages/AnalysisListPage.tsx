@@ -41,7 +41,7 @@ export function AnalysisListPage() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-start",
-        paddingTop: "clamp(4rem, 15vh, 8rem)",
+        paddingTop: "clamp(2rem, 5vh, 3.5rem)",
         paddingBottom: "4rem",
         background: "#fff6e9",
         overflowY: "auto",

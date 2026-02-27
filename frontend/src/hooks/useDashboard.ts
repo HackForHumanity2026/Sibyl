@@ -335,13 +335,17 @@ function processEvent(state: GraphState, event: StreamEvent): GraphState {
     }
 
     case "pipeline_completed": {
+      // Reset every agent back to idle, clear reasoning streams,
+      // and remove all edges so the village returns to its calm state.
       const newMap = new Map(state.nodeDataMap);
       for (const [agent, nodeData] of newMap) {
-        if (nodeData.status === "working") {
-          newMap.set(agent, { ...nodeData, status: "completed" });
-        }
+        newMap.set(agent, {
+          ...nodeData,
+          status: "idle",
+          reasoningStream: [],
+        });
       }
-      return { ...state, nodeDataMap: newMap };
+      return { ...state, nodeDataMap: newMap, edges: [] };
     }
 
     case "error": {

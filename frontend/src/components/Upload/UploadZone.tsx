@@ -88,7 +88,7 @@ export function UploadZone({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative flex flex-col items-center justify-center p-12 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer",
+          "relative flex flex-col items-center justify-center p-6 lg:p-10 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer",
           disabled && "opacity-50 cursor-not-allowed",
           isDragOver
             ? "border-[#a08060] bg-[#f5ecdb] scale-[1.01]"

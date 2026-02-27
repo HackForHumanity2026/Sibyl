@@ -65,11 +65,12 @@ function EggAvatarNodeComponent({ data }: EggAvatarNodeProps) {
 
   return (
     <div className="egg-avatar-node" onClick={() => onSelect?.(agentName)}>
-      {/* Left handle — receives edges */}
+      {/* Left handle — receives edges, pushed inward to avatar border */}
       <Handle
         type="target"
         position={Position.Left}
         className="egg-avatar-node__handle"
+        style={{ top: 52, left: 39 }}
       />
 
       {/* Avatar wrapper with glow ring */}
@@ -181,13 +182,9 @@ function EggAvatarNodeComponent({ data }: EggAvatarNodeProps) {
               className="egg-avatar-node__reasoning-text"
               style={{ color: isWorking ? agent.markColor : "#8b7355" }}
               initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: isWorking ? [0.6, 1, 0.6] : 1, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              transition={
-                isWorking
-                  ? { opacity: { duration: 1.8, repeat: Infinity, ease: "easeInOut" }, y: { duration: 0.18 } }
-                  : { duration: 0.25 }
-              }
+              transition={{ duration: 0.25 }}
             >
               {latestReasoning.length > 90
                 ? latestReasoning.slice(0, 90) + "…"
@@ -207,11 +204,12 @@ function EggAvatarNodeComponent({ data }: EggAvatarNodeProps) {
         </AnimatePresence>
       </div>
 
-      {/* Right handle — sends edges */}
+      {/* Right handle — sends edges, pushed inward to avatar border */}
       <Handle
         type="source"
         position={Position.Right}
         className="egg-avatar-node__handle"
+        style={{ top: 52, right: 39 }}
       />
     </div>
   );

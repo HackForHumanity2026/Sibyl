@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getSourceOfTruthReport,
-  seedMockReport,
 } from "@/services/api";
 import type {
   SourceOfTruthReportResponse,
@@ -33,10 +32,6 @@ export interface UseReportReturn {
 
   // Actions
   refetch: () => Promise<void>;
-
-  // Dev-only mock data actions
-  seedMock: () => Promise<void>;
-  seedingMock: boolean;
 }
 
 const PILLARS: IFRSPillar[] = [
@@ -56,9 +51,6 @@ export function useReport(reportId: string | undefined): UseReportReturn {
 
   // Filter state
   const [filters, setFilters] = useState<ReportFilters>({});
-
-  // Mock seeding state (dev only)
-  const [seedingMock, setSeedingMock] = useState(false);
 
   // Fetch report
   const fetchReport = useCallback(async () => {
@@ -242,21 +234,6 @@ export function useReport(reportId: string | undefined): UseReportReturn {
     setFilters({});
   }, []);
 
-  // Seed mock data (dev only)
-  const seedMock = useCallback(async () => {
-    if (!reportId) return;
-    setSeedingMock(true);
-    setError(null);
-    try {
-      await seedMockReport(reportId);
-      await fetchReport();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to seed mock data");
-    } finally {
-      setSeedingMock(false);
-    }
-  }, [reportId, fetchReport]);
-
   return {
     report,
     loading,
@@ -267,7 +244,5 @@ export function useReport(reportId: string | undefined): UseReportReturn {
     setFilters,
     clearFilters,
     refetch: fetchReport,
-    seedMock,
-    seedingMock,
   };
 }

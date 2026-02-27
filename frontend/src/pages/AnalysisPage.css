@@ -6,14 +6,15 @@
 .analysis-page {
   display: flex;
   flex-direction: column;
-  /* Pin to exactly the viewport minus the 56px global nav (h-14).
-     This is independent of parent overflow behavior so the page
-     never becomes scrollable regardless of AppShell's overflow setting. */
-  height: calc(100vh - 56px);
-  max-height: calc(100vh - 56px);
+  /* Fill the flex-1 main container from AppShell exactly.
+     Using 100% inherits the flex parent's computed height so
+     there is no viewport-calculation mismatch that could cause
+     the main to scroll and push the bottom bars out of view. */
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: #fff6e9;
   color: #0f172a;
-  overflow: hidden;
 }
 
 /* Loading state */

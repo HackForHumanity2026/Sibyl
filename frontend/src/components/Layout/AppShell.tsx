@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Outlet, useParams, useNavigate } from "react-router-dom";
+import { Outlet, useParams, useNavigate, useLocation } from "react-router-dom";
 import { Header } from "./Header";
 import { ChatPanel, ChatFab } from "@/components/Chatbot";
 import type { Citation } from "@/types/chat";
@@ -7,7 +7,9 @@ import type { Citation } from "@/types/chat";
 export function AppShell() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { reportId } = useParams<{ reportId?: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
+  const isAnalysisDetailRoute = /^\/analysis\/[^/]+$/.test(location.pathname);
 
   // Handle citation click - navigate to appropriate page/section
   const handleCitationClick = useCallback(
@@ -51,8 +53,8 @@ export function AppShell() {
       {/* Horizontal top navigation */}
       <Header />
 
-      {/* Page content — scrolls by default; AnalysisPage pins its own height */}
-      <main className="flex-1 overflow-auto">
+      {/* Page content — analysis detail manages its own internal scrolling */}
+      <main className={`flex-1 min-h-0 ${isAnalysisDetailRoute ? "overflow-hidden" : "overflow-auto"}`}>
         <Outlet />
       </main>
 
