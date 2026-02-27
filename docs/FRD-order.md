@@ -3,8 +3,9 @@
 | Field | Value |
 |---|---|
 | **Project** | Sibyl |
-| **Parent Document** | [PRD v0.3](./PRD.md) |
+| **Parent Document** | [PRD v0.4](./PRD.md) |
 | **Created** | 2026-02-08 |
+| **Revised** | 2026-02-27 |
 | **Purpose** | Define the ordered sequence of FRDs for incremental implementation |
 
 ---
@@ -271,23 +272,24 @@ Each FRD represents a single unit of full functionality that can be implemented,
 
 **PRD Section:** 4.10, 7.2 (Analysis Page center panel)
 
-**Scope:**
+**Note:** The implemented design diverges substantially from the original v1.0 spec. See `FRDs/FRD-12-detective-dashboard.md` v2.0 for the current authoritative specification. Key divergences are noted below.
 
-- React Flow (`@xyflow/react`) network graph with agent nodes and claim/evidence edges
-- Custom `AgentNode.tsx` with unique agent colors, status indicators (pulsing active, solid idle, checkmark complete, warning error)
-- Custom `ClaimEdge.tsx` with animated particles showing data flow direction and volume
-- Real-time updates driven by SSE events from the LangGraph pipeline
-- Node interaction: expand to see status, reasoning stream, findings summary, claim count
-- Edge interaction: click to see the message or data being passed
-- Agent-specific displays:
-  - Geography Agent: satellite image tile with location caption and coordinates
-  - Legal Agent: IFRS coverage progress bars per pillar (green/orange/grey)
-  - Data/Metrics Agent: running consistency check list with pass/fail indicators
-  - Judge Agent: verdict cards with color-coded badges and cycle counts
-- Cyclic validation visualization: re-investigation loop animation
-- Inter-agent communication visualization: InfoRequest/Response edges through Orchestrator
+**Scope (as implemented):**
 
-**Exit criteria:** Users watch the full investigation in real time through an animated, interactive network graph with agent-specific displays and clickable nodes/edges.
+- React Flow (`@xyflow/react`) graph with **warm cream avatar village** aesthetic -- no dark theme
+- Custom `EggAvatarNode.tsx`: egg-shaped avatar characters (Menny, Bron, Columbo, Mike, Yahu, Newton, Rhea, Vera) with pulsating reasoning text below each avatar
+- Custom `MessagePoolNode.tsx`: semi-transparent table at the center of the specialist pentagon showing recent InfoRequest/InfoResponse messages
+- Custom `ClaimEdge.tsx`: straight edges for claim/infoRequest flows; custom quadratic bezier swoop-under for reinvestigation edges
+- **Horizontal left-to-right layout**: Claims near Orchestrator (left), specialist pentagon (center), Judge (right)
+- **Pentagon layout** for five specialist agents around the Message Pool table
+- `AgentNavBar`: fixed bottom navigator bar with small avatar icons for all agents
+- `AgentDetailSheet`: bottom sheet that slides up from beneath the AgentNavBar showing full reasoning history, findings, and agent-specific content
+- `VillageBackground.tsx`: decorative SVG huts/trees/path at ~11% opacity
+- Module-level SSE event cache and graph state cache (keyed by `reportId`) for cross-navigation state persistence
+- Confetti (`canvas-confetti`) on `pipeline_completed` event
+- Pulsating Investigation tab tooltip guiding users to the graph after upload
+
+**Exit criteria:** Users watch the full investigation in real time through an animated avatar village with a bottom sheet for detailed agent inspection, confetti on completion, and full state persistence across navigation.
 
 ---
 
@@ -300,12 +302,14 @@ Each FRD represents a single unit of full functionality that can be implemented,
 - Report compilation backend (`report_compiler.py`, `compile_report` LangGraph node)
 - Report page organized by four IFRS pillars (Governance, Strategy, Risk Management, Metrics & Targets)
 - Claim cards: original text with PDF link, IFRS paragraph tags, expandable evidence chain, full agent reasoning, Judge verdict, color-coded compliance status (green/yellow/red)
-- S1/S2 cross-mapping sidebar
+- S1/S2 cross-mapping sidebar (redesigned: intro text, visual flow arrows, expandable claim lists)
 - Disclosure Gaps section: per-pillar listing of fully unaddressed (grey) and partially addressed (orange) IFRS requirements with materiality context
 - Filter bar: pillar, claim type, verdict status, investigating agent, IFRS paragraph search, disclosure gap status
 - Backend report endpoints (`report.py` routes)
+- `IFRSParagraphTag.tsx` hover popovers with 44-entry frontend registry and prefix-match fallback
+- Report list page: centered `2.75rem` heading, stagger fade-in animations, underline hover, no dividers
 
-**Exit criteria:** A complete, interactive compliance report renders with all claims mapped to IFRS requirements, verdicts, evidence chains, and a disclosure gaps section organized by pillar.
+**Exit criteria:** A complete, interactive compliance report renders with all claims mapped to IFRS requirements, verdicts, evidence chains, IFRS paragraph tooltips, and a redesigned cross-mapping sidebar.
 
 ---
 
@@ -346,3 +350,63 @@ FRD 0 (Setup)
 │   │   │               └── FRD 13 (Source of Truth Report)
 │   │   │                   └── FRD 14 (Chatbot)
 ```
+
+---
+
+## Implemented Features Beyond Original FRD Scope
+
+The following features were implemented after the initial FRD plan and are not covered by FRDs 0-14. They are documented here for completeness.
+
+### Design System Overhaul (All Pages)
+
+Implemented across all pages and components during FRD 12-13 work:
+
+- Warm cream color palette (`#fff6e9`, `#4a3c2e`, `#6b5344`, `#8b7355`, `#eddfc8`, `#e0d4bf`)
+- Prohibited: all `slate-*` Tailwind classes, `rounded-xl` on content cards, emoji
+- Lucide React icons exclusively
+- Framer Motion blur-fade-in entrance animations on all page content
+- No padded background on close/back button hover (only text color changes)
+- Consistent button styling: "Begin Analysis" style extended to all primary action buttons
+
+### DocsPage (`/docs`)
+
+A comprehensive documentation page added to the frontend routing:
+
+- Hero section with product overview
+- IFRS S1/S2 explainer
+- Pipeline diagram (agent flow)
+- Message Pool architecture section
+- Verdict types reference
+- Agent roster: alternating avatar/description layout (agent on left → description on right, then alternates) as the user scrolls
+- Scroll-triggered blur-fade-in animations (Framer Motion `whileInView`)
+- Accessible via `/docs` route and linked in the global navigation header (`Header.tsx`)
+- No "Reference Documentation" eyebrow header (removed for cleaner presentation)
+
+### Analysis List Page Redesign (`AnalysisListPage.tsx`)
+
+- Large centered heading (`2.75rem`) near vertical center of viewport
+- Subheading, both center-aligned
+- No top/bottom dividers on the list container
+- No dividers between list items
+- Stagger fade-in animation for list items (`delay: i * 0.05s`, `duration: 0.22s`)
+- Hover: filename underlines instead of container background darkening
+
+### Upload Content Preview Redesign (`ContentPreview.tsx`)
+
+- Removed redundant stat repetition (stats shown once only)
+- Improved information hierarchy: document title, then metadata, then section list
+- Page numbers changed from illegible grey (`text-slate-300`) to warm brown (`text-[#8b7355]`)
+- Section icon changed from grey `BookOpen` to warm brown
+- No stat grid duplication
+
+### Global Header Updates (`Header.tsx`)
+
+- Sibyl leaf logo (`sibylLogo.png`) added next to "Sibyl" wordmark in nav bar
+- Logo sized to ~32px with negative margins to compensate for transparent padding
+- DocsPage link added to navigation
+- Browser tab favicon updated to `sibyl-favicon.png`
+
+### AgentVillage Landing Page Fix (`AgentVillage.tsx`)
+
+- Avatar float animation decoupled from hover: `useAnimationFrame` + `useMotionValue` for continuous float; `whileHover` for scale, composing independently
+- Hover off no longer snaps avatar back to float start position

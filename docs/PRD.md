@@ -356,36 +356,48 @@ Each verdict is mapped to the specific IFRS S1/S2 paragraphs that the claim rela
 
 ### 4.10 Detective Dashboard (Real-Time Agent Visualization)
 
-The detective dashboard is the hero visual of Sibyl -- a real-time, interactive network graph that exposes the full multi-agent investigation process to the user.
+The detective dashboard is the hero visual of Sibyl -- a real-time, interactive network graph that exposes the full multi-agent investigation process to the user through a "detective village" metaphor: each AI agent is personified as an animated, egg-shaped avatar character, bringing the investigation to life.
 
-**Network graph.** Built with React Flow, the dashboard displays:
+**Agent avatars.** Each agent is represented as a named, illustrated avatar character with a unique color identity and personality:
 
-- **Agent nodes:** Each agent (Claims, Orchestrator, Geography, Legal, News/Media, Academic/Research, Data/Metrics, Judge) is represented as a node with a unique color identity
-- **Claim/evidence edges:** Animated edges show claims and evidence flowing between agents as the analysis progresses
-- **Real-time updates:** The graph updates live via Server-Sent Events (SSE) streaming from the LangGraph backend, showing data flowing as it happens
+| Agent | Avatar Name | Color |
+|---|---|---|
+| Claims Agent | Menny | Slate blue |
+| Orchestrator | Bron | Warm tan |
+| Geography Agent | Columbo | Forest green |
+| Legal Agent | Mike | Deep purple |
+| News/Media Agent | Yahu | Amber/gold |
+| Academic/Research | Newton | Teal |
+| Data/Metrics | Rhea | Coral/orange |
+| Judge | Vera | Crimson red |
 
-**Agent node interaction.** Each agent node is expandable to reveal:
+**Horizontal pipeline layout.** The graph is oriented left-to-right: Claims agent (far left), Orchestrator (center-left), five specialist agents arranged in a pentagon formation around a central Message Pool table (center), and Judge (far right). This layout matches the natural reading direction of the pipeline flow.
 
-- Current status (idle, working, completed, error)
-- The agent's active reasoning stream (what it is currently investigating and thinking)
-- Summary of findings so far
-- Number of claims being investigated
+**Message Pool visualization.** A semi-transparent table rendered as a React Flow node sits at the geometric center of the five specialist agents, visually representing the shared LangGraph state through which all inter-agent messages flow. Recent InfoRequest and InfoResponse messages are displayed in the table rows, making cross-domain communication visible to the user.
 
-Beyond these shared elements, select agents display domain-specific content that would lose meaning if reduced to text-only reasoning:
+**Real-time pulsating reasoning.** Under each avatar, the agent's most recent reasoning message is displayed as pulsating, animated text -- live-updating as new SSE events arrive. When a new stream of reasoning replaces an old one, the text flips to the latest content. Reasoning streams stop pulsating when the pipeline completes.
 
-- **Geography Agent:** Renders the satellite image tile currently being analyzed (retrieved from Microsoft Planetary Computer) with a caption showing the location name, coordinates, and imagery date. For temporal claims, shows a before/after image pair.
-- **Legal Agent:** Shows a compact IFRS coverage progress bar per pillar (Governance, Strategy, Risk Management, Metrics & Targets) that fills in as paragraphs are evaluated -- green for covered, orange for partial, grey for gaps.
-- **Data/Metrics Agent:** Displays a running list of consistency checks (e.g., "Scope 1 + 2 + 3 = Total") with pass/fail indicators, so users can see quantitative validation results at a glance.
-- **Judge Agent:** Shows verdict cards as they are issued -- each card displays the claim, the color-coded verdict badge (Verified/Unverified/Contradicted/Insufficient Evidence), and the cycle count if re-investigation was requested.
+**Subtle village background.** Behind the graph canvas, decorative SVG elements (huts, trees, a path) are rendered at very low opacity, giving the dashboard a cohesive "village" aesthetic without distracting from the data.
 
-**Visual indicators:**
+**Agent navigator bar.** A fixed navigation bar at the bottom of the dashboard displays all agents as small clickable avatar icons. Clicking any icon selects that agent and opens the detail sheet.
 
-- Agent status: Pulsing animation when active, solid when idle, checkmark when complete, warning icon on error
-- Claim flow: Animated particles along edges showing data movement direction and volume
-- Cyclic validation: Re-investigation loops are visually highlighted with a distinct animation when the Judge sends claims back to the Orchestrator
-- Inter-agent communication: Information requests and responses routed through the Orchestrator are shown as edges flowing through the Orchestrator node
+**Detail view (bottom sheet).** Clicking any avatar opens a bottom sheet panel that slides up from beneath the navigator bar, layered above the graph but below the navigator bar itself. The sheet shows:
 
-**Edge interaction.** Users can click on any edge to see the message or data being passed between agents -- the specific claim being routed, the evidence being shared, or the re-investigation request being sent.
+- Agent name, role description, and current status
+- Full live reasoning stream (scrollable, all historical messages)
+- Findings summary
+- Agent-specific content (Geography: satellite imagery; Legal: IFRS coverage bars; Data/Metrics: consistency checks; Judge: verdict cards)
+
+**Edges and flow.** Animated edges connect agents:
+
+- **Claim edges:** Straight lines in the source agent's color, with particle animations flowing along the path
+- **InfoRequest edges:** Dotted lines in the Orchestrator color
+- **Reinvestigation edges:** Dashed crimson lines that swoop in a wide arc beneath all specialist agents from Judge back to Orchestrator, avoiding visual clutter through the center of the graph
+- **Cyclic validation:** Re-investigation loops show a "Cycle N" badge on the edge
+
+**Completion celebration.** When `pipeline_completed` is received, confetti fires from both sides of the screen, and a "Pipeline complete — View Report" button appears in the Agent Reasoning Panel.
+
+**State persistence.** Both SSE event streams and graph state are cached in module-level stores keyed by `reportId`, so navigating away and returning to an analysis page restores the full investigation history.
 
 **Transparency goal.** The detective dashboard makes Sibyl's investigative process fully transparent. Users are not presented with a black-box verdict; they can watch every step of the investigation, understand why each agent was consulted, see what evidence was gathered, and observe the Judge's reasoning for its verdicts.
 
@@ -706,14 +718,31 @@ Quality-first strategy: Premium models (Claude Opus 4.5, Claude Sonnet 4.5) are 
 ```
 sibyl/
     frontend/
-        public/                         # Static assets, favicon
+        public/
+            sibyl-favicon.png           # Leaf logo -- browser tab favicon
         src/
             components/
-                Dashboard/              # Detective dashboard (React Flow network graph)
-                    AgentNode.tsx        # Custom React Flow node for each agent
-                    ClaimEdge.tsx        # Animated edge showing claim/evidence flow
-                    DashboardGraph.tsx   # Main graph canvas and layout
-                    AgentPanel.tsx       # Expandable panel showing agent reasoning
+                AgentVillage.tsx        # Agent definitions (AGENTS array), EggAvatar,
+                                        # AgentMark SVG, Tooltip, AgentModal -- used on
+                                        # landing page and exported for the dashboard
+                Dashboard/              # Detective dashboard (React Flow avatar village)
+                    DashboardGraph.tsx   # Main graph canvas, ReactFlowProvider wrapper,
+                                        # AgentNavBar, AgentDetailSheet, confetti trigger
+                    DashboardGraph.css   # All graph/village/sheet/nav-bar styles
+                    EggAvatarNode.tsx    # Custom React Flow node: avatar + pulsating reasoning
+                    MessagePoolNode.tsx  # Custom React Flow node: message pool table
+                    ClaimEdge.tsx        # Animated edge; straight for claim/infoRequest,
+                                        # custom swoop-under path for reinvestigation
+                    ParticleAnimation.tsx # SVG particle animation along edge paths
+                    AgentDetailSheet.tsx # Bottom sheet: full reasoning/findings/agent content
+                    VillageBackground.tsx # Decorative SVG huts/trees at low opacity
+                    layout.ts            # AGENT_POSITIONS (pentagon + horizontal layout),
+                                        # AGENT_DISPLAY_NAMES, AGENT_HEX_COLORS,
+                                        # LAYOUT_CONFIG
+                Analysis/
+                    AgentReasoningPanel.tsx  # Right panel: live event log, agent tabs,
+                                             # "View Report" button on completion
+                    AgentReasoningPanel.css
                 PDFViewer/
                     PDFViewer.tsx        # Embedded PDF renderer
                     ClaimHighlight.tsx   # Overlay highlights on PDF pages
@@ -724,6 +753,9 @@ sibyl/
                     ClaimCard.tsx        # Individual claim with verdict and evidence
                     EvidencePanel.tsx    # Expandable evidence chain viewer
                     FilterBar.tsx        # Filter/search by pillar, status, paragraph
+                    S1S2MappingSidebar.tsx # Cross-mapping panel with intro, flow arrows,
+                                           # expandable claim lists
+                    IFRSParagraphTag.tsx  # Hover popover showing IFRS paragraph info
                 Chatbot/
                     ChatPanel.tsx        # Slide-out chatbot panel
                     ChatMessage.tsx      # Individual message bubble
@@ -731,31 +763,52 @@ sibyl/
                 Upload/
                     UploadZone.tsx       # Drag-and-drop upload component
                     UploadProgress.tsx   # Progress indicator during parsing
-                    ContentPreview.tsx   # Preview of extracted structure
+                    ContentPreview.tsx   # Redesigned document structure preview;
+                                         # improved hierarchy, warm-brown page numbers
                 Layout/
-                    AppShell.tsx         # Main layout shell with navigation
-                    Sidebar.tsx          # Navigation sidebar
-                    Header.tsx           # Top header bar
+                    AppShell.tsx         # Main layout shell (overflow-auto; AnalysisPage
+                                        # pins its own height to calc(100vh - 56px))
+                    Header.tsx           # Top nav bar with leaf logo + "Sibyl" wordmark,
+                                        # Analysis / Report / Docs links
+            data/
+                paragraphRegistry.ts    # Frontend IFRS paragraph registry (44 entries)
+                                        # with getParagraphInfo() prefix-match fallback
             hooks/
-                useSSE.ts               # SSE connection for agent streaming
+                useSSE.ts               # SSE hook with module-level event cache keyed
+                                        # by reportId for cross-navigation persistence
+                useDashboard.ts         # Graph state hook with module-level graphState
+                                        # cache keyed by reportId; pentagon layout,
+                                        # message_pool node, pipeline_completed handling
                 useAnalysis.ts          # Analysis state management
                 useChat.ts              # Chatbot conversation state
             services/
-                api.ts                  # REST API client (axios/fetch)
-                sse.ts                  # SSE client for detective dashboard
+                api.ts                  # REST API client
+                sse.ts                  # SSE client and StreamEvent types
             types/
+                agent.ts                # AgentName union (includes "judge", "message_pool")
                 claim.ts                # Claim, ClaimType, ClaimVerdict types
-                agent.ts                # Agent, AgentStatus, AgentFinding types
+                dashboard.ts            # Verdict, IFRSCoverageContent types
                 ifrs.ts                 # IFRS pillar, paragraph mapping types
                 report.ts               # Report, SourceOfTruth types
             pages/
-                HomePage.tsx            # Upload landing page
-                AnalysisPage.tsx        # 3-panel analysis view
-                ReportPage.tsx          # Source of Truth report view
-            App.tsx                     # Root component with routing
+                HomePage.tsx            # Upload landing page with AgentVillage
+                AnalysisPage.tsx        # Split-panel analysis view (height-pinned,
+                                        # non-scrollable); Investigation/Document tabs;
+                                        # pulsating tooltip guiding to Investigation tab
+                AnalysisPage.css        # Page layout, tab bar, back button styles
+                AnalysisListPage.tsx    # List of past analyses; centered heading;
+                                        # stagger fade-in; underline hover; no dividers
+                ReportPage.tsx          # Source of Truth report view + list page;
+                                        # centered heading; stagger fade-in
+                DocsPage.tsx            # Comprehensive documentation page; alternating
+                                        # avatar/text layout; scroll-triggered blur-fade
+            App.tsx                     # Root component with routing (/, /analysis,
+                                        # /analysis/:id, /report, /report/:id, /docs)
             main.tsx                    # Entry point
-        index.html
-        package.json
+            index.css                   # Global styles; warm cream theme; back-button
+                                        # hover fix; list item underline hover
+        index.html                      # Favicon: sibyl-favicon.png
+        package.json                    # Includes canvas-confetti dependency
         tsconfig.json
         vite.config.ts
         Dockerfile
@@ -830,19 +883,33 @@ sibyl/
 
 ### 7.1 Design System
 
-- **Framework:** shadcn/ui component library on top of TailwindCSS
-- **Theme:** Dark mode as the default, fitting the "detective/investigation" aesthetic. Deep charcoal backgrounds with high-contrast text and vivid accent colors.
-- **Agent color identity:** Each agent has a unique, consistent accent color used across the detective dashboard, Source of Truth report, and evidence panels:
-  - Claims Agent: Slate blue
-  - Orchestrator: White/silver
-  - Geography Agent: Forest green
-  - Legal Agent: Deep purple
-  - News/Media Agent: Amber/gold
-  - Academic/Research Agent: Teal
-  - Data/Metrics Agent: Coral/orange
-  - Judge Agent: Crimson red
-- **Typography:** Clean sans-serif (Inter or system font stack) with clear hierarchy between headings, body text, and metadata
-- **Spacing and density:** Medium density -- detailed enough for professional use but not overwhelming. Generous whitespace between major sections, compact within data-rich areas.
+- **Framework:** shadcn/ui component library on top of TailwindCSS v4
+- **Theme:** Warm cream as the global theme -- never pure white or cold grey. A deliberate departure from the typical dark-mode dashboard aesthetic, giving Sibyl a distinctive, approachable character.
+- **Color palette:**
+  - Background: `#fff6e9` (warm cream) -- used on all pages and container backgrounds
+  - Body text: `#4a3c2e` (warm dark brown)
+  - Label/secondary text: `#6b5344` (medium warm brown)
+  - Muted/hint text: `#8b7355` (light warm brown)
+  - Muted surface: `#eddfc8` (pale cream)
+  - Borders: `#e0d4bf` (subtle warm border)
+  - **Prohibited:** `text-slate-*`, `bg-slate-*`, `border-slate-*`, `rounded-xl` on content cards, emoji
+- **Semantic colors (verdict/status):**
+  - Verified: `emerald-500` / `#10b981`
+  - Contradicted: `rose-500` / `#f43f5e`
+  - Unverified/Insufficient: `amber-500` / `#f59e0b`
+- **Agent color identity:** Each agent has a unique hex accent used for avatar borders, edge particles, and evidence panels:
+  - Claims Agent (Menny): `#7c9cbf` (slate blue)
+  - Orchestrator (Bron): `#b8a99a` (warm tan/silver)
+  - Geography Agent (Columbo): `#6aaa64` (forest green)
+  - Legal Agent (Mike): `#9b6dd0` (deep purple)
+  - News/Media Agent (Yahu): `#e8b84b` (amber/gold)
+  - Academic/Research Agent (Newton): `#4db6ac` (teal)
+  - Data/Metrics Agent (Rhea): `#e8855a` (coral/orange)
+  - Judge Agent (Vera): `#c0392b` (crimson red)
+- **Icons:** Lucide React exclusively -- no inline SVGs or emoji
+- **Animations:** Framer Motion for all entrance/exit animations -- blur-fade-in on page content, staggered list items, floating avatar idle animations, pulsating reasoning text
+- **Typography:** Clean sans-serif (Inter or system font stack). List page headings use near-landing-page scale (`2.75rem`). Subheadings and body follow a clear warm-brown hierarchy.
+- **Spacing and density:** Medium density -- generous whitespace between major sections, compact within data-rich areas. No rounded-xl on content cards; flat edges for a minimal, editorial feel.
 
 ### 7.2 Page Layouts
 
@@ -853,13 +920,16 @@ A clean, modern landing page with two zones:
 1. **Hero section:** Project name, tagline, and a brief one-paragraph explanation of what Sibyl does
 2. **Upload zone:** Large, centered drag-and-drop area with visual feedback on hover and drop. Accepts PDF files. Shows upload progress and parsing status after file is dropped.
 
-**Analysis Page (3-Panel Layout)**
+**Analysis Page (Split-Panel Layout)**
 
-The primary working view during and after analysis, with three resizable panels:
+The primary working view during and after analysis. The page is pinned to exactly the viewport height (no page-level scrolling) and split into a left graph section and a right reasoning panel via a resizable divider (default: 75% graph / 25% reasoning).
 
-- **Left panel -- PDF Viewer:** The original uploaded PDF rendered in an embedded viewer. Claims identified by the Claims Agent are highlighted with colored overlays. Clicking a highlight opens a tooltip showing the claim text, category, preliminary IFRS mapping, and the Claims Agent's reasoning for flagging it. The viewer supports page navigation and zoom.
-- **Center panel -- Detective Dashboard:** The React Flow network graph occupying the central focus. Agent nodes are arranged in a logical flow (Claims at top, Orchestrator below, specialist agents in a row, Judge at bottom, with a visible cycle arrow back to Orchestrator). Animated edges show real-time data flow. Clicking any node expands it to show the agent's current reasoning stream. Clicking any edge shows the data being passed. The graph pulses and animates during active investigation.
-- **Right panel -- Agent Reasoning:** A streaming text panel showing the currently-active agent's detailed reasoning. As agents work, their thoughts appear here in real time (streamed via SSE). Users can switch between agents using tabs at the top of the panel to review any agent's full reasoning history.
+The page header contains the document title, a back button, and two tabs: "Document" (PDF viewer) and "Investigation" (detective dashboard). A pulsating dot on the Investigation tab guides users to explore the live graph. Each tab activates its respective panel.
+
+- **Left section -- Detective Dashboard / PDF Viewer:** Occupies the full left portion. When the Investigation tab is active, it renders the full React Flow agent village graph (see Section 4.10). When the Document tab is active, it renders the embedded PDF viewer with claim highlights. The graph section has no fixed max-width and stretches to fill all available horizontal space.
+- **Right panel -- Agent Reasoning Stream (`AgentReasoningPanel`):** A streaming text panel showing the currently-active agent's detailed reasoning and a log of all pipeline events. As agents work, their thoughts appear in real time via SSE. Users can switch between agents using tabs. When the pipeline completes, a "Pipeline complete — View Report" button appears. Event history is persisted via module-level cache so it remains visible after navigation.
+- **Bottom sheet:** When an agent avatar is clicked (either directly on the graph or via the navigator bar), a bottom sheet slides up from beneath the navigator bar showing that agent's full detail view (see Section 4.10).
+- **Navigator bar:** Fixed at the bottom of the graph canvas, this bar shows all agent avatars as small clickable icons. It floats above the graph but below any open bottom sheets. `z-index` is carefully layered: navigator bar above bottom sheet above graph canvas.
 
 **Source of Truth Page**
 
@@ -1060,6 +1130,7 @@ All inter-agent communication is mediated by the Orchestrator through the shared
 | 0.1 | 2026-02-07 | Sibyl Team | Initial PRD draft: complete sections 1-12 covering executive summary, problem space, personas, all product features (12 features including 8 agents, detective dashboard, Source of Truth, and chatbot), technical architecture with LangGraph design and model selection, file structure, UX/UI design, non-functional requirements, and IFRS S1/S2 appendices |
 | 0.2 | 2026-02-09 | Sibyl Team | Tech stack audit and updates: upgraded Claude Sonnet 4 to Sonnet 4.5 (free upgrade) across all agents; corrected model pricing (Gemini 3 Flash, Gemini 2.5 Pro, Claude Opus 4.5); updated PostgreSQL 16 to 17, SQLAlchemy 2.0 to 2.1, LangGraph to v1.0; replaced unmaintained @react-pdf-viewer/core with @pdf-viewer/react; updated React Flow to @xyflow/react; noted TailwindCSS v4 CSS-first config (removed tailwind.config.ts); corrected DeepSeek V3.2 context window to 164K |
 | 0.3 | 2026-02-09 | Sibyl Team | Added agent-specific dashboard display to Section 4.10: all agent nodes share status, reasoning stream, findings summary, and claim count; Geography, Legal, Data/Metrics, and Judge agents additionally render domain-specific visual content (satellite imagery, IFRS coverage bars, consistency checks, verdict cards) |
+| 0.4 | 2026-02-27 | Sibyl Team | Major dashboard redesign: replaced rectangular block nodes with animated egg-shaped avatar characters; horizontal pipeline layout with specialist agents in a pentagon around a central Message Pool node; bottom sheet detail view replaces in-place expand; AgentNavBar fixed at bottom; confetti on pipeline completion; IFRS paragraph hover tooltips (44-entry registry with prefix-match fallback); cross-mapping sidebar redesign; warm cream design system audit across all pages; DocsPage added (/docs); list pages receive centered headings, stagger fade-in animations, underline hover; avatar hover snap-back bug fixed; event/graph state persistence via module-level caches keyed by reportId; reinvestigation edge swoops under specialist cluster; Sibyl leaf logo in nav bar and browser favicon; straight edges for claim/infoRequest flows; file structure and version history updated |
 
 ---
 
