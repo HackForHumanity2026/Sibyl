@@ -126,13 +126,13 @@ export const AGENTS: Agent[] = [
     mark: "chart",
   },
   {
-    id: "yahu",
+    id: "izzy",
     agentKey: "news_media",
-    name: "Yahu",
+    name: "Izzy",
     role: "News & Media Agent",
-    shortDesc: "Yahu searches public news, investigative journalism, and regulatory filings for anything that confirms or contradicts what the report claims. If a company says it hit a target but a regulator fined them that same year, Yahu finds the story.",
+    shortDesc: "Izzy searches public news, investigative journalism, and regulatory filings for anything that confirms or contradicts what the report claims. If a company says it hit a target but a regulator fined them that same year, Izzy finds the story.",
     longDesc:
-      "Yahu searches public news, investigative journalism, press releases, and regulatory actions for evidence supporting or contradicting each claim. He ranks sources by credibility tier and flags any public record that contradicts the report's statements.",
+      "Izzy searches public news, investigative journalism, press releases, and regulatory actions for evidence supporting or contradicting each claim. She ranks sources by credibility tier and flags any public record that contradicts the report's statements.",
     specialTool: "Web search & live news retrieval",
     capabilities: [
       "Four-tier source credibility ranking",

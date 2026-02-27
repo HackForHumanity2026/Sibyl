@@ -313,7 +313,7 @@ export function DocsPage() {
             <p style={{ fontSize: "0.875rem", color: "#4a3c2e", margin: 0, lineHeight: 1.6 }}>
               <strong>Example:</strong> A company states "We achieved a 42% reduction in Scope 1 emissions against our 2019
               baseline." Sibyl extracts this claim, sends it to Rhea (data verification), Newton (scientific methodology),
-              Mike (IFRS paragraph mapping), and Yahu (news & regulatory filings) — all in parallel.
+              Mike (IFRS paragraph mapping), and Izzy (news & regulatory filings) — all in parallel.
             </p>
           </div>
         </FadeIn>

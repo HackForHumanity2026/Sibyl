@@ -76,7 +76,7 @@ flowchart LR
         subgraph specialists [Specialist Agents — Pentagon Formation]
             GEO[Geography Agent\nColumbo · Gemini 2.5 Pro]
             LEGAL[Legal Agent\nMike · Claude Sonnet 4.5]
-            NEWS[News/Media Agent\nYahu · Claude Sonnet 4.5]
+            NEWS[News/Media Agent\nIzzy · Claude Sonnet 4.5]
             ACAD[Academic Agent\nNewton · DeepSeek V3.2]
             DATA[Data/Metrics Agent\nRhea · Claude Sonnet 4.5]
         end
@@ -130,7 +130,7 @@ Five specialist agents investigate claims concurrently:
 |-------|--------|-------|---------------------|
 | Geography | Columbo | Gemini 2.5 Pro | Satellite imagery via Microsoft Planetary Computer; NDVI analysis; deforestation detection; physical risk exposure |
 | Legal | Mike | Claude Sonnet 4.5 | IFRS S1/S2 paragraph-level compliance; SASB standards; governance structure validation; disclosure gap detection |
-| News/Media | Yahu | Claude Sonnet 4.5 | Public news corroboration/contradiction; investigative journalism; regulatory enforcement actions; credibility-tiered sources |
+| News/Media | Izzy | Claude Sonnet 4.5 | Public news corroboration/contradiction; investigative journalism; regulatory enforcement actions; credibility-tiered sources |
 | Academic | Newton | DeepSeek V3.2 | Peer-reviewed methodology validation; SBTi framework alignment; industry benchmark comparison; GHG Protocol compliance |
 | Data/Metrics | Rhea | Claude Sonnet 4.5 | Mathematical consistency; unit/methodology validation; benchmark plausibility; target achievability |
 
@@ -286,7 +286,7 @@ The dashboard is the hero visual of Sibyl — a "detective village" where every 
 | Orchestrator | Bron | Pipeline supervisor | `#b8a99a` warm tan | network |
 | Geography Agent | Columbo | Satellite investigator | `#6aaa64` forest green | globe |
 | Legal Agent | Mike | Compliance mapper | `#9b6dd0` deep purple | scale |
-| News/Media Agent | Yahu | Public source verifier | `#e8b84b` amber | wifi |
+| News/Media Agent | Izzy | Public source verifier | `#e8b84b` amber | wifi |
 | Academic Agent | Newton | Research synthesizer | `#4db6ac` teal | flask |
 | Data/Metrics Agent | Rhea | Quantitative validator | `#e8855a` coral | bar-chart |
 | Judge Agent | Vera | Cyclic validator | `#c0392b` crimson | gavel |
@@ -300,7 +300,7 @@ Left                    Center                    Right
                         /       \
 [Menny] → [Bron] → Data/Metrics  Legal  →  [Vera]
                         \  [MP]  /
-                         Yahu Newton
+                         Izzy Newton
                         Academic
 
 MP = Message Pool (central table)

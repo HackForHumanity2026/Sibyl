@@ -78,7 +78,7 @@ export const AGENT_DISPLAY_NAMES: Record<AgentName, string> = {
   orchestrator: "Bron",
   geography:    "Columbo",
   legal:        "Mike",
-  news_media:   "Yahu",
+  news_media:   "Izzy",
   academic:     "Newton",
   data_metrics: "Rhea",
   judge:        "Vera",

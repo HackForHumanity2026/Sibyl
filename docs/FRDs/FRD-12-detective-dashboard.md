@@ -527,7 +527,7 @@ const sheetVariants = {
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  [Menny] [Bron] [Columbo] [Mike] [Yahu] [Newton] [Rhea] [Vera] │
+│  [Menny] [Bron] [Columbo] [Mike] [Izzy] [Newton] [Rhea] [Vera] │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -888,7 +888,7 @@ FRD 12 (v2.0) is complete when ALL of the following are satisfied:
 | Orchestrator | Bron | network | `#b8a99a` |
 | Geography | Columbo | globe | `#6aaa64` |
 | Legal | Mike | scale | `#9b6dd0` |
-| News/Media | Yahu | wifi | `#e8b84b` |
+| News/Media | Izzy | wifi | `#e8b84b` |
 | Academic/Research | Newton | flask | `#4db6ac` |
 | Data/Metrics | Rhea | bar-chart | `#e8855a` |
 | Judge | Vera | gavel | `#c0392b` |

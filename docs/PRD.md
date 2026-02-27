@@ -366,7 +366,7 @@ The detective dashboard is the hero visual of Sibyl -- a real-time, interactive 
 | Orchestrator | Bron | Warm tan |
 | Geography Agent | Columbo | Forest green |
 | Legal Agent | Mike | Deep purple |
-| News/Media Agent | Yahu | Amber/gold |
+| News/Media Agent | Izzy | Amber/gold |
 | Academic/Research | Newton | Teal |
 | Data/Metrics | Rhea | Coral/orange |
 | Judge | Vera | Crimson red |
@@ -902,7 +902,7 @@ sibyl/
   - Orchestrator (Bron): `#b8a99a` (warm tan/silver)
   - Geography Agent (Columbo): `#6aaa64` (forest green)
   - Legal Agent (Mike): `#9b6dd0` (deep purple)
-  - News/Media Agent (Yahu): `#e8b84b` (amber/gold)
+  - News/Media Agent (Izzy): `#e8b84b` (amber/gold)
   - Academic/Research Agent (Newton): `#4db6ac` (teal)
   - Data/Metrics Agent (Rhea): `#e8855a` (coral/orange)
   - Judge Agent (Vera): `#c0392b` (crimson red)
