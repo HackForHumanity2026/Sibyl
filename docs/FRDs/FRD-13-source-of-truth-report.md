@@ -3,13 +3,14 @@
 | Field | Value |
 |---|---|
 | **Project** | Sibyl |
-| **Parent Document** | [PRD v0.3](../PRD.md) |
+| **Parent Document** | [PRD v0.4](../PRD.md) |
 | **FRD Order** | [FRD Order](../FRD-order.md) |
 | **PRD Sections** | 4.11 (Source of Truth Output), 7.2 (Source of Truth Page) |
 | **Type** | Feature |
 | **Depends On** | FRD 6 (Legal Agent), FRD 11 (Judge Agent & Cyclic Validation) |
-| **Delivers** | Interactive IFRS compliance report with disclosure gaps, report compilation backend, report page UI, claim cards, evidence panels, S1/S2 cross-mapping sidebar, disclosure gaps section, filter bar, backend report endpoints |
+| **Delivers** | Interactive IFRS compliance report with disclosure gaps, report compilation backend, report page UI, claim cards, evidence panels, S1/S2 cross-mapping sidebar, disclosure gaps section, filter bar, backend report endpoints; IFRS paragraph hover tooltips; cross-mapping UX redesign; report list page redesign |
 | **Created** | 2026-02-09 |
+| **Revised** | 2026-02-27 (implementation updates -- see Appendix F) |
 
 ---
 
@@ -1876,3 +1877,77 @@ class ClaimWithVerdictResponse(BaseModel):
 | Evidence chain chronological order over grouped by agent | Chronological order shows the investigation flow (which agent worked when, re-investigation cycles). This provides transparency into the investigative process. |
 | Judge reasoning at end of evidence chain over beginning | Judge reasoning synthesizes all agent findings. Placing it at the end follows the logical flow: evidence → synthesis → verdict. |
 | Report comprehensiveness requirement | PRD Section 4.11 states the report "does not degrade the complexity of the underlying document". Every claim and every IFRS requirement must be accounted for, ensuring the report is a complete compliance analysis. |
+
+---
+
+## Appendix F: Implementation Updates (2026-02-27)
+
+This appendix documents divergences from the v1.0 specification and new features added during implementation.
+
+### F.1 Design System -- Warm Cream Theme
+
+The v1.0 spec assumed a dark theme aligned with the planned dashboard design. The implemented design uses the warm cream design system throughout the report page:
+
+- **Backgrounds:** `#fff6e9` (warm cream) -- no pure white containers
+- **Text:** `#4a3c2e` (body), `#6b5344` (labels), `#8b7355` (muted)
+- **Borders:** `#e0d4bf` -- no `slate-200`
+- **Prohibited:** All `text-slate-*`, `bg-slate-*`, `border-slate-*` classes
+- **Footer:** Bottom divider (`border-t`) removed from the report footer
+- **Buttons:** All action buttons (including the report-level "View Analysis" button) styled consistently with the "Begin Analysis" button: warm cream background, `#4a3c2e` text, no bright colors
+
+### F.2 IFRS Paragraph Hover Tooltips (IFRSParagraphTag)
+
+**Planned (v1.0):** IFRS paragraph identifiers rendered as plain badge components.
+
+**Implemented:** `IFRSParagraphTag.tsx` upgraded to a proper hover popover:
+
+- **Frontend registry:** `src/data/paragraphRegistry.ts` contains all 44 IFRS paragraph entries from `backend/data/ifrs/paragraph_registry.json`
+- **Data per entry:** paragraph ID, section name, full requirement text
+- **Popover content:** Shows paragraph ID, section name, and full requirement excerpt on hover
+- **Prefix-match fallback:** `getParagraphInfo()` performs an exact lookup first; if not found (e.g., `"S2.14(a)(i)"`), it tries progressively shorter prefixes (`"S2.14(a)"`, `"S2.14"`) to find a parent section. This ensures all IFRS section pills show tooltip information, including non-disclosure S-heading sections
+- **Applies everywhere:** Tooltips work in the report view, the analysis dashboard, and the cross-mapping sidebar
+
+### F.3 S1/S2 Cross-Mapping Sidebar Redesign
+
+**Planned (v1.0):** Basic collapsible sidebar showing S1-S2 paragraph relationships.
+
+**Implemented (`S1S2MappingSidebar.tsx`):** Full UX redesign with:
+
+- **Introductory paragraph:** Plain-language explanation of how S1 and S2 relate, so users unfamiliar with the standards understand the panel
+- **Visual flow arrows:** Horizontal arrows between S1 pillars and their S2 climate counterparts, making the structural relationship immediately visible
+- **Expandable claim lists:** Claims mapped to each S1/S2 relationship are in collapsible accordion sections, preventing information overload
+- **Toggle tab styling:** Updated toggle between "S1 Coverage" and "S2 Mapping" views uses warm cream active state
+- **Close button:** Hover removes brown background box; only text color changes
+
+### F.4 Report List Page Redesign
+
+**Planned (v1.0):** Standard list page with basic report cards.
+
+**Implemented (`ReportPage.tsx` list view):**
+
+- **Heading:** Large centered heading (`2.75rem`, near-landing-page scale) with a subheading, both center-aligned, positioned near the vertical center of the viewport
+- **No top/bottom dividers:** The main list container has no `borderTop` or `borderBottom`; individual list items have no `borderBottom` either
+- **Stagger animation:** List items fade in one after another with `delay: i * 0.05s`, `duration: 0.22s` -- fast and subtle
+- **Hover effect:** Items underline their filename text on hover instead of darkening the container background (`whileHover` uses `textDecoration: "underline"` on the filename element)
+- **Blur-fade entrance:** The heading and subheading use Framer Motion blur-fade-in matching the landing page's animation style
+
+### F.5 Report Page Footer
+
+The footer `div` in `ReportPage.tsx` no longer has `border-t border-[#e0d4bf]` -- the top border was removed for a cleaner visual separation between the report content and the footer area.
+
+### F.6 Close Button Hover Standardization
+
+All close/dismiss buttons in the report section (cross-mapping sidebar, highlight tooltip, etc.) have the hover brown background box removed. Only the `color` transitions on hover, not the background. This applies to:
+
+- `S1S2MappingSidebar.tsx` close button: removed `hover:bg-[#eddfc8] rounded`
+- `HighlightTooltip.tsx` close button: `background: transparent` on hover (via `index.css` override)
+
+### F.7 File Changes Summary
+
+| File | Change |
+|---|---|
+| `src/data/paragraphRegistry.ts` | **New file.** 44-entry IFRS paragraph registry with `getParagraphInfo()` prefix-match fallback |
+| `src/components/SourceOfTruth/IFRSParagraphTag.tsx` | Upgraded to hover popover using `paragraphRegistry` |
+| `src/components/SourceOfTruth/S1S2MappingSidebar.tsx` | Full UX redesign: intro text, flow arrows, expandable claim lists, updated toggle tabs |
+| `src/pages/ReportPage.tsx` | List view redesign: large centered heading, stagger fade-in, underline hover, no dividers; footer border removed |
+| `src/index.css` | Added `.report-list-item__filename:hover { text-decoration: underline; }` |
