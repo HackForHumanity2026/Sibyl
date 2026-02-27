@@ -79,7 +79,7 @@ export function ClaimCard({ claim, reportId }: ClaimCardProps) {
         </div>
 
         {/* Claim text */}
-        <p className="text-slate-800 text-sm leading-relaxed">
+        <p className="text-[#4a3c2e] text-sm leading-relaxed">
           {claimData.claim_text}
         </p>
       </div>

@@ -6,7 +6,11 @@
 .analysis-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* Pin to exactly the viewport minus the 56px global nav (h-14).
+     This is independent of parent overflow behavior so the page
+     never becomes scrollable regardless of AppShell's overflow setting. */
+  height: calc(100vh - 56px);
+  max-height: calc(100vh - 56px);
   background: #fff6e9;
   color: #0f172a;
   overflow: hidden;
@@ -41,7 +45,10 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.25rem 1.25rem;
+  /* Override legacy index.css max-width that centres and caps the header */
+  max-width: none;
+  margin: 0;
 }
 
 .analysis-page__back {
@@ -124,13 +131,12 @@
 .analysis-page__main-tabs {
   display: flex;
   justify-content: center;      /* ← centred */
-  border-top: 1px solid #e0d4bf;
   background: #fff6e9;
 }
 
 .analysis-page__main-tab {
   position: relative;
-  padding: 0.625rem 1.75rem;
+  padding: 0.25rem 1.75rem;
   border: none;
   background: transparent;
   color: #8b7355;
@@ -152,11 +158,47 @@
 }
 
 .analysis-page__tab-indicator {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #c8a97a;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: #10b981;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ─── Nudge tooltip ─────────────────────────────────────────────── */
+
+.analysis-page__tab-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.analysis-page__nudge-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4a3c2e;
+  color: #fff6e9;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  pointer-events: none;
+}
+
+.analysis-page__nudge-arrow {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #4a3c2e;
 }
 
 /* ─── Main area ────────────────────────────────────────────────────── */
@@ -165,6 +207,11 @@
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  /* Override legacy index.css rules that cap width and add padding */
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 /* ─── Resizable split ──────────────────────────────────────────────── */
@@ -172,12 +219,14 @@
 .analysis-split {
   display: flex;
   height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
 .analysis-split__pane {
   overflow: hidden;
   min-width: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }

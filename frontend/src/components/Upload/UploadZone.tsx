@@ -107,14 +107,14 @@ export function UploadZone({
 
         <div className={cn(
           "w-14 h-14 rounded-full flex items-center justify-center mb-4 transition-colors border",
-          isDragOver ? "bg-[#eddfc8] border-slate-200" : "bg-[#f5ecdb] border-slate-100"
+          isDragOver ? "bg-[#eddfc8] border-[#e0d4bf]" : "bg-[#f5ecdb] border-[#eddfc8]"
         )}>
           <Upload
-            className={cn("w-7 h-7 transition-colors", isDragOver ? "text-slate-700" : "text-[#8b7355]")}
+            className={cn("w-7 h-7 transition-colors", isDragOver ? "text-[#4a3c2e]" : "text-[#8b7355]")}
           />
         </div>
 
-        <p className="text-base font-semibold text-slate-700 mb-1">
+        <p className="text-base font-semibold text-[#4a3c2e] mb-1">
           {isDragOver ? "Drop to upload" : "Drop a sustainability report PDF"}
         </p>
         <p className="text-sm text-[#8b7355] mb-3">or click to browse</p>

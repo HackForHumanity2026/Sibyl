@@ -90,7 +90,7 @@ export function ClaimsPanel({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2 text-[#8b7355]">
-        <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-[#e0d4bf] border-t-[#6b5344] rounded-full animate-spin" />
         <p className="text-xs">Loading claims…</p>
       </div>
     );
@@ -107,7 +107,7 @@ export function ClaimsPanel({
         claimsByPriority={claimsByPriority}
       />
 
-      <div className="px-3 py-2 text-xs text-[#8b7355] font-medium border-b border-slate-100">
+      <div className="px-3 py-2 text-xs text-[#8b7355] font-medium border-b border-[#e0d4bf]">
         {claims.length} claim{claims.length !== 1 ? "s" : ""}
       </div>
 

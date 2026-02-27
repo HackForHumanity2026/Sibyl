@@ -52,7 +52,7 @@ function Word({ text, className }: { text: string; className?: string }) {
 function HeroHeading() {
   return (
     <motion.h1
-      className="text-6xl font-bold text-slate-900 mb-5 tracking-tight leading-[1.15]"
+      className="text-6xl font-bold text-[#4a3c2e] mb-5 tracking-tight leading-[1.15]"
       initial="hidden"
       animate="visible"
       variants={{
@@ -84,9 +84,9 @@ const S2_URL =
   "https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards-issb/english/2023/issued/part-a/issb-2023-a-ifrs-s2-climate-related-disclosures.pdf?bypass=on";
 
 const PRE_LINK_WORDS = [
-  "A", "collective", "of", "specialised", "AI", "agents", "—",
-  "each", "with", "unique", "tools,", "training,", "and", "capabilities",
-  "—", "verifying", "every", "claim", "in", "your", "sustainability",
+  "A", "swarm", "of", "specialised", "AI", "agents, ",
+  "each", "with", "unique", "tools", "and", "training, ", "verifying", 
+  "every", "claim", "in", "your", "sustainability",
   "report", "against",
 ];
 
@@ -120,7 +120,7 @@ function HeroSubheading() {
           href={S1_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-bold underline text-[#4a3c2e] hover:text-slate-900 transition-colors"
+          className="font-bold underline text-[#4a3c2e] hover:text-[#2d1f14] transition-colors"
         >
           IFRS S1
         </a>
@@ -138,7 +138,7 @@ function HeroSubheading() {
           href={S2_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-bold underline text-[#4a3c2e] hover:text-slate-900 transition-colors"
+          className="font-bold underline text-[#4a3c2e] hover:text-[#2d1f14] transition-colors"
         >
           IFRS S2
         </a>
@@ -192,7 +192,7 @@ export function HomePage() {
               <div className="flex justify-center">
                 <button
                   onClick={reset}
-                  className="flex items-center gap-1.5 text-sm text-[#8b7355] hover:text-slate-700 transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-[#8b7355] hover:text-[#4a3c2e] transition-colors"
                 >
                   <ArrowLeft size={14} />
                   Upload another
@@ -216,14 +216,14 @@ export function HomePage() {
             <div className="mt-5 flex justify-center gap-3">
               <button
                 onClick={retry}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-[#4a3c2e] text-white rounded-xl text-sm font-medium hover:bg-[#2d1f14] transition-colors"
               >
                 <RefreshCw size={14} />
                 Retry
               </button>
               <button
                 onClick={reset}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-[#fff6e9] border border-slate-200 text-[#4a3c2e] rounded-xl text-sm font-medium hover:bg-[#f5ecdb] transition-colors"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-[#fff6e9] border border-[#e0d4bf] text-[#4a3c2e] rounded-xl text-sm font-medium hover:bg-[#f5ecdb] transition-colors"
               >
                 <ArrowLeft size={14} />
                 Start over
@@ -238,7 +238,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="relative flex flex-col items-center min-h-full py-14 px-4 overflow-hidden">
+    <div className="relative flex flex-col items-center min-h-full py-14 px-4 overflow-x-hidden overflow-y-auto" style={{ height: "100%" }}>
       <LeafBackground />
 
       {/* Hero — word-by-word spring + blur entrance */}

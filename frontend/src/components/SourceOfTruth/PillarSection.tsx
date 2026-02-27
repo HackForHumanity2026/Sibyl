@@ -49,10 +49,10 @@ export function PillarSection({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#eddfc8] rounded-lg">
-            <PillarIcon size={20} className="text-slate-700" />
+            <PillarIcon size={20} className="text-[#4a3c2e]" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">{pillarInfo.displayName}</h2>
+            <h2 className="text-xl font-bold text-[#4a3c2e]">{pillarInfo.displayName}</h2>
             <p className="text-xs text-[#6b5344] mt-0.5">{pillarInfo.description}</p>
           </div>
         </div>

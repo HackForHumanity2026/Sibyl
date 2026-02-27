@@ -1,16 +1,22 @@
 /**
  * AgentVillage — cute egg-shaped agent avatars for the HomePage landing section.
  * Hover to see tooltip, click to open detail modal.
+ *
+ * Key exports (also used by the Investigation graph):
+ *   AGENTS, Agent, EGG, AgentMark, EggAvatar, EggAvatarProps
  */
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { X } from "lucide-react";
+import type { AgentName } from "@/types/agent";
 
 // ─── Agent Definitions ────────────────────────────────────────────────────────
 
-interface Agent {
+export interface Agent {
   id: string;
+  /** Maps to the backend AgentName type for graph lookup */
+  agentKey: AgentName;
   name: string;
   role: string;
   shortDesc: string;
@@ -23,17 +29,18 @@ interface Agent {
   markColor: string;
   floatDelay: number;
   floatDuration: number;
-  mark: "crown" | "doc" | "scales" | "chart" | "waves" | "book" | "globe";
+  mark: "crown" | "doc" | "scales" | "chart" | "waves" | "book" | "globe" | "gavel";
 }
 
-const AGENTS: Agent[] = [
+export const AGENTS: Agent[] = [
   {
     id: "bron",
+    agentKey: "orchestrator",
     name: "Bron",
     role: "Orchestrator",
-    shortDesc: "Bron runs the whole investigation. She reads every claim, decides which agents to send it to, and waits for their findings before assembling the final verdict. Think of her as the editor-in-chief — nothing gets published without her sign-off.",
+    shortDesc: "Bron runs the whole investigation. He reads every claim, decides which agents to send it to, and waits for their findings before assembling the final verdict. Think of her as the editor-in-chief. Nothing gets published without her sign-off.",
     longDesc:
-      "Bron is the conductor of the Agent Collective. She receives each extracted claim, decides which specialist agents should investigate it, coordinates inter-agent information requests, and synthesises all findings into a final verdict. Nothing happens without Bron knowing about it.",
+      "Bron is the conductor of the Agent Collective. He receives each extracted claim, decides which specialist agents should investigate it, coordinates inter-agent information requests, and synthesises all findings into a final verdict. Nothing happens without Bron knowing about it.",
     specialTool: "Multi-agent orchestration framework",
     capabilities: [
       "Claim routing & prioritisation",
@@ -51,6 +58,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "menny",
+    agentKey: "claims",
     name: "Menny",
     role: "Claims Extractor",
     shortDesc: "Menny is the first one in. He reads the entire report and pulls out every statement that can actually be checked — targets, commitments, governance claims, risk disclosures. Without Menny, there's nothing to investigate.",
@@ -73,6 +81,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "mike",
+    agentKey: "legal",
     name: "Mike",
     role: "Legal Agent",
     shortDesc: "Mike is the compliance expert. He maps every claim to the exact IFRS S1/S2 paragraph it should satisfy, then checks which required disclosures are missing. If there's a gap between what the report says and what IFRS demands, Mike finds it.",
@@ -95,6 +104,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "rhea",
+    agentKey: "data_metrics",
     name: "Rhea",
     role: "Data & Metrics Agent",
     shortDesc: "Rhea checks if the numbers actually add up. She validates Scope 1/2/3 totals, tests whether reduction targets are mathematically achievable, and compares figures against industry benchmarks. Spotting a \"42% reduction by 2030\" that doesn't match the baseline is exactly her job.",
@@ -117,6 +127,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "yahu",
+    agentKey: "news_media",
     name: "Yahu",
     role: "News & Media Agent",
     shortDesc: "Yahu searches public news, investigative journalism, and regulatory filings for anything that confirms or contradicts what the report claims. If a company says it hit a target but a regulator fined them that same year, Yahu finds the story.",
@@ -139,6 +150,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "newton",
+    agentKey: "academic",
     name: "Newton",
     role: "Academic Research Agent",
     shortDesc: "Newton digs into academic databases and published research to check whether a claim aligns with scientific consensus. If a company cites a methodology or makes an environmental assertion, Newton finds out whether the science actually backs it up.",
@@ -161,6 +173,7 @@ const AGENTS: Agent[] = [
   },
   {
     id: "columbo",
+    agentKey: "geography",
     name: "Columbo",
     role: "Geography Agent",
     shortDesc: "Columbo cross-checks location-based claims against satellite imagery and geographic databases. If a report says 23 facilities in Southeast Asia face physical climate risk, Columbo checks whether those facilities and their exposure levels are real.",
@@ -181,11 +194,34 @@ const AGENTS: Agent[] = [
     floatDuration: 4.9,
     mark: "globe",
   },
+  {
+    id: "vera",
+    agentKey: "judge",
+    name: "Vera",
+    role: "Judge",
+    shortDesc: "Vera weighs all the evidence and delivers the final verdict on every claim. She reads the findings from every specialist agent and decides whether each claim is verified, unverified, contradicted, or lacking sufficient evidence — then writes the reasoning.",
+    longDesc:
+      "Vera is the final word. After every specialist agent has submitted their findings, she evaluates the totality of evidence — legal, scientific, journalistic, geographic, and quantitative — and issues a verdict for each claim. If the evidence is contradictory, she may send claims back for reinvestigation before ruling.",
+    specialTool: "Multi-source evidence synthesis & verdict engine",
+    capabilities: [
+      "Cross-agent evidence synthesis",
+      "Verdict issuance (verified / unverified / contradicted)",
+      "Re-investigation requests on conflicting evidence",
+      "Confidence scoring & reasoning generation",
+    ],
+    bodyColor: "#fde2e2",
+    eyeColor: "#7f1d1d",
+    blushColor: "#fca5a5",
+    markColor: "#dc2626",
+    floatDelay: 2.8,
+    floatDuration: 5.1,
+    mark: "gavel",
+  },
 ];
 
 // ─── SVG Marks ────────────────────────────────────────────────────────────────
 
-function AgentMark({ type, color }: { type: Agent["mark"]; color: string }) {
+export function AgentMark({ type, color }: { type: Agent["mark"]; color: string }) {
   switch (type) {
     case "crown":
       return (
@@ -252,6 +288,25 @@ function AgentMark({ type, color }: { type: Agent["mark"]; color: string }) {
           <line x1="5" y1="16" x2="21" y2="16" />
         </g>
       );
+    case "gavel":
+      return (
+        <g transform="translate(33, 62)" opacity={0.9}>
+          {/* Gavel head */}
+          <rect x="0" y="0" width="20" height="9" rx="2.5" fill={color} />
+          {/* Strike band on head */}
+          <rect x="4" y="0" width="4" height="9" rx="1" fill="white" opacity={0.25} />
+          {/* Handle */}
+          <rect
+            x="14" y="7"
+            width="22" height="4"
+            rx="2"
+            fill={color}
+            transform="rotate(35 14 7)"
+          />
+          {/* Base plate */}
+          <rect x="2" y="16" width="28" height="4" rx="2" fill={color} opacity={0.6} />
+        </g>
+      );
     default:
       return null;
   }
@@ -259,32 +314,50 @@ function AgentMark({ type, color }: { type: Agent["mark"]; color: string }) {
 
 // ─── Single Egg Avatar ────────────────────────────────────────────────────────
 
-interface EggAvatarProps {
+export interface EggAvatarProps {
   agent: Agent;
   isHovered: boolean;
   onHover: (v: boolean) => void;
   onClick: () => void;
+  size?: number;
 }
 
-const EGG = "M 50 12 C 78 12, 90 35, 90 57 C 90 79, 73 90, 50 90 C 27 90, 10 79, 10 57 C 10 35, 22 12, 50 12 Z";
+export const EGG = "M 50 12 C 78 12, 90 35, 90 57 C 90 79, 73 90, 50 90 C 27 90, 10 79, 10 57 C 10 35, 22 12, 50 12 Z";
 
-function EggAvatar({ agent, isHovered, onHover, onClick }: EggAvatarProps) {
+export function EggAvatar({ agent, isHovered, onHover, onClick, size = 72 }: EggAvatarProps) {
+  // Separate float Y from hover to prevent snap-back on hover-end.
+  // floatY runs continuously; whileHover only affects scale.
+  const floatY = useMotionValue(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runFloat = async () => {
+      if (cancelled) return;
+      // Drift up
+      await animate(floatY, -7, { duration: agent.floatDuration / 2, ease: "easeInOut", delay: agent.floatDelay });
+      if (cancelled) return;
+      // Drift back down
+      await animate(floatY, 0, { duration: agent.floatDuration / 2, ease: "easeInOut" });
+      if (cancelled) return;
+      runFloat(); // loop
+    };
+
+    runFloat();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.floatDelay, agent.floatDuration]);
+
   return (
     <motion.div
       className="flex flex-col items-center gap-2 cursor-pointer select-none"
-      animate={{ y: [0, -7, 0] }}
-      transition={{
-        duration: agent.floatDuration,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay: agent.floatDelay,
-      }}
-      whileHover={{ scale: 1.13, y: -10 }}
+      style={{ y: floatY }}
+      whileHover={{ scale: 1.13 }}
       onHoverStart={() => onHover(true)}
       onHoverEnd={() => onHover(false)}
       onClick={onClick}
     >
-      <svg viewBox="0 0 100 100" width="72" height="72" aria-label={`${agent.name} - ${agent.role}`}>
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-label={`${agent.name} - ${agent.role}`}>
         {/* Shadow */}
         <ellipse cx="50" cy="97" rx="22" ry="4" fill="#0005" />
 
@@ -418,7 +491,7 @@ function AgentModal({ agent, onClose }: { agent: Agent; onClose: () => void }) {
           {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[#eddfc8] text-[#6b5344] transition-colors"
+            className="absolute top-4 right-4 p-1.5 text-[#6b5344] hover:text-[#4a3c2e] transition-colors"
             aria-label="Close"
           >
             <X size={18} />
@@ -469,7 +542,7 @@ function AgentModal({ agent, onClose }: { agent: Agent; onClose: () => void }) {
           </div>
 
           {/* Name + role */}
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-0.5">{agent.name}</h2>
+          <h2 className="text-2xl font-bold text-[#4a3c2e] text-center mb-0.5">{agent.name}</h2>
           <p className="text-sm font-medium text-[#6b5344] text-center mb-5">{agent.role}</p>
 
           {/* Description */}
@@ -480,7 +553,7 @@ function AgentModal({ agent, onClose }: { agent: Agent; onClose: () => void }) {
             <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: agent.markColor }}>
               Special Tool
             </p>
-            <p className="text-sm font-semibold text-slate-800">{agent.specialTool}</p>
+            <p className="text-sm font-semibold text-[#4a3c2e]">{agent.specialTool}</p>
           </div>
 
           {/* Capabilities */}
@@ -508,6 +581,9 @@ function AgentModal({ agent, onClose }: { agent: Agent; onClose: () => void }) {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
+// The landing page shows all agents EXCEPT the judge (she lives in the graph)
+const LANDING_AGENTS = AGENTS.filter((a) => a.agentKey !== "judge");
+
 export function AgentVillage() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [modalAgent, setModalAgent] = useState<Agent | null>(null);
@@ -522,7 +598,7 @@ export function AgentVillage() {
 
         {/* Avatars row */}
         <div className="flex items-end justify-center gap-6 flex-wrap">
-          {AGENTS.map((agent) => (
+          {LANDING_AGENTS.map((agent) => (
             <div key={agent.id} className="relative flex flex-col items-center">
               <AnimatePresence>
                 {hoveredId === agent.id && (

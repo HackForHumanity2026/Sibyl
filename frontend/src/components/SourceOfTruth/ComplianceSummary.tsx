@@ -166,7 +166,7 @@ function StatPill({ label, value, dotColor }: StatPillProps) {
   return (
     <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-[#f5ecdb]">
       <div className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-      <span className="text-xl font-bold text-slate-800 tabular-nums">{value}</span>
+      <span className="text-xl font-bold text-[#4a3c2e] tabular-nums">{value}</span>
       <span className="text-xs text-[#6b5344] leading-tight">{label}</span>
     </div>
   );
@@ -233,7 +233,7 @@ export function ComplianceSummary({ summary }: ComplianceSummaryProps) {
           <StatPill
             label="Total Claims"
             value={summary.total_claims}
-            dotColor="bg-slate-400"
+            dotColor="bg-[#c8a97a]"
           />
           <StatPill
             label="Contradicted"

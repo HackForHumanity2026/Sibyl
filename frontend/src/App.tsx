@@ -4,6 +4,7 @@ import { HomePage } from "@/pages/HomePage";
 import { AnalysisPage } from "@/pages/AnalysisPage";
 import { AnalysisListPage } from "@/pages/AnalysisListPage";
 import { ReportPage } from "@/pages/ReportPage";
+import { DocsPage } from "@/pages/DocsPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/analysis/:reportId" element={<AnalysisPage />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/report/:reportId" element={<ReportPage />} />
+          <Route path="/docs" element={<DocsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

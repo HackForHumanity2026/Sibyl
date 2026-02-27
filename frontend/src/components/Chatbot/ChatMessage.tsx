@@ -71,7 +71,7 @@ export function ChatMessage({ message, onCitationClick, isStreaming = false }: C
       {/* Avatar */}
       <div className={cn(
         "shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
-        isUser ? "bg-slate-900 text-white" : "bg-[#eddfc8] text-[#6b5344]"
+        isUser ? "bg-[#4a3c2e] text-white" : "bg-[#eddfc8] text-[#6b5344]"
       )}>
         {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
       </div>
@@ -80,8 +80,8 @@ export function ChatMessage({ message, onCitationClick, isStreaming = false }: C
       <div className={cn("flex flex-col max-w-[80%]", isUser ? "items-end" : "items-start")}>
         <div className={cn(
           isUser
-            ? "rounded-2xl rounded-br-md px-3.5 py-2.5 bg-slate-900 text-white"
-            : "text-slate-800 py-1"
+            ? "rounded-2xl rounded-br-md px-3.5 py-2.5 bg-[#4a3c2e] text-white"
+            : "text-[#4a3c2e] py-1"
         )}>
           <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
             {renderedContent}

@@ -13,7 +13,7 @@ interface GapCardProps {
 const SEVERITY_CONFIG: Record<string, { label: string; className: string }> = {
   high: { label: "High", className: "bg-rose-50 text-rose-700 border-rose-100" },
   medium: { label: "Medium", className: "bg-amber-50 text-amber-700 border-amber-100" },
-  low: { label: "Low", className: "bg-[#f5ecdb] text-[#6b5344] border-slate-100" },
+  low: { label: "Low", className: "bg-[#f5ecdb] text-[#6b5344] border-[#e0d4bf]" },
 };
 
 const GAP_TYPE_LABELS: Record<string, string> = {
@@ -52,7 +52,7 @@ export function GapCard({ gap }: GapCardProps) {
       </div>
 
       {/* Requirement text */}
-      <p className="text-sm text-slate-700 leading-relaxed">{gap.requirement_text}</p>
+      <p className="text-sm text-[#4a3c2e] leading-relaxed">{gap.requirement_text}</p>
 
       {/* Missing requirements */}
       {gap.missing_requirements.length > 0 && (
@@ -63,7 +63,7 @@ export function GapCard({ gap }: GapCardProps) {
           <ul className="space-y-0.5">
             {gap.missing_requirements.map((req, i) => (
               <li key={i} className="text-xs text-[#4a3c2e] flex gap-2">
-                <span className="text-slate-300 shrink-0">–</span>
+                <span className="text-[#c8a97a] shrink-0">–</span>
                 {req.replace(/_/g, " ")}
               </li>
             ))}
@@ -73,7 +73,7 @@ export function GapCard({ gap }: GapCardProps) {
 
       {/* Materiality context */}
       {gap.materiality_context && (
-        <div className="pt-2 border-t border-slate-100">
+        <div className="pt-2 border-t border-[#e0d4bf]">
           <p className="text-xs text-[#8b7355] italic">{gap.materiality_context}</p>
         </div>
       )}

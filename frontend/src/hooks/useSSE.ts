@@ -1,6 +1,11 @@
 /**
  * useSSE hook - Real-time pipeline event streaming.
  * Implements FRD 5 Section 11.6.
+ *
+ * Events are cached in a module-level Map keyed by reportId so they
+ * survive component unmounts (e.g. switching tabs or navigating away
+ * and back). The cache is never cleared automatically; clearEvents()
+ * removes the cache entry for the current reportId.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -8,6 +13,11 @@ import {
   createSSEConnection,
   type StreamEvent,
 } from "@/services/sse";
+
+// ─── Module-level event cache ────────────────────────────────────────────────
+// Survives React component unmounts so events are available when user returns.
+const eventsCache = new Map<string, StreamEvent[]>();
+const pipelineCompleteCache = new Set<string>();
 
 export interface UseSSEReturn {
   /** All received events in chronological order */
@@ -41,10 +51,15 @@ export function useSSE(
   reportId: string | undefined,
   enabled: boolean = true
 ): UseSSEReturn {
-  const [events, setEvents] = useState<StreamEvent[]>([]);
+  // Seed initial state from cache so events are visible immediately on mount
+  const [events, setEvents] = useState<StreamEvent[]>(() =>
+    reportId ? (eventsCache.get(reportId) ?? []) : []
+  );
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pipelineComplete, setPipelineComplete] = useState(false);
+  const [pipelineComplete, setPipelineComplete] = useState<boolean>(() =>
+    reportId ? pipelineCompleteCache.has(reportId) : false
+  );
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,26 +110,33 @@ export function useSSE(
     .filter(([, state]) => state.errored)
     .map(([agent]) => agent);
 
-  // Handle incoming events
-  const handleEvent = useCallback((event: StreamEvent, _id: number) => {
-    setEvents((prev) => [...prev, event]);
+  // Handle incoming events — updates state AND the module-level cache
+  const handleEvent = useCallback(
+    (event: StreamEvent, _id: number) => {
+      setEvents((prev) => {
+        const next = [...prev, event];
+        // Persist to module-level cache
+        if (reportId) eventsCache.set(reportId, next);
+        return next;
+      });
 
-    // Close connection on terminal events to prevent EventSource auto-reconnect
-    if (
-      event.event_type === "pipeline_completed" ||
-      event.event_type === "error"
-    ) {
       if (event.event_type === "pipeline_completed") {
         setPipelineComplete(true);
+        if (reportId) pipelineCompleteCache.add(reportId);
+        // Close to prevent auto-reconnect after the server ends the stream
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+      } else if (event.event_type === "error") {
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
       }
-      // Close the connection to prevent the EventSource from
-      // auto-reconnecting after the server ends the stream.
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-    }
-  }, []);
+    },
+    [reportId]
+  );
 
   // Handle connection open
   const handleOpen = useCallback(() => {
@@ -126,20 +148,34 @@ export function useSSE(
   const handleError = useCallback((e: Event) => {
     console.error("SSE connection error:", e);
     setIsConnected(false);
-    // Don't set error for normal close
-    if ((e.target as EventSource).readyState === EventSource.CLOSED) {
-      // Connection closed, might be intentional
-    } else {
+    if ((e.target as EventSource).readyState !== EventSource.CLOSED) {
       setError("Connection error. Will retry...");
     }
   }, []);
 
-  // Clear events
+  // Clear events for this report (also wipes the cache entry)
   const clearEvents = useCallback(() => {
     setEvents([]);
     setPipelineComplete(false);
     setError(null);
-  }, []);
+    if (reportId) {
+      eventsCache.delete(reportId);
+      pipelineCompleteCache.delete(reportId);
+    }
+  }, [reportId]);
+
+  // When reportId changes, seed state from cache
+  useEffect(() => {
+    if (reportId) {
+      const cached = eventsCache.get(reportId);
+      if (cached && cached.length > 0) {
+        setEvents(cached);
+      }
+      if (pipelineCompleteCache.has(reportId)) {
+        setPipelineComplete(true);
+      }
+    }
+  }, [reportId]);
 
   // Connect/disconnect based on reportId and enabled
   useEffect(() => {
@@ -148,14 +184,13 @@ export function useSSE(
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
 
-    // Don't connect if not enabled or no reportId
-    if (!enabled || !reportId) {
+    // Don't connect if not enabled or no reportId, or already complete
+    if (!enabled || !reportId || pipelineCompleteCache.has(reportId)) {
       setIsConnected(false);
       return;
     }
@@ -167,10 +202,8 @@ export function useSSE(
       handleError,
       handleOpen
     );
-
     eventSourceRef.current = eventSource;
 
-    // Cleanup on unmount or dependency change
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();

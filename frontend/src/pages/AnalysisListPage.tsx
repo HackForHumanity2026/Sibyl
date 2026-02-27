@@ -1,10 +1,11 @@
 /**
  * AnalysisListPage - Shows all past analyses (reports that were analysed).
- * Mirrors the ReportPage list view but navigates to /analysis/:reportId.
+ * Futuristic centered layout with entrance animations.
  */
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { listReports } from "@/services/api";
 import { FlaskConical } from "lucide-react";
 
@@ -26,7 +27,6 @@ export function AnalysisListPage() {
   useEffect(() => {
     listReports()
       .then((list) => {
-        // Only show reports that have been (or are being) analysed — exclude pure uploads
         setReports(list.filter((r) => r.status !== "error"));
       })
       .catch((err) => console.error("Failed to load analyses:", err))
@@ -34,64 +34,142 @@ export function AnalysisListPage() {
   }, []);
 
   return (
-    <div className="min-h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-6 py-10">
-        {/* Page header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <FlaskConical size={18} className="text-[#6b5344]" />
-            <h1 className="text-xl font-semibold text-slate-900">Analyses</h1>
-          </div>
-          <p className="text-sm text-[#8b7355]">
-            All uploaded reports with active or completed analysis runs.
-          </p>
-        </div>
+    <div
+      style={{
+        minHeight: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        paddingTop: "clamp(4rem, 15vh, 8rem)",
+        paddingBottom: "4rem",
+        background: "#fff6e9",
+        overflowY: "auto",
+      }}
+    >
+      {/* Page heading */}
+      <motion.div
+        initial={{ opacity: 0, y: -14, filter: "blur(6px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        style={{ textAlign: "center", marginBottom: "2.5rem" }}
+      >
+        <h1
+          style={{
+            fontSize: "2.75rem",
+            fontWeight: 800,
+            color: "#4a3c2e",
+            margin: 0,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+          }}
+        >
+          Analyses
+        </h1>
+        <p
+          style={{
+            fontSize: "0.9375rem",
+            color: "#8b7355",
+            marginTop: "0.6rem",
+          }}
+        >
+          All reports with active or completed analysis runs.
+        </p>
+      </motion.div>
 
-        {/* List */}
+      {/* List container */}
+      <div style={{ width: "100%", maxWidth: "560px", padding: "0 1.5rem" }}>
         {loading ? (
-          <div className="flex items-center gap-2 py-8 text-[#8b7355] text-sm">
-            <div className="w-4 h-4 border-2 border-[#e0d4bf] border-t-[#8b7355] rounded-full animate-spin" />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", padding: "3rem 0", color: "#8b7355", fontSize: "0.875rem" }}
+          >
+            <div style={{ width: "16px", height: "16px", border: "2px solid #e0d4bf", borderTopColor: "#8b7355", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
             Loading…
-          </div>
+          </motion.div>
         ) : reports.length === 0 ? (
-          <div className="py-16 text-center">
-            <FlaskConical size={32} className="mx-auto mb-3 text-[#e0d4bf]" />
-            <p className="text-sm text-[#8b7355]">No analyses yet.</p>
-            <p className="text-xs text-[#c8a97a] mt-1">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            style={{ textAlign: "center", padding: "4rem 0" }}
+          >
+            <FlaskConical size={36} style={{ margin: "0 auto 0.75rem", color: "#e0d4bf" }} />
+            <p style={{ fontSize: "0.875rem", color: "#8b7355" }}>No analyses yet.</p>
+            <p style={{ fontSize: "0.75rem", color: "#c8a97a", marginTop: "0.25rem" }}>
               Upload a report on the home page to start an analysis.
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="divide-y divide-[#e0d4bf] border-y border-[#e0d4bf]">
-            {reports.map((r) => (
-              <button
+          /* Each item animated individually */
+          <div>
+            {reports.map((r, i) => (
+              <motion.button
                 key={r.report_id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut", delay: i * 0.05 }}
                 onClick={() => navigate(`/analysis/${r.report_id}`)}
-                className="w-full flex items-center justify-between py-3 px-4 hover:bg-[#f5ecdb] transition-colors text-left group"
+                className="analysis-list-item"
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.85rem 1rem",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-0.5">
-                    <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 truncate">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.15rem", flexWrap: "wrap" }}>
+                    <span
+                      className="analysis-list-item__name"
+                      style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        color: "#4a3c2e",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "280px",
+                      }}
+                    >
                       {r.filename}
                     </span>
                     {r.status === "analyzing" && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                      <span
+                        style={{
+                          padding: "1px 8px",
+                          borderRadius: "9999px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          background: "#dbeafe",
+                          color: "#1e40af",
+                        }}
+                      >
                         Analyzing
                       </span>
                     )}
                     {r.status === "complete" && (
-                      <span className="text-xs text-emerald-600 font-medium">Complete</span>
+                      <span style={{ fontSize: "11px", fontWeight: 500, color: "#10b981" }}>
+                        Complete
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-[#8b7355]">
+                  <div style={{ display: "flex", gap: "0.5rem", fontSize: "12px", color: "#8b7355" }}>
                     <span>{new Date(r.created_at).toLocaleDateString()}</span>
                     {r.page_count && <span>· {r.page_count} pages</span>}
                   </div>
                 </div>
-                <span className="text-xs text-[#c8a97a] group-hover:text-[#8b7355] transition-colors ml-4 shrink-0">
+                <span style={{ fontSize: "12px", color: "#c8a97a", marginLeft: "1rem", flexShrink: 0 }}>
                   Open →
                 </span>
-              </button>
+              </motion.button>
+
             ))}
           </div>
         )}

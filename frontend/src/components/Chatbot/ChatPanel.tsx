@@ -68,7 +68,7 @@ export function ChatPanel({ reportId, isOpen, onClose, onCitationClick }: ChatPa
       <div
         className={cn(
           "fixed top-0 right-0 h-full w-full sm:w-[400px] z-50",
-          "bg-[#fff6e9] border-l border-slate-200 shadow-2xl",
+          "bg-[#fff6e9] border-l border-[#e0d4bf] shadow-2xl",
           "flex flex-col",
           "transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full"
@@ -78,14 +78,14 @@ export function ChatPanel({ reportId, isOpen, onClose, onCitationClick }: ChatPa
         aria-label="Chat with report"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e0d4bf]">
           <div className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-[#6b5344]" />
-            <h2 className="text-base font-semibold text-slate-800">Chat with Report</h2>
+            <h2 className="text-base font-semibold text-[#4a3c2e]">Chat with Report</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#eddfc8] text-[#8b7355] hover:text-slate-700 transition-colors"
+            className="p-1.5 text-[#8b7355] hover:text-[#4a3c2e] transition-colors"
             aria-label="Close chat panel"
           >
             <X className="w-4 h-4" />
@@ -102,8 +102,8 @@ export function ChatPanel({ reportId, isOpen, onClose, onCitationClick }: ChatPa
 
           {!isLoading && messages.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-              <MessageSquare className="w-10 h-10 text-slate-200 mb-4" />
-              <h3 className="text-sm font-semibold text-slate-700 mb-1">Ask about this report</h3>
+              <MessageSquare className="w-10 h-10 text-[#e0d4bf] mb-4" />
+              <h3 className="text-sm font-semibold text-[#6b5344] mb-1">Ask about this report</h3>
               <p className="text-xs text-[#8b7355] max-w-xs leading-relaxed">
                 Ask questions about analysis results, claims, agent findings, IFRS compliance, or disclosure gaps.
               </p>
@@ -128,7 +128,7 @@ export function ChatPanel({ reportId, isOpen, onClose, onCitationClick }: ChatPa
           )}
 
           {!isLoading && (
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-[#f0e8d8]">
               {messages.map((message) => (
                 <ChatMessage key={message.id} message={message} onCitationClick={handleCitationClick} />
               ))}
@@ -149,7 +149,7 @@ export function ChatPanel({ reportId, isOpen, onClose, onCitationClick }: ChatPa
             placeholder={isStreaming ? "Waiting for response…" : "Ask about the report…"}
           />
         ) : (
-          <div className="p-4 border-t border-slate-100">
+          <div className="p-4 border-t border-[#e0d4bf]">
             <p className="text-xs text-center text-[#8b7355]">Select a report to start chatting</p>
           </div>
         )}

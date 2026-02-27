@@ -75,12 +75,12 @@ export function UploadProgress({
     <div className="w-full max-w-xl mx-auto">
       <div className="glass-card p-6">
         {/* File header */}
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-          <div className="w-10 h-10 rounded-xl bg-[#f5ecdb] border border-slate-100 flex items-center justify-center">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#e0d4bf]">
+          <div className="w-10 h-10 rounded-xl bg-[#f5ecdb] border border-[#eddfc8] flex items-center justify-center">
             <FileSearch className="w-5 h-5 text-[#6b5344]" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-slate-800 truncate">{filename}</p>
+            <p className="font-medium text-[#4a3c2e] truncate">{filename}</p>
             <p className="text-xs text-[#8b7355]">{formatFileSize(fileSizeBytes)}</p>
           </div>
           {!isComplete && !isError && (
@@ -100,9 +100,9 @@ export function UploadProgress({
                 <div className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center transition-all border",
                   isCompleted                 && "bg-emerald-50 border-emerald-100",
-                  isActive && !isError        && "bg-[#f5ecdb] border-slate-200",
+                  isActive && !isError        && "bg-[#f5ecdb] border-[#e0d4bf]",
                   isError  && isActive        && "bg-rose-50 border-rose-100",
-                  !isCompleted && !isActive   && "bg-[#f5ecdb] border-slate-100"
+                  !isCompleted && !isActive   && "bg-[#f5ecdb] border-[#eddfc8]"
                 )}>
                   {isCompleted ? (
                     <Check className="w-4 h-4 text-emerald-600" />
@@ -111,7 +111,7 @@ export function UploadProgress({
                   ) : isError && isActive ? (
                     <AlertCircle className="w-4 h-4 text-rose-500" />
                   ) : (
-                    <Icon className="w-4 h-4 text-slate-300" />
+                    <Icon className="w-4 h-4 text-[#c8a97a]" />
                   )}
                 </div>
 
@@ -119,9 +119,9 @@ export function UploadProgress({
                   <p className={cn(
                     "text-sm font-medium transition-colors",
                     isCompleted             && "text-emerald-600",
-                    isActive && !isError    && "text-slate-800",
+                    isActive && !isError    && "text-[#4a3c2e]",
                     isError  && isActive    && "text-rose-600",
-                    !isCompleted && !isActive && "text-slate-300"
+                    !isCompleted && !isActive && "text-[#c8a97a]"
                   )}>
                     {step.label}{isActive && !isError && "…"}
                   </p>

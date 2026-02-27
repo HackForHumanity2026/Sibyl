@@ -25,8 +25,8 @@ export function ChatFab({ isOpen, onClick, disabled = false }: ChatFabProps) {
         "transition-all duration-200 ease-in-out",
         "hover:scale-105 active:scale-95",
         isOpen
-          ? "bg-[#eddfc8] border-slate-200 text-slate-700 hover:bg-[#e4d3ba]"
-          : "bg-slate-900 border-slate-900 text-white hover:bg-slate-700",
+          ? "bg-[#eddfc8] border-[#e0d4bf] text-[#4a3c2e] hover:bg-[#e4d3ba]"
+          : "bg-[#4a3c2e] border-[#4a3c2e] text-white hover:bg-[#2d1f14]",
         disabled && "opacity-50 cursor-not-allowed hover:scale-100"
       )}
       aria-label={isOpen ? "Close chat" : "Open chat"}

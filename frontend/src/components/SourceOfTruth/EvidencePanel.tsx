@@ -57,7 +57,7 @@ export function EvidencePanel({ evidenceChain, verdict }: EvidencePanelProps) {
                     ? "bg-emerald-500"
                     : entry.supports_claim === false
                     ? "bg-rose-500"
-                    : "bg-slate-300"
+                    : "bg-[#c8a97a]"
                 }`}
               />
               <div className="flex-1 w-px bg-[#eddfc8] mt-1" />
@@ -66,7 +66,7 @@ export function EvidencePanel({ evidenceChain, verdict }: EvidencePanelProps) {
             {/* Content */}
             <div className="pb-3 flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-xs font-semibold text-slate-700">{agentName}</span>
+                <span className="text-xs font-semibold text-[#4a3c2e]">{agentName}</span>
                 <span className="text-xs text-[#8b7355]">{label}</span>
                 {entry.iteration > 1 && (
                   <span className="text-xs text-[#8b7355] bg-[#eddfc8] px-1.5 py-0.5 rounded">
@@ -107,8 +107,8 @@ export function EvidencePanel({ evidenceChain, verdict }: EvidencePanelProps) {
 
       {/* Judge verdict */}
       {verdict && (
-        <div className="pt-3 border-t border-slate-100">
-          <p className="text-xs font-semibold text-slate-700 mb-1">Judge Verdict</p>
+        <div className="pt-3 border-t border-[#e0d4bf]">
+          <p className="text-xs font-semibold text-[#4a3c2e] mb-1">Judge Verdict</p>
           <p className="text-xs text-[#4a3c2e] leading-relaxed">{verdict.reasoning}</p>
           <p className="text-xs text-[#8b7355] mt-1">
             After {verdict.iteration_count} iteration{verdict.iteration_count !== 1 ? "s" : ""}

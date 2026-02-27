@@ -63,7 +63,7 @@ function FilterSelect<T extends string>({
     <select
       value={value ?? ""}
       onChange={(e) => onChange((e.target.value as T) || undefined)}
-      className="h-8 px-2.5 rounded-lg border border-slate-200 bg-[#fff6e9] text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all appearance-none pr-7 cursor-pointer"
+      className="h-8 px-2.5 rounded-lg border border-[#e0d4bf] bg-[#fff6e9] text-sm text-[#4a3c2e] focus:outline-none focus:ring-2 focus:ring-[#e0d4bf] transition-all appearance-none pr-7 cursor-pointer"
       style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.4rem center", backgroundSize: "1.2em 1.2em" }}
     >
       <option value="">{placeholder}</option>
@@ -82,7 +82,7 @@ export function FilterBar({ filters, onFiltersChange, onClearFilters }: FilterBa
   };
 
   return (
-    <div className="sticky top-0 z-10 bg-[#fff6e9]/90 backdrop-blur-sm border-b border-slate-200">
+    <div className="sticky top-0 z-10 bg-[#fff6e9]/90 backdrop-blur-sm border-b border-[#e0d4bf]">
       <div className="max-w-5xl mx-auto px-6 py-3 flex flex-wrap items-center gap-2">
         {/* Filters */}
         <FilterSelect
@@ -124,7 +124,7 @@ export function FilterBar({ filters, onFiltersChange, onClearFilters }: FilterBa
             placeholder="Search IFRS paragraph…"
             value={filters.ifrsSearch ?? ""}
             onChange={(e) => handleChange("ifrsSearch", e.target.value || undefined)}
-            className="h-8 pl-8 pr-3 rounded-lg border border-slate-200 bg-[#fff6e9] text-sm placeholder:text-[#8b7355] focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all w-44"
+            className="h-8 pl-8 pr-3 rounded-lg border border-[#e0d4bf] bg-[#fff6e9] text-sm placeholder:text-[#8b7355] focus:outline-none focus:ring-2 focus:ring-[#e0d4bf] transition-all w-44"
           />
         </div>
 
@@ -132,7 +132,7 @@ export function FilterBar({ filters, onFiltersChange, onClearFilters }: FilterBa
         {hasActiveFilters && (
           <button
             onClick={onClearFilters}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm text-[#6b5344] hover:text-slate-800 hover:bg-[#eddfc8] transition-colors"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm text-[#6b5344] hover:text-[#4a3c2e] hover:bg-[#eddfc8] transition-colors"
           >
             <X size={14} />
             Clear

@@ -47,8 +47,8 @@ function Chip({
       className={cn(
         "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all",
         active
-          ? "bg-slate-900 text-white border-slate-900"
-          : "bg-[#fff6e9] text-[#6b5344] border-slate-200 hover:border-slate-400 hover:text-slate-700",
+          ? "bg-[#4a3c2e] text-white border-[#4a3c2e]"
+          : "bg-[#fff6e9] text-[#6b5344] border-[#e0d4bf] hover:border-[#c8a97a] hover:text-[#4a3c2e]",
         disabled && "opacity-40 cursor-not-allowed"
       )}
     >
@@ -66,7 +66,7 @@ export function ClaimsFilter({
   claimsByPriority,
 }: ClaimsFilterProps) {
   return (
-    <div className="px-3 py-2.5 border-b border-slate-100 space-y-2">
+    <div className="px-3 py-2.5 border-b border-[#e0d4bf] space-y-2">
       {/* Type filter */}
       <div>
         <p className="text-xs font-semibold text-[#8b7355] uppercase tracking-wide mb-1.5">Type</p>

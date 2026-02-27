@@ -1,12 +1,13 @@
 /**
  * Content structure preview after parsing.
  * Implements FRD 2 Section 2.4 - ContentPreview.
+ *
+ * Redesigned: clean hierarchy, no redundant stats grid, warm colors throughout.
  */
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, ChevronRight, ChevronDown, BookOpen, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
 import type { ContentStructure, SectionInfo } from "@/types/report";
 
 interface ContentPreviewProps {
@@ -23,7 +24,7 @@ interface SectionTreeProps {
 
 function SectionTree({ sections, level = 0 }: SectionTreeProps) {
   return (
-    <ul className={cn("space-y-0.5", level > 0 && "ml-4 mt-0.5")}>
+    <ul style={{ listStyle: "none", margin: 0, padding: 0, paddingLeft: level > 0 ? "1rem" : 0 }}>
       {sections.map((section, index) => (
         <SectionItem key={`${level}-${index}`} section={section} />
       ))}
@@ -36,39 +37,48 @@ function SectionItem({ section }: { section: SectionInfo }) {
   const hasChildren = section.children && section.children.length > 0;
   const pageRange =
     section.page_end && section.page_end !== section.page_start
-      ? `${section.page_start}–${section.page_end}`
-      : `${section.page_start}`;
+      ? `p.${section.page_start}–${section.page_end}`
+      : `p.${section.page_start}`;
 
   return (
     <li>
       <div
-        className={cn(
-          "flex items-center gap-2 py-1 px-2 rounded-md transition-colors",
-          hasChildren && "cursor-pointer hover:bg-[#f5ecdb]"
-        )}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          padding: "0.3rem 0",
+          borderLeft: section.level === 1 ? "2px solid #e0d4bf" : "2px solid transparent",
+          paddingLeft: "0.5rem",
+          cursor: hasChildren ? "pointer" : "default",
+        }}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
         {hasChildren ? (
           isExpanded
-            ? <ChevronDown className="w-3.5 h-3.5 text-[#8b7355] shrink-0" />
-            : <ChevronRight className="w-3.5 h-3.5 text-[#8b7355] shrink-0" />
+            ? <ChevronDown style={{ width: "12px", height: "12px", color: "#8b7355", flexShrink: 0 }} />
+            : <ChevronRight style={{ width: "12px", height: "12px", color: "#8b7355", flexShrink: 0 }} />
         ) : (
-          <span className="w-3.5 shrink-0" />
+          <span style={{ width: "12px", flexShrink: 0 }} />
         )}
 
-        <BookOpen className={cn(
-          "w-3.5 h-3.5 shrink-0",
-          section.level === 1 ? "text-[#4a3c2e]" : "text-slate-300"
-        )} />
-
-        <span className={cn(
-          "flex-1 truncate text-sm",
-          section.level === 1 ? "font-medium text-slate-700" : "text-[#6b5344]"
-        )}>
+        <span
+          style={{
+            flex: 1,
+            fontSize: "13px",
+            color: section.level === 1 ? "#4a3c2e" : "#6b5344",
+            fontWeight: section.level === 1 ? 500 : 400,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {section.title}
         </span>
 
-        <span className="text-xs text-slate-300 shrink-0 font-mono">p.{pageRange}</span>
+        <span style={{ fontSize: "11px", color: "#c8a97a", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+          {pageRange}
+        </span>
       </div>
 
       {hasChildren && isExpanded && (
@@ -94,60 +104,110 @@ export function ContentPreview({
 }: ContentPreviewProps) {
   const navigate = useNavigate();
   const totalSections = countAllSections(contentStructure.sections);
+  const wordCount = contentStructure.estimated_word_count;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="glass-card overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-slate-800 truncate">{filename}</h3>
-              <p className="text-xs text-[#8b7355] mt-0.5">
-                {pageCount} pages · {totalSections} sections · {contentStructure.table_count} tables ·{" "}
-                ~{contentStructure.estimated_word_count.toLocaleString()} words
-              </p>
-            </div>
+    <div style={{ width: "100%", maxWidth: "520px", margin: "0 auto" }}>
+      <div className="glass-card" style={{ overflow: "hidden" }}>
+
+        {/* ── Hero header: filename + stats ── */}
+        <div style={{ padding: "1.5rem 1.5rem 1rem" }}>
+          <h3
+            style={{
+              fontSize: "1.0625rem",
+              fontWeight: 600,
+              color: "#4a3c2e",
+              margin: "0 0 0.5rem",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {filename}
+          </h3>
+
+          {/* Inline stat pills */}
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {[
+              { label: "pages", value: pageCount },
+              { label: "sections", value: totalSections },
+              ...(contentStructure.table_count > 0 ? [{ label: "tables", value: contentStructure.table_count }] : []),
+              { label: "words", value: `~${wordCount.toLocaleString()}` },
+            ].map(({ label, value }) => (
+              <span
+                key={label}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.2rem",
+                  padding: "0.2rem 0.6rem",
+                  background: "#f5ecdb",
+                  borderRadius: "9999px",
+                  fontSize: "12px",
+                  color: "#6b5344",
+                  fontWeight: 500,
+                }}
+              >
+                <strong style={{ color: "#4a3c2e" }}>{value}</strong> {label}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
-          {[
-            { label: "Pages",    value: pageCount },
-            { label: "Sections", value: totalSections },
-            { label: "Tables",   value: contentStructure.table_count },
-          ].map(({ label, value }) => (
-            <div key={label} className="p-4 text-center">
-              <div className="text-2xl font-bold text-slate-800">{value}</div>
-              <div className="text-xs text-[#8b7355]">{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Section tree */}
+        {/* ── Section tree ── */}
         {contentStructure.sections.length > 0 && (
-          <div className="p-4 max-h-72 overflow-y-auto">
-            <p className="text-xs font-medium text-[#8b7355] uppercase tracking-wide mb-2">
+          <div
+            style={{
+              padding: "0 1.5rem 1rem",
+              maxHeight: "260px",
+              overflowY: "auto",
+              borderTop: "1px solid #e0d4bf",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "#8b7355",
+                margin: "0.875rem 0 0.5rem",
+              }}
+            >
               Document Structure
             </p>
             <SectionTree sections={contentStructure.sections} />
           </div>
         )}
 
-        {/* CTA */}
-        <div className="p-4 bg-[#f5ecdb] border-t border-slate-100">
+        {/* ── CTA ── */}
+        <div style={{ padding: "1rem 1.5rem" }}>
           <button
             onClick={() => navigate(`/analysis/${reportId}`)}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              padding: "0.75rem 1.5rem",
+              background: "#4a3c2e",
+              color: "#fff6e9",
+              border: "none",
+              borderRadius: "10px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#6b5344"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#4a3c2e"; }}
           >
             Begin Analysis
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight style={{ width: "16px", height: "16px" }} />
           </button>
         </div>
+
       </div>
     </div>
   );

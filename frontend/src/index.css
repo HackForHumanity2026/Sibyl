@@ -172,7 +172,7 @@
     color-scheme: light;
   }
   body {
-    @apply bg-[#fff6e9] text-slate-900 antialiased;
+    @apply bg-[#fff6e9] text-[#4a3c2e] antialiased;
     font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
 }
@@ -188,12 +188,12 @@
 
 /* Subtle section dividers */
 .section-divider {
-  @apply border-t border-slate-100 my-6;
+  @apply border-t border-[#e0d4bf] my-6;
 }
 
 /* Progress bar container */
 .progress-bar-container {
-  @apply h-1.5 w-full bg-slate-100 rounded-full overflow-hidden;
+  @apply h-1.5 w-full bg-[#eddfc8] rounded-full overflow-hidden;
 }
 
 /* Pill badge base */
@@ -253,7 +253,7 @@
 
 .analysis-page__back:hover {
   color: var(--foreground);
-  background: var(--muted);
+  background: transparent;
 }
 
 .analysis-page__title-section {
@@ -1204,7 +1204,7 @@
 
 .highlight-tooltip__close:hover {
   color: var(--foreground);
-  background: var(--muted);
+  background: transparent;
 }
 
 .highlight-tooltip__content {
@@ -1474,4 +1474,17 @@
 .analysis-page__tab-content {
   flex: 1;
   overflow: hidden;
+}
+
+/* ─── Analysis / Report list page — hover underline style ─── */
+.analysis-list-item {
+  transition: none;
+}
+.analysis-list-item:hover .analysis-list-item__name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.report-list-item:hover .report-list-item__name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

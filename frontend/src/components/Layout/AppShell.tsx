@@ -51,7 +51,7 @@ export function AppShell() {
       {/* Horizontal top navigation */}
       <Header />
 
-      {/* Page content */}
+      {/* Page content — scrolls by default; AnalysisPage pins its own height */}
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>

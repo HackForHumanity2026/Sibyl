@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAnalysis, useSSE } from "@/hooks";
 import { getReportStatus, getPDFUrl } from "@/services/api";
 import { ClaimsPanel, AgentReasoningPanel } from "@/components/Analysis";
@@ -116,8 +117,25 @@ export function AnalysisPage() {
   const [activeClaim, setActiveClaim] = useState<Claim | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [mainTab, setMainTab] = useState<MainTab>("document");
+  const [showInvestigationNudge, setShowInvestigationNudge] = useState(false);
+  const nudgeShownRef = useRef(false);
 
   const isAnalyzing = analysisState === "starting" || analysisState === "analyzing";
+
+  // Show nudge tooltip pointing to Investigation tab when analysis begins
+  useEffect(() => {
+    if (isAnalyzing && mainTab === "document" && !nudgeShownRef.current) {
+      nudgeShownRef.current = true;
+      // Small delay so the user sees the page first
+      const timer = setTimeout(() => {
+        setShowInvestigationNudge(true);
+        // Auto-dismiss after 6 seconds
+        const dismissTimer = setTimeout(() => setShowInvestigationNudge(false), 6000);
+        return () => clearTimeout(dismissTimer);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAnalyzing, mainTab]);
 
   const {
     events,
@@ -222,13 +240,31 @@ export function AnalysisPage() {
           >
             Document
           </button>
-          <button
-            className={`analysis-page__main-tab ${mainTab === "investigation" ? "analysis-page__main-tab--active" : ""}`}
-            onClick={() => setMainTab("investigation")}
-          >
-            Investigation
-            {isAnalyzing && <span className="analysis-page__tab-indicator" />}
-          </button>
+          <div className="analysis-page__tab-wrapper" style={{ position: "relative" }}>
+            <button
+              className={`analysis-page__main-tab ${mainTab === "investigation" ? "analysis-page__main-tab--active" : ""}`}
+              onClick={() => { setMainTab("investigation"); setShowInvestigationNudge(false); }}
+            >
+              Investigation
+              {isAnalyzing && <span className="analysis-page__tab-indicator" />}
+            </button>
+
+            {/* Animated nudge tooltip */}
+            <AnimatePresence>
+              {showInvestigationNudge && mainTab === "document" && (
+                <motion.div
+                  className="analysis-page__nudge-tooltip"
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                >
+                  <span className="analysis-page__nudge-arrow" />
+                  Agents are working — watch live
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -269,18 +305,19 @@ export function AnalysisPage() {
           />
         )}
 
-        {/* Investigation: Graph (left ~70%) | Agent activity sidebar (right ~30%) */}
+        {/* Investigation: Graph (left ~75%) | Agent activity sidebar (right ~25%) */}
         {mainTab === "investigation" && (
           <ResizableSplit
-            defaultLeftPct={70}
-            minLeftPct={30}
-            maxLeftPct={85}
+            defaultLeftPct={75}
+            minLeftPct={40}
+            maxLeftPct={90}
             left={
               <DashboardGraph
                 isAnalyzing={isAnalyzing}
                 events={events}
                 isConnected={isConnected}
                 error={sseError}
+                reportId={reportId}
               />
             }
             right={
