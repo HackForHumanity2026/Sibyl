@@ -17,6 +17,8 @@ import pymupdf
 import pymupdf4llm
 from pydantic import BaseModel
 
+from app.core.sanitize import sanitize_string
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,6 +134,10 @@ class PDFParserService:
 
             full_markdown = "".join(markdown_parts)
             page_count = len(page_chunks)
+
+            # Sanitize extracted text to remove PostgreSQL-incompatible characters
+            # (null bytes, unpaired surrogates) that may come from corrupted PDFs
+            full_markdown = sanitize_string(full_markdown)
 
             # Check for image-only / scanned PDFs
             text_content = re.sub(r"\s+", "", full_markdown)

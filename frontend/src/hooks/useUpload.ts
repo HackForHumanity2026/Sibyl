@@ -31,7 +31,7 @@ export interface UseUploadReturn {
 }
 
 const POLL_INTERVAL_MS = 2000;
-const MAX_POLL_COUNT = 450; // 15 minutes at 2-second intervals
+const MAX_POLL_COUNT = Infinity; // No timeout - large PDFs can take a while
 
 export function useUpload(): UseUploadReturn {
   const [uploadState, setUploadState] = useState<UploadState>("idle");

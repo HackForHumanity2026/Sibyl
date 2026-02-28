@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.core.sanitize import sanitize_string
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,9 @@ class OpenRouterClient:
                         "Output hit max_tokens limit."
                     )
 
-                return content
+                # Sanitize LLM response to remove PostgreSQL-incompatible characters
+                # (null bytes can appear if the LLM echoes back tainted PDF/API content)
+                return sanitize_string(content) if content else content
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code in self.RETRY_STATUS_CODES:
@@ -268,7 +271,8 @@ class OpenRouterClient:
                                 delta = choices[0].get("delta", {})
                                 content = delta.get("content", "")
                                 if content:
-                                    yield content
+                                    # Sanitize streaming tokens to remove PostgreSQL-incompatible chars
+                                    yield sanitize_string(content)
                         except json.JSONDecodeError:
                             logger.warning("Failed to parse SSE data: %s", data_str[:100])
                             continue

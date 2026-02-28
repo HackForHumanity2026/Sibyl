@@ -45,7 +45,7 @@ export interface UseAnalysisReturn {
 }
 
 const POLLING_INTERVAL_MS = 3000;
-const MAX_POLLS = 300; // 15 minutes at 3-second intervals
+const MAX_POLLS = Infinity; // No timeout - analysis can take a long time
 
 export function useAnalysis(): UseAnalysisReturn {
   // Core state

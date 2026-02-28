@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from langchain_core.tools import tool
 
 from app.core.config import settings
+from app.core.sanitize import sanitize_string
 
 logger = logging.getLogger(__name__)
 
@@ -118,13 +119,14 @@ class TavilySearchProvider:
                     lambda: self.client.search(**search_kwargs)
                 )
 
-                # Parse results
+                # Parse results and sanitize text fields to remove PostgreSQL-incompatible
+                # characters (null bytes, unpaired surrogates) from external API responses
                 results = []
                 for result in response.get("results", []):
                     result_dict = {
-                        "title": result.get("title", ""),
-                        "url": result.get("url", ""),
-                        "snippet": result.get("content", ""),  # Tavily uses "content"
+                        "title": sanitize_string(result.get("title", "")),
+                        "url": sanitize_string(result.get("url", "")),
+                        "snippet": sanitize_string(result.get("content", "")),  # Tavily uses "content"
                         "published_date": result.get("published_date"),
                         "source_domain": _extract_domain(result.get("url", "")),
                         "relevance_score": result.get("score"),
