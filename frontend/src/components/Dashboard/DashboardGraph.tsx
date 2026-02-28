@@ -1,7 +1,7 @@
 /**
  * DashboardGraph — Horizontal avatar-based React Flow graph for the Investigation tab.
  *
- * Layout: Claims (Menny) → Orchestrator (Bron) → Pentagon of 5 Specialists → Judge (Vera)
+ * Layout: Claims (Menny) → Orchestrator (Bron) → Pentagon of 5 Specialists → Judge (Judy)
  *
  * The 5 specialists surround a central Message Pool table node.
  * Clicking an avatar opens a bottom sheet with full reasoning + findings.

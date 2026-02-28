@@ -335,7 +335,7 @@ export function DocsPage() {
             { step: "01", title: "Claim Extraction", desc: "Menny reads the full report and identifies every verifiable statement — quantitative targets, governance disclosures, risk assessments, and commitments.", icon: FileSearch },
             { step: "02", title: "Orchestration", desc: "Bron receives the claim list and dispatches each claim to the appropriate specialist agents. She tracks in-flight investigations and waits for findings.", icon: Cpu },
             { step: "03", title: "Specialist Verification", desc: "Five specialist agents (Legal, Data, News, Academic, Geography) independently research their assigned claims and post findings back to the message pool.", icon: Layers },
-            { step: "04", title: "Verdict & Report", desc: "Vera evaluates the combined findings and issues a verdict for each claim. If evidence is insufficient, she may request reinvestigation before ruling. The final report is structured by IFRS pillar.", icon: Scale },
+            { step: "04", title: "Verdict & Report", desc: "Judy evaluates the combined findings and issues a verdict for each claim. If evidence is insufficient, she may request reinvestigation before ruling. The final report is structured by IFRS pillar.", icon: Scale },
           ].map(({ step, title, desc, icon: Icon }, i) => (
             <FadeIn key={step} delay={i * 0.07}>
               <div style={{ display: "flex", gap: "1.25rem", marginBottom: "1.5rem" }}>
@@ -423,7 +423,7 @@ export function DocsPage() {
           <SectionHeading icon={Scale} label="Output" title="Verdict Types" />
           <FadeIn delay={0.1}>
             <p style={{ fontSize: "0.9375rem", color: "#4a3c2e", lineHeight: 1.7, margin: "1.25rem 0 2rem" }}>
-              Every claim receives one of four verdicts from Vera, based on the totality of evidence:
+              Every claim receives one of four verdicts from Judy, based on the totality of evidence:
             </p>
           </FadeIn>
 
@@ -455,7 +455,7 @@ export function DocsPage() {
                 label: "Reinvestigating",
                 color: "#7c3aed",
                 bg: "#ede9fe",
-                desc: "Vera has sent the claim back to specialists for additional evidence before ruling.",
+                desc: "Judy has sent the claim back to specialists for additional evidence before ruling.",
               },
             ].map(({ icon: Icon, label, color, bg, desc }) => (
               <FadeIn key={label}>

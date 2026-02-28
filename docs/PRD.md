@@ -369,7 +369,7 @@ The detective dashboard is the hero visual of Sibyl -- a real-time, interactive 
 | News/Media Agent | Izzy | Amber/gold |
 | Academic/Research | Newton | Teal |
 | Data/Metrics | Rhea | Coral/orange |
-| Judge | Vera | Crimson red |
+| Judge | Judy | Crimson red |
 
 **Horizontal pipeline layout.** The graph is oriented left-to-right: Claims agent (far left), Orchestrator (center-left), five specialist agents arranged in a pentagon formation around a central Message Pool table (center), and Judge (far right). This layout matches the natural reading direction of the pipeline flow.
 
@@ -905,7 +905,7 @@ sibyl/
   - News/Media Agent (Izzy): `#e8b84b` (amber/gold)
   - Academic/Research Agent (Newton): `#4db6ac` (teal)
   - Data/Metrics Agent (Rhea): `#e8855a` (coral/orange)
-  - Judge Agent (Vera): `#c0392b` (crimson red)
+  - Judge Agent (Judy): `#c0392b` (crimson red)
 - **Icons:** Lucide React exclusively -- no inline SVGs or emoji
 - **Animations:** Framer Motion for all entrance/exit animations -- blur-fade-in on page content, staggered list items, floating avatar idle animations, pulsating reasoning text
 - **Typography:** Clean sans-serif (Inter or system font stack). List page headings use near-landing-page scale (`2.75rem`). Subheadings and body follow a clear warm-brown hierarchy.

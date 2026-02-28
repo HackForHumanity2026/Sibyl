@@ -82,7 +82,7 @@ flowchart LR
         end
 
         MSGPOOL[(Message Pool\nShared LangGraph State)]
-        JUDGE[Judge Agent\nVera · Claude Opus 4.5]
+        JUDGE[Judge Agent\nJudy · Claude Opus 4.5]
 
         CLAIMS --> ORCH
         ORCH --> GEO & LEGAL & NEWS & ACAD & DATA
@@ -136,7 +136,7 @@ Five specialist agents investigate claims concurrently:
 
 ### Phase 4 — Cyclic Validation
 
-The **Judge Agent (Vera)** receives all specialist findings and evaluates each claim for evidence sufficiency, consistency, quality, and completeness. If evidence is insufficient or contradictory, Vera sends a specific re-investigation request back to the Orchestrator with:
+The **Judge Agent (Judy)** receives all specialist findings and evaluates each claim for evidence sufficiency, consistency, quality, and completeness. If evidence is insufficient or contradictory, Judy sends a specific re-investigation request back to the Orchestrator with:
 
 - Which agent(s) should re-investigate
 - What specific evidence gap needs to be addressed
@@ -289,7 +289,7 @@ The dashboard is the hero visual of Sibyl — a "detective village" where every 
 | News/Media Agent | Izzy | Public source verifier | `#e8b84b` amber | wifi |
 | Academic Agent | Newton | Research synthesizer | `#4db6ac` teal | flask |
 | Data/Metrics Agent | Rhea | Quantitative validator | `#e8855a` coral | bar-chart |
-| Judge Agent | Vera | Cyclic validator | `#c0392b` crimson | gavel |
+| Judge Agent | Judy | Cyclic validator | `#c0392b` crimson | gavel |
 
 ### Graph Layout
 
@@ -298,7 +298,7 @@ Left                    Center                    Right
 ────────────────────────────────────────────────────────
                          Columbo
                         /       \
-[Menny] → [Bron] → Data/Metrics  Legal  →  [Vera]
+[Menny] → [Bron] → Data/Metrics  Legal  →  [Judy]
                         \  [MP]  /
                          Izzy Newton
                         Academic

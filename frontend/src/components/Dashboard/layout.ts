@@ -81,7 +81,7 @@ export const AGENT_DISPLAY_NAMES: Record<AgentName, string> = {
   news_media:   "Izzy",
   academic:     "Newton",
   data_metrics: "Rhea",
-  judge:        "Vera",
+  judge:        "Judy",
 };
 
 export const AGENT_CSS_COLORS: Record<AgentName, string> = {

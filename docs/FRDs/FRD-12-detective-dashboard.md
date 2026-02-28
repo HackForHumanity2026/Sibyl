@@ -246,7 +246,7 @@ The graph uses a **horizontal left-to-right** orientation:
 - **Claims agent (Menny):** Far left, positioned close to the Orchestrator
 - **Orchestrator (Bron):** Left of center
 - **Specialist pentagon:** Center; five agents at pentagon vertices around the Message Pool table
-- **Judge (Vera):** Far right
+- **Judge (Judy):** Far right
 
 ### 2.2 Layout Coordinates (`layout.ts`)
 
@@ -488,7 +488,7 @@ Both actions set `selectedAgentId` in `DashboardGraph`'s local state.
 | Geography (Columbo) | Satellite image references, location names |
 | Legal (Mike) | IFRS coverage bars per pillar (green/orange/grey) |
 | Data/Metrics (Rhea) | Consistency check list with pass/fail |
-| Judge (Vera) | Verdict cards with color-coded badges and cycle counts |
+| Judge (Judy) | Verdict cards with color-coded badges and cycle counts |
 
 ### 7.5 Z-Index Layering
 
@@ -527,7 +527,7 @@ const sheetVariants = {
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  [Menny] [Bron] [Columbo] [Mike] [Izzy] [Newton] [Rhea] [Vera] │
+│  [Menny] [Bron] [Columbo] [Mike] [Izzy] [Newton] [Rhea] [Judy] │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -851,7 +851,7 @@ FRD 12 (v2.0) is complete when ALL of the following are satisfied:
 | 2 | Specialist agents are arranged in a pentagon | Verify pentagon formation around Message Pool table |
 | 3 | Message Pool table is centered in the pentagon | Verify table is visually centered; agents render on top |
 | 4 | Claims agent is positioned left, near Orchestrator | Verify Menny appears close to Bron on the left |
-| 5 | Judge is on the far right | Verify Vera appears rightmost |
+| 5 | Judge is on the far right | Verify Judy appears rightmost |
 | 6 | VillageBackground renders at low opacity | Verify decorative SVG elements are barely visible behind nodes |
 | 7 | Pulsating reasoning text appears under active avatars | Trigger analysis; verify text pulses below each active avatar |
 | 8 | Reasoning text stops pulsing on completion | Verify all text becomes static after `pipeline_completed` |
@@ -891,7 +891,7 @@ FRD 12 (v2.0) is complete when ALL of the following are satisfied:
 | News/Media | Izzy | wifi | `#e8b84b` |
 | Academic/Research | Newton | flask | `#4db6ac` |
 | Data/Metrics | Rhea | bar-chart | `#e8855a` |
-| Judge | Vera | gavel | `#c0392b` |
+| Judge | Judy | gavel | `#c0392b` |
 
 ---
 

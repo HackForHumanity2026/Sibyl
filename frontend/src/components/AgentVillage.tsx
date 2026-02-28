@@ -195,13 +195,13 @@ export const AGENTS: Agent[] = [
     mark: "globe",
   },
   {
-    id: "vera",
+    id: "judy",
     agentKey: "judge",
-    name: "Vera",
+    name: "Judy",
     role: "Judge",
-    shortDesc: "Vera weighs all the evidence and delivers the final verdict on every claim. She reads the findings from every specialist agent and decides whether each claim is verified, unverified, contradicted, or lacking sufficient evidence — then writes the reasoning.",
+    shortDesc: "Judy weighs all the evidence and delivers the final verdict on every claim. She reads the findings from every specialist agent and decides whether each claim is verified, unverified, contradicted, or lacking sufficient evidence — then writes the reasoning.",
     longDesc:
-      "Vera is the final word. After every specialist agent has submitted their findings, she evaluates the totality of evidence — legal, scientific, journalistic, geographic, and quantitative — and issues a verdict for each claim. If the evidence is contradictory, she may send claims back for reinvestigation before ruling.",
+      "Judy is the final word. After every specialist agent has submitted their findings, she evaluates the totality of evidence — legal, scientific, journalistic, geographic, and quantitative — and issues a verdict for each claim. If the evidence is contradictory, she may send claims back for reinvestigation before ruling.",
     specialTool: "Multi-source evidence synthesis & verdict engine",
     capabilities: [
       "Cross-agent evidence synthesis",
@@ -581,8 +581,8 @@ function AgentModal({ agent, onClose }: { agent: Agent; onClose: () => void }) {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
-// The landing page shows all agents EXCEPT the judge (she lives in the graph)
-const LANDING_AGENTS = AGENTS.filter((a) => a.agentKey !== "judge");
+// The landing page shows all agents including the judge
+const LANDING_AGENTS = AGENTS;
 
 export function AgentVillage() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);

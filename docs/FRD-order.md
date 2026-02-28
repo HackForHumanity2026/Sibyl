@@ -277,7 +277,7 @@ Each FRD represents a single unit of full functionality that can be implemented,
 **Scope (as implemented):**
 
 - React Flow (`@xyflow/react`) graph with **warm cream avatar village** aesthetic -- no dark theme
-- Custom `EggAvatarNode.tsx`: egg-shaped avatar characters (Menny, Bron, Columbo, Mike, Izzy, Newton, Rhea, Vera) with pulsating reasoning text below each avatar
+- Custom `EggAvatarNode.tsx`: egg-shaped avatar characters (Menny, Bron, Columbo, Mike, Izzy, Newton, Rhea, Judy) with pulsating reasoning text below each avatar
 - Custom `MessagePoolNode.tsx`: semi-transparent table at the center of the specialist pentagon showing recent InfoRequest/InfoResponse messages
 - Custom `ClaimEdge.tsx`: straight edges for claim/infoRequest flows; custom quadratic bezier swoop-under for reinvestigation edges
 - **Horizontal left-to-right layout**: Claims near Orchestrator (left), specialist pentagon (center), Judge (right)
