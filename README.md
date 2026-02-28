@@ -10,7 +10,7 @@
 
 <div align="center">
   <p align="center">
-    <a href="https://hack-for-humanity-26.devpost.com/">
+    <a href="https://devpost.com/software/sibyl-x8gpor">
       <strong>« Hack for Humanity 2026 — DevPost »</strong>
     </a>
   </p>
