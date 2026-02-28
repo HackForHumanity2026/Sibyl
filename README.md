@@ -140,10 +140,10 @@ The **Judge Agent (Judy)** receives all specialist findings and evaluates each c
 
 This **cyclic loop** continues until findings are robust or a configurable maximum iteration depth (default: 3 cycles) is reached. The result is one of four verdicts:
 
-- ✅ **Verified** — Multiple independent sources corroborate the claim
-- ⚠️ **Unverified** — No external evidence found to support or contradict
-- ❌ **Contradicted** — Evidence directly contradicts the claim
-- 🔍 **Insufficient Evidence** — Evidence exists but is not sufficient for a confident verdict
+- **Verified** — Multiple independent sources corroborate the claim
+- **Unverified** — No external evidence found to support or contradict
+- **Contradicted** — Evidence directly contradicts the claim
+- **Insufficient Evidence** — Evidence exists but is not sufficient for a confident verdict
 
 ### Phase 5 — Disclosure Gap Analysis
 
