@@ -41,8 +41,8 @@ Existing solutions fail on both dimensions:
 Sibyl exists because independent, evidence-based sustainability verification should be accessible to anyone.
 
 <div align="center">
-  <a href="https://hack-for-humanity-26.devpost.com/">
-    <img src="https://img.shields.io/badge/▶️_View_DevPost-FF0000?style=for-the-badge&logoColor=white" alt="DevPost"/>
+  <a href="https://www.youtube.com/watch?v=YWpDHMI29LM">
+    <img src="https://img.shields.io/badge/▶️_View_Demo-FF0000?style=for-the-badge&logoColor=white" alt="Sibyl Demo"/>
   </a>
 </div>
 
